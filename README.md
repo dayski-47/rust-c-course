@@ -134,7 +134,7 @@ If the same crate appears in two versions, investigate — often a dep pin in `C
 
 ## Source Material
 
-This course draws from the following books in this repository:
+This course draws from the following books, originally published in the [microsoft/RustTraining](https://github.com/microsoft/RustTraining) repository:
 - **c-cpp-book** — Rust from a C/C++ developer's perspective (your primary reference)
 - **async-book** — Async Rust and Tokio in depth
 - **rust-patterns-book** — Production Rust patterns and advanced concepts
