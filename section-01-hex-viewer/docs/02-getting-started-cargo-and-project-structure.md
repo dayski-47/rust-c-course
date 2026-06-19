@@ -1,0 +1,212 @@
+# Getting Started: Cargo and Project Structure
+
+🟢 Easy — follow along and run each command yourself.
+
+In C, building a project means writing a Makefile, tracking header paths, linking libraries, managing build artifacts. If you want a third-party library, you find the source, build it, install it somewhere, then update your Makefile to point at it. It's tedious at best and a compatibility nightmare at worst.
+
+Rust ships with `cargo`. It handles everything: building, testing, dependency management, formatting, linting. It's what CMake + make + apt + valgrind + clang-format want to be when they grow up.
+
+---
+
+## Installing Rust
+
+On Linux or WSL:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Follow the prompts. When it's done, restart your shell or run `source ~/.cargo/env`.
+
+This installs:
+- `rustc` — the compiler (you rarely call this directly)
+- `cargo` — the build system and package manager (you use this for everything)
+- `rustup` — the toolchain manager (for updating, installing nightly, cross-compiling)
+
+Verify it worked:
+
+```bash
+rustc --version
+cargo --version
+```
+
+You should see version numbers. Rust releases every six weeks; update with `rustup update`.
+
+---
+
+## Your First Project
+
+```bash
+cargo new hello-rust
+cd hello-rust
+```
+
+`cargo new` creates a directory with everything you need:
+
+```
+hello-rust/
+├── Cargo.toml       <-- the project manifest (like a Makefile header)
+├── Cargo.lock       <-- exact dependency versions (auto-generated, don't edit)
+└── src/
+    └── main.rs      <-- your code lives here
+```
+
+Open `src/main.rs`:
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+That's a complete Rust program. `fn main()` is the entry point, same as C. `println!` is a macro (the `!` tells you it's a macro, not a function — more on that later).
+
+---
+
+## The Cargo Commands You'll Use Daily
+
+```bash
+cargo check      # Fast: just check for errors, don't produce a binary
+cargo build      # Compile to target/debug/<name>
+cargo run        # Build and run
+cargo test       # Run all tests
+cargo fmt        # Format code (like clang-format)
+cargo clippy     # Lint (like a smart compiler warning pass)
+```
+
+**`cargo check` is your best friend during development.** It's much faster than a full build because it checks types and errors without generating code. Use it constantly.
+
+**`cargo build --release`** produces an optimized binary in `target/release/`. Debug builds have runtime checks (like overflow detection and bounds checking that panic instead of UBing). Release builds are fast but still safe — unlike C's `-O2` which can make UB disappear into surprises.
+
+In C you might have:
+```makefile
+CC = gcc
+CFLAGS = -Wall -Wextra -O2
+BINARY = myapp
+
+$(BINARY): main.c
+    $(CC) $(CFLAGS) -o $(BINARY) main.c
+```
+
+With cargo, that entire file is replaced by just running `cargo build --release`.
+
+---
+
+## Cargo.toml: The Project Manifest
+
+Open `Cargo.toml`:
+
+```toml
+[package]
+name = "hello-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+```
+
+`[package]` is metadata. `[dependencies]` is where you list libraries your project needs. Right now it's empty.
+
+Compare this to what you'd need in C to use, say, libcurl:
+- Install the dev package (`apt install libcurl4-openssl-dev`)
+- Add `-I/usr/include/curl` to CFLAGS
+- Add `-lcurl` to LDFLAGS
+- Hope the version installed matches what your code expects
+- Document this all in a README so the next developer doesn't suffer
+
+In Rust, to add a dependency, you add one line to `Cargo.toml`.
+
+---
+
+## Adding a Dependency
+
+Let's add `clap`, a library for parsing command-line arguments. You'll use this in the hex viewer for `--offset` and `--length` flags.
+
+```toml
+[package]
+name = "hello-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+```
+
+Now run:
+
+```bash
+cargo build
+```
+
+Cargo downloads `clap` and all its transitive dependencies from [crates.io](https://crates.io) (the Rust package registry), compiles them, and links everything together. No `apt install`. No header paths. No linker flags.
+
+`Cargo.lock` gets updated with the exact version numbers that were resolved. This is checked into version control so that every developer on your team builds with identical dependency versions.
+
+---
+
+## What the Project Layout Means
+
+```
+my_project/
+├── Cargo.toml          # Manifest: name, version, dependencies
+├── Cargo.lock          # Locked dependency versions (auto-generated)
+├── src/
+│   ├── main.rs         # Entry point for a binary (fn main())
+│   └── lib.rs          # If you're building a library instead
+├── tests/              # Integration tests (tests that use your code as a black box)
+├── target/             # Build output — like your build/ or obj/ directory
+│   ├── debug/          # Debug builds go here
+│   └── release/        # Release builds go here
+```
+
+`target/` is large and can be gitignored. It's regenerated by cargo. Like your C `build/` directory.
+
+---
+
+## Trying Things Out Without a Full Project
+
+Two options when you just want to experiment:
+
+**Rust Playground** — paste code at [play.rust-lang.org](https://play.rust-lang.org/), hit Run. Nothing to install. Great for testing a snippet.
+
+**evcxr REPL** — interactive Rust REPL if you prefer a REPL workflow:
+```bash
+cargo install --locked evcxr_repl
+evcxr
+```
+
+---
+
+## Setting Up for the Hex Viewer
+
+When you're ready to start the project:
+
+```bash
+cargo new hexview
+cd hexview
+```
+
+We'll add dependencies as we need them. For now, the only one you might want to add early:
+
+```toml
+[dependencies]
+# We'll add these during the project:
+# clap = { version = "4", features = ["derive"] }
+# thiserror = "1"
+```
+
+Leave it empty for now. We start with `std::env::args()` (from the standard library, no dependencies needed), and add `clap` later when argument parsing gets more complex.
+
+---
+
+## Common Mistakes C Developers Make
+
+**Editing `Cargo.lock` by hand.** Don't. It's auto-generated. If you want to update a dependency, use `cargo update` or change the version in `Cargo.toml`.
+
+**Running `rustc` directly.** Use `cargo run` and `cargo build`. `rustc` is the compiler but cargo adds dependency resolution, incremental compilation, test running, and more. There's almost no reason to invoke `rustc` directly.
+
+**Not using `cargo check`.** It's much faster than `cargo build` during iterative development. Make it your default "does this compile" command.
+
+**Checking in the `target/` directory.** Add it to `.gitignore`. It can be hundreds of megabytes.
+
+**Forgetting `cargo fmt`.** Rust has a strong community convention around formatting. Run `cargo fmt` before committing. Better yet, set up your editor to format on save.
