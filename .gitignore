@@ -1,0 +1,10 @@
+# mdbook build output
+**/book/
+
+# xtask output (anchored to repo root — avoids ignoring course/section-*/docs/)
+/site/
+/docs/
+target/
+
+# Zone.Identifier files (Windows/WSL artifact)
+*:Zone.Identifier
