@@ -271,18 +271,18 @@ The borrow checker is correct more often than you are. But there are genuinely c
 **Fighting the borrow checker on struct fields.**
 You might expect this to work:
 ```rust
-struct Scanner {
-    host: String,
-    results: Vec<u16>,
+struct HexViewer {
+    path: String,
+    bytes: Vec<u8>,
 }
 
-fn process(scanner: &mut Scanner) {
-    let h = &scanner.host;           // borrow host
-    scanner.results.push(80);        // COMPILE ERROR: borrow of `scanner` occurs here
-    println!("{}", h);
+fn process(viewer: &mut HexViewer) {
+    let p = &viewer.path;            // borrow path
+    viewer.bytes.push(0x41);         // COMPILE ERROR: borrow of `viewer` occurs here
+    println!("{}", p);
 }
 ```
-The compiler sees `&mut scanner` (to push) and `&scanner.host` simultaneously - a mutable and immutable borrow of the same thing. Even though `host` and `results` are different fields, the compiler reasons about the whole struct, not individual fields, in some situations. The fix: drop the first borrow before taking the second, or restructure so you don't hold both at once.
+The compiler sees `&mut viewer` (to push) and `&viewer.path` simultaneously - a mutable and immutable borrow of the same thing. Even though `path` and `bytes` are different fields, the compiler reasons about the whole struct, not individual fields, in some situations. The fix: drop the first borrow before taking the second, or restructure so you don't hold both at once.
 
 **Non-lexical lifetimes help, but edge cases remain.**
 Rust's borrow checker was improved significantly with "non-lexical lifetimes" - borrows now end at the last point they're used, not the end of the block. This resolves many confusing errors from older Rust. But edge cases with loops and conditionals can still produce errors that look wrong. If the compiler says a borrow lasts longer than you expect, check whether it's used inside a loop or match that keeps it alive.

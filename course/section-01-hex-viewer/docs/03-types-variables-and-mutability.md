@@ -22,7 +22,7 @@ Here's the full map:
 
 `char` in Rust is a **Unicode scalar value** (4 bytes), not a single byte like in C. If you're storing a byte, use `u8`. If you're storing a Unicode character, use `char`.
 
-You can use underscores as visual separators in numbers - `1_000_000` is the same as `1000000`. Handy for port numbers and timeouts.
+You can use underscores as visual separators in numbers - `1_000_000` is the same as `1000000`. Handy for file offsets and byte counts.
 
 ---
 
@@ -78,10 +78,10 @@ Rust's type inference is strong. You often don't need annotations:
 
 ```rust
 fn main() {
-    let port = 8080;          // inferred as i32
-    let timeout_ms = 200u64;  // explicit suffix: u64
-    let open = true;          // inferred as bool
-    let ratio = 0.95;         // inferred as f64
+    let chunk_size = 16;      // inferred as i32 - hex viewer rows are 16 bytes wide
+    let file_size = 4096u64;  // explicit suffix: u64
+    let is_ascii = true;      // inferred as bool
+    let fill_ratio = 0.95;    // inferred as f64
 }
 ```
 
@@ -174,17 +174,17 @@ Group a fixed number of values of different types:
 
 ```rust
 fn main() {
-    let pair: (u16, bool) = (443, true);   // port number and whether it's open
-    let port = pair.0;
-    let is_open = pair.1;
-    println!("Port {port} open: {is_open}");
+    let pair: (usize, u8) = (0x0010, 0xFF);   // byte offset and the byte value at that position
+    let offset = pair.0;
+    let byte_val = pair.1;
+    println!("Offset {offset:#06x}: {byte_val:#04x}");
 }
 ```
 
 You can also destructure:
 
 ```rust
-let (port, is_open) = (443, true);
+let (offset, byte_val) = (0x0010, 0xFF);
 ```
 
 Tuples are useful for returning multiple values from a function - something you'd do with out-parameters in C.
@@ -197,9 +197,9 @@ Fixed-size, stack-allocated, all same type. Syntax: `[type; length]`.
 
 ```rust
 fn main() {
-    let ports: [u16; 4] = [22, 80, 443, 8080];
-    println!("First port: {}", ports[0]);
-    println!("Array length: {}", ports.len());
+    let row_offsets: [usize; 4] = [0x00, 0x10, 0x20, 0x30];  // first 4 row offsets in a hex dump
+    println!("First row starts at: {:#06x}", row_offsets[0]);
+    println!("Number of rows: {}", row_offsets.len());
 
     // Out-of-bounds at compile time is an error
     // Out-of-bounds at runtime is a panic (not UB like in C)
@@ -216,9 +216,9 @@ Rust lets you re-declare a variable with the same name. This is called shadowing
 
 ```rust
 fn main() {
-    let port = "8080";            // &str
-    let port = port.parse::<u16>().unwrap();  // shadow with u16
-    println!("Port: {port}");
+    let offset = "256";                            // &str - raw value from command line args
+    let offset = offset.parse::<usize>().unwrap(); // shadow with usize
+    println!("Offset: {offset:#010x}");
 }
 ```
 
@@ -236,17 +236,17 @@ In debug mode, Rust panics on integer overflow:
 let x: u16 = u16::MAX; // 65535
 let y = x + 1;         // debug: panic. release: wraps to 0.
 ```
-In release mode (`cargo build --release`), overflow wraps silently. For port numbers and counts in the scanner, this is unlikely to matter - but it's critical in any arithmetic where overflow is plausible. Use `saturating_add` to clamp at the max value, or `checked_add` to get `None` on overflow rather than wrapping:
+In release mode (`cargo build --release`), overflow wraps silently. For byte counts and offsets in the hex viewer this is unlikely - but it matters in any arithmetic where overflow is plausible. Use `saturating_add` to clamp at the max value, or `checked_add` to get `None` on overflow rather than wrapping:
 ```rust
 let clamped = x.saturating_add(1);   // 65535, stays at max
 let checked = x.checked_add(1);      // None
 ```
 
 **Implicit conversion bugs - Rust has none, which is the point.**
-In C, `int port = some_u16_value` silently works. In Rust, mixing types is a compile error. This feels annoying until you realize it prevents a whole class of bugs where a 32-bit value silently truncates into a 16-bit slot. The `as` cast is explicit truncation - use `u16::try_from(n)` when you want to know if the value fits:
+In C, `size_t offset = some_u32_value` silently works. In Rust, mixing types is a compile error. This feels annoying until you realize it prevents a whole class of bugs where a 32-bit value silently truncates into a 16-bit slot. The `as` cast is explicit truncation - use `usize::try_from(n)` when you want to know if the value fits:
 ```rust
-let n: u32 = 70000;
-let p = u16::try_from(n); // Err(TryFromIntError) - 70000 doesn't fit in u16
+let n: u32 = 0xFFFF_FFFF;
+let offset = usize::try_from(n); // Ok on 64-bit, Err on 16-bit targets
 ```
 
 **Shadowing confusion - shadowing is not mutation.**
@@ -272,4 +272,4 @@ A `&str` is a borrowed view into existing bytes. If those bytes are owned by a `
 
 **Assuming integer conversion is implicit.** You will try to pass a `u16` where a `usize` is expected, and the compiler will refuse. Use `as usize` explicitly.
 
-**Using the wrong integer type for indexing.** Array and Vec indices must be `usize`. If you compute a port number as `u16`, you'll need `as usize` when using it as an index.
+**Using the wrong integer type for indexing.** Array and Vec indices must be `usize`. If you compute a byte offset as `u32`, you'll need `as usize` when using it as an index.

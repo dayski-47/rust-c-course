@@ -73,10 +73,11 @@ This is occasionally useful for retry logic when reading from flaky I/O sources.
 
 ```rust
 fn main() {
-    let mut port = 1;
-    while port <= 1024 {
-        // scan port
-        port += 1;
+    let mut offset = 0usize;
+    let total_bytes = 256usize;
+    while offset < total_bytes {
+        // process 16-byte chunk starting at offset
+        offset += 16;
     }
 }
 ```
@@ -91,27 +92,30 @@ This is the idiomatic way to iterate in Rust. You won't write `for (int i = 0; i
 
 ```rust
 fn main() {
-    // 1..=1024 means 1 through 1024 inclusive
-    for port in 1u16..=1024 {
-        println!("scanning port {port}");
+    let file_size = 256usize;
+    let row_size = 16usize;
+
+    // iterate over row starting offsets: 0, 16, 32, ...
+    for row_start in (0..file_size).step_by(row_size) {
+        println!("row at offset {row_start:#06x}");
     }
 
-    // 1..1024 is exclusive on the right: 1 through 1023
-    for i in 0..10 {
-        println!("{i}");  // prints 0 through 9
+    // 0..16 is exclusive on the right: indices 0 through 15
+    for i in 0..16 {
+        println!("{i}");  // prints 0 through 15
     }
 }
 ```
 
-`1..=1024` is an inclusive range. `1..1024` is exclusive on the right (0 to 1023 for the second example). For port scanning, you almost always want `start..=end`.
+`0..n` is exclusive on the right (0 through n-1). `0..=n` is inclusive. For iterating over fixed-size row chunks in the hex output, use `step_by` on a range.
 
 You can also iterate over collections directly:
 
 ```rust
 fn main() {
-    let ports = vec![22u16, 80, 443, 8080];
-    for port in &ports {
-        println!("checking port {port}");
+    let bytes = vec![0x48u8, 0x65, 0x6C, 0x6C];  // "Hell" in ASCII
+    for byte in &bytes {
+        print!("{byte:02x} ");
     }
 }
 ```
@@ -140,20 +144,19 @@ Key differences from C:
 The implicit return is idiomatic Rust. The expression without a semicolon at the end is what the function returns. You can use explicit `return` for early exits:
 
 ```rust
-fn check_port(port: u16) -> bool {
-    if port == 0 {
-        return false;  // early exit
+fn is_printable(byte: u8) -> bool {
+    if byte < 0x20 {
+        return false;  // early exit - control characters
     }
-    // ...
-    true  // implicit return
+    byte < 0x7F  // implicit return - printable ASCII range
 }
 ```
 
 Functions that don't return anything have return type `()` (pronounced "unit"), which is the empty tuple. You usually omit it:
 
 ```rust
-fn print_port(port: u16) {  // implicitly returns ()
-    println!("port: {port}");
+fn print_byte(byte: u8) {  // implicitly returns ()
+    println!("{byte:02x}");
 }
 ```
 
@@ -180,24 +183,24 @@ This is how functions work under the hood - a function body is just a block, and
 
 ## Structs
 
-You'll need structs to represent a scan result or a configuration. They work like C structs, with some differences:
+You'll need structs to represent a hex row or viewer configuration. They work like C structs, with some differences:
 
 ```rust
 // Define the struct
-struct ScanResult {
-    port: u16,
-    is_open: bool,
+struct HexRow {
+    offset: usize,
+    byte_count: usize,
 }
 
 // Create an instance
 fn main() {
-    let result = ScanResult {
-        port: 443,
-        is_open: true,
+    let row = HexRow {
+        offset: 0x0010,
+        byte_count: 16,
     };
 
     // Access fields with dot notation
-    println!("Port {} is {}", result.port, if result.is_open { "open" } else { "closed" });
+    println!("Row at {:#06x}, {} bytes", row.offset, row.byte_count);
 }
 ```
 
@@ -205,40 +208,38 @@ Structs are immutable by default, same as variables. To mutate fields, the insta
 
 ```rust
 fn main() {
-    let mut result = ScanResult { port: 80, is_open: false };
-    result.is_open = true;  // OK because result is mut
+    let mut row = HexRow { offset: 0, byte_count: 0 };
+    row.byte_count = 16;  // OK because row is mut
 }
 ```
 
 You can add methods to structs with `impl`:
 
 ```rust
-struct ScanResult {
-    port: u16,
-    is_open: bool,
+struct HexRow {
+    offset: usize,
+    byte_count: usize,
 }
 
-impl ScanResult {
+impl HexRow {
     // Associated function (like a static method / constructor in C++)
-    fn new(port: u16) -> ScanResult {
-        ScanResult { port, is_open: false }
+    fn new(offset: usize) -> HexRow {
+        HexRow { offset, byte_count: 0 }
     }
 
     // Method (takes &self - immutable reference to the instance)
     fn display(&self) {
-        if self.is_open {
-            println!("Port {} is OPEN", self.port);
-        }
+        println!("{:#010x}  ({} bytes)", self.offset, self.byte_count);
     }
 }
 
 fn main() {
-    let result = ScanResult::new(443);
-    result.display();
+    let row = HexRow::new(0x0020);
+    row.display();
 }
 ```
 
-`&self` is like `const ScanResult *self` in C - a read-only pointer to the struct. `&mut self` would be a mutable pointer. No implicit `this` keyword in Rust; you always write it explicitly.
+`&self` is like `const HexRow *self` in C - a read-only pointer to the struct. `&mut self` would be a mutable pointer. No implicit `this` keyword in Rust; you always write it explicitly.
 
 ---
 
@@ -248,14 +249,14 @@ fn main() {
 
 ```rust
 fn main() {
-    let port: u16 = 443;
+    let byte: u8 = 0x41;  // 'A'
 
-    match port {
-        22 => println!("SSH"),
-        80 => println!("HTTP"),
-        443 => println!("HTTPS"),
-        1024..=65535 => println!("high port"),
-        _ => println!("other"),  // _ is the default case (like default: in C)
+    match byte {
+        0x00 => println!("null"),
+        0x09 => println!("tab"),
+        0x0A => println!("newline"),
+        0x20..=0x7E => println!("printable ASCII"),
+        _ => println!("non-printable"),  // _ is the default case (like default: in C)
     }
 }
 ```
@@ -272,6 +273,6 @@ Rust's `match` is exhaustive - you must cover all cases or the compiler complain
 
 **Forgetting that `if` needs curly braces.** `if x > 0 do_thing();` doesn't compile. Always `if x > 0 { do_thing(); }`.
 
-**Forgetting `&` when iterating over a Vec.** `for x in ports` moves ownership of each element out of the Vec (which works for `Copy` types like `u16`, but fails for types that don't implement `Copy`). `for x in &ports` borrows instead, and is usually what you want.
+**Forgetting `&` when iterating over a Vec.** `for x in bytes` moves ownership of each element out of the Vec (which works for `Copy` types like `u8`, but fails for types that don't implement `Copy`). `for x in &bytes` borrows instead, and is usually what you want.
 
 **Writing `switch` instead of `match`.** There's no `switch` in Rust. `match` is the equivalent, and it's much more powerful.
