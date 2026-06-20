@@ -1,6 +1,6 @@
-# 02 — WebSockets and Real-Time Communication 🟡
+# 02 - WebSockets and Real-Time Communication 🟡
 
-HTTP is request-response: the client asks, the server answers, and the connection closes. That model breaks down when you need the server to push data to the client — like when another user adds a song to the shared queue. You don't want the client to poll every second asking "anything new?" You want the server to say "hey, the queue changed" the moment it happens.
+HTTP is request-response: the client asks, the server answers, and the connection closes. That model breaks down when you need the server to push data to the client - like when another user adds a song to the shared queue. You don't want the client to poll every second asking "anything new?" You want the server to say "hey, the queue changed" the moment it happens.
 
 WebSockets solve this. After an initial HTTP handshake, the connection upgrades to a persistent, bidirectional channel. Either side can send a message at any time. The connection stays open until one side closes it or the network drops.
 
@@ -80,7 +80,7 @@ async fn handle_socket(socket: WebSocket, room_id: String, state: AppState) {
                     eprintln!("WebSocket error: {}", e);
                     break;
                 }
-                _ => {} // Binary, Pong — ignore for now
+                _ => {} // Binary, Pong - ignore for now
             }
         }
     });
@@ -116,8 +116,8 @@ WebSocket frames have a type field. The relevant ones:
 
 | Type | Use |
 |------|-----|
-| `Text` | JSON messages — this is what you'll use for application data |
-| `Binary` | Raw bytes — useful for audio data or binary protocols |
+| `Text` | JSON messages - this is what you'll use for application data |
+| `Binary` | Raw bytes - useful for audio data or binary protocols |
 | `Ping` | Keep-alive probe from either side |
 | `Pong` | Automatic reply to Ping |
 | `Close` | Graceful close with optional status code and reason |
@@ -160,9 +160,9 @@ pub async fn broadcast_to_room(rooms: &RoomMap, room_id: &str, message: String) 
     let map = rooms.lock().await;
     if let Some(room) = map.get(room_id) {
         for (client_id, sender) in &room.clients {
-            // try_send won't block — if the buffer is full, we skip that client
+            // try_send won't block - if the buffer is full, we skip that client
             if sender.try_send(message.clone()).is_err() {
-                // Client is slow or disconnected — handle in cleanup
+                // Client is slow or disconnected - handle in cleanup
                 eprintln!("Client {} is not keeping up", client_id);
             }
         }
@@ -228,7 +228,7 @@ hello
 
 ## Heartbeat / Ping-Pong
 
-TCP connections can silently die. A client might go offline without sending a close frame — their phone went to sleep, the VPN dropped, the router rebooted. If you don't detect this, you'll keep a dead entry in your room map forever, and broadcasts to that client will pile up.
+TCP connections can silently die. A client might go offline without sending a close frame - their phone went to sleep, the VPN dropped, the router rebooted. If you don't detect this, you'll keep a dead entry in your room map forever, and broadcasts to that client will pile up.
 
 The solution is a periodic ping. If the client doesn't pong back within N seconds, consider them gone.
 
@@ -247,7 +247,7 @@ async fn handle_socket_with_heartbeat(socket: WebSocket, room_id: String) {
                         // process message
                     }
                     Some(Ok(Message::Pong(_))) => {
-                        // Client is alive — reset any dead-client timer
+                        // Client is alive - reset any dead-client timer
                     }
                     None | Some(Err(_)) | Some(Ok(Message::Close(_))) => break,
                     _ => {}
@@ -261,7 +261,7 @@ async fn handle_socket_with_heartbeat(socket: WebSocket, room_id: String) {
             }
         }
     }
-    // Client disconnected — unregister here
+    // Client disconnected - unregister here
 }
 ```
 
@@ -290,7 +290,7 @@ The room coordinator is the single task that knows about all clients in a room. 
 
 - Client disconnect without close frame: browsers don't always send a proper close frame (e.g., if the user closes the tab while mobile data drops). The server side doesn't know the client is gone until a send fails. You need heartbeat pings to detect this.
 - Sending to a client that disconnected: `write_all` on the socket returns an error. If you don't remove disconnected clients from your broadcast list, you'll keep failing on every broadcast.
-- Message framing: WebSocket has built-in message framing (unlike TCP). A "message" arrives complete. But very large messages might be fragmented at the TCP level and reassembled by the WebSocket library — don't assume small messages.
+- Message framing: WebSocket has built-in message framing (unlike TCP). A "message" arrives complete. But very large messages might be fragmented at the TCP level and reassembled by the WebSocket library - don't assume small messages.
 - Close message on upgrade fail: if your upgrade handler panics, the HTTP connection is dropped without a proper WebSocket close. The client gets a connection reset.
 
 ## Common Mistakes
@@ -299,6 +299,6 @@ The room coordinator is the single task that knows about all clients in a room. 
 
 **Holding the room lock while sending.** If you take a `Mutex` lock and then `send().await` inside it, you hold the lock for the duration of every network write. One slow client blocks all other room operations. Clone the senders first, then drop the lock, then send.
 
-**Using a single task for both reading and writing.** If you try to receive and send in the same task without splitting the socket, you cannot do both concurrently. You'll receive a message, process it, then send a reply — but while you're waiting to receive the next message, you can't send heartbeats or broadcast messages. Split the socket.
+**Using a single task for both reading and writing.** If you try to receive and send in the same task without splitting the socket, you cannot do both concurrently. You'll receive a message, process it, then send a reply - but while you're waiting to receive the next message, you can't send heartbeats or broadcast messages. Split the socket.
 
 **Forgetting to unregister disconnected clients.** When the recv or send task exits, call `unregister_client`. If you don't, the room map grows forever, and broadcasts keep trying to send to dead channels.

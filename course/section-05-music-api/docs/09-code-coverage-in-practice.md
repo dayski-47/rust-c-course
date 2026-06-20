@@ -1,8 +1,8 @@
-# Doc 09 — Code Coverage in Practice
+# Doc 09 - Code Coverage in Practice
 
 🟢 Coverage is a tool for finding blind spots, not a number to maximize.
 
-You've written tests for the music API. But how many code paths are those tests actually exercising? A function with three `match` arms might have tests for two of them — the third arm has a bug that's been dormant for six months, waiting for a specific input combination. Code coverage makes these gaps visible.
+You've written tests for the music API. But how many code paths are those tests actually exercising? A function with three `match` arms might have tests for two of them - the third arm has a bug that's been dormant for six months, waiting for a specific input combination. Code coverage makes these gaps visible.
 
 This doc covers the three Rust coverage tools, how to read coverage reports, how to enforce thresholds in CI, and the testing strategy that makes coverage numbers meaningful.
 
@@ -12,16 +12,16 @@ This doc covers the three Rust coverage tools, how to read coverage reports, how
 
 Coverage tells you **which lines, branches, and functions your tests executed**. It does not tell you whether those tests are correct. A covered line can still contain a bug.
 
-The most useful coverage metric is **branch coverage** — which arms of `if`/`match` were actually taken. Line coverage (was this line hit?) hides the danger: a function can be 100% line-covered but 50% branch-covered, meaning half your conditional logic is untested.
+The most useful coverage metric is **branch coverage** - which arms of `if`/`match` were actually taken. Line coverage (was this line hit?) hides the danger: a function can be 100% line-covered but 50% branch-covered, meaning half your conditional logic is untested.
 
 ```rust
-// 100% line coverage, 50% branch coverage — still dangerous
+// 100% line coverage, 50% branch coverage - still dangerous
 pub fn categorize_duration(ms: u32) -> &'static str {
     if ms < 30_000 {          // tested (short song)
         "short"
     } else if ms < 300_000 {  // tested (normal song)
         "normal"
-    } else if ms < 1_800_000 { // NEVER TESTED — what happens here?
+    } else if ms < 1_800_000 { // NEVER TESTED - what happens here?
         "long"
     } else {
         "audiobook"           // also never tested
@@ -35,7 +35,7 @@ A test file that only calls `categorize_duration(10_000)` and `categorize_durati
 
 ## Tool 1: `cargo-llvm-cov` (Recommended)
 
-Source-based coverage via LLVM — the most accurate tool available. It instruments the code at compile time, so the measurements are precise:
+Source-based coverage via LLVM - the most accurate tool available. It instruments the code at compile time, so the measurements are precise:
 
 ```bash
 # Install
@@ -45,9 +45,9 @@ rustup component add llvm-tools-preview
 # Run tests and show per-file coverage summary
 cargo llvm-cov
 
-# Generate an HTML report (line-by-line highlighting — best for local debugging)
+# Generate an HTML report (line-by-line highlighting - best for local debugging)
 cargo llvm-cov --html
-# Output: target/llvm-cov/html/index.html — open in a browser
+# Output: target/llvm-cov/html/index.html - open in a browser
 
 # LCOV format (for CI integration with Codecov, Coveralls, etc.)
 cargo llvm-cov --lcov --output-path lcov.info
@@ -163,7 +163,7 @@ jobs:
         # Fails the build if line coverage drops below 80%
 ```
 
-**Coverage gates** — the threshold you enforce in CI:
+**Coverage gates** - the threshold you enforce in CI:
 
 ```bash
 # Multiple threshold types
@@ -183,25 +183,25 @@ Coverage numbers tell you WHERE the gaps are. The strategy tells you WHAT to do 
 **Triage by risk, not by number:**
 
 ```
-High coverage + high risk → ✅ Good — maintain it, add edge cases
-High coverage + low risk  → 🔄 Possibly over-tested — these tests may be low value
-Low coverage + high risk  → 🔴 WRITE TESTS NOW — bugs are hiding here
+High coverage + high risk → ✅ Good - maintain it, add edge cases
+High coverage + low risk  → 🔄 Possibly over-tested - these tests may be low value
+Low coverage + high risk  → 🔴 WRITE TESTS NOW - bugs are hiding here
 Low coverage + low risk   → 🟡 Track, but don't panic
 ```
 
 **High-risk code in the music API:**
-- Validation logic (`src/validation.rs`) — every error path needs a test
-- Database query error handling — what happens when the connection drops?
-- Pagination edge cases — page 0, page beyond total count, empty result set
-- Search query building — invalid inputs, SQL injection attempts
-- Middleware — authentication failure paths
+- Validation logic (`src/validation.rs`) - every error path needs a test
+- Database query error handling - what happens when the connection drops?
+- Pagination edge cases - page 0, page beyond total count, empty result set
+- Search query building - invalid inputs, SQL injection attempts
+- Middleware - authentication failure paths
 
 **Step 1: Find the low-coverage branches**
 
 Open the HTML report and look for red and yellow lines. Focus on:
-- Error handling branches — `Err(_) => { ... }` arms
-- Range checks — the boundary conditions (`>`, `<`, `==`)
-- None handling — `None => { ... }` arms in `match`
+- Error handling branches - `Err(_) => { ... }` arms
+- Range checks - the boundary conditions (`>`, `<`, `==`)
+- None handling - `None => { ... }` arms in `match`
 - Early returns in complex functions
 
 **Step 2: Write tests that specifically target gaps**
@@ -211,7 +211,7 @@ Open the HTML report and look for red and yellow lines. Focus on:
 mod tests {
     use super::*;
 
-    // Happy path — probably already tested
+    // Happy path - probably already tested
     #[test]
     fn create_track_success() {
         let body = CreateTrackBody {
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn create_track_empty_title() {
         let body = CreateTrackBody {
-            title: "   ".to_string(),  // whitespace-only — triggers TitleError::Empty
+            title: "   ".to_string(),  // whitespace-only - triggers TitleError::Empty
             duration_ms: 125_000,
             artist: "The Beatles".to_string(),
             genre: None,
@@ -242,14 +242,14 @@ mod tests {
     #[test]
     fn create_track_title_at_max_length() {
         let long_title = "a".repeat(500);
-        // Should succeed — 500 chars is the max
+        // Should succeed - 500 chars is the max
         assert!(TrackTitle::try_from(long_title).is_ok());
     }
 
     #[test]
     fn create_track_title_over_max_length() {
         let too_long = "a".repeat(501);
-        // Should fail — 501 chars exceeds the max
+        // Should fail - 501 chars exceeds the max
         assert!(matches!(
             TrackTitle::try_from(too_long),
             Err(TitleError::TooLong(501))
@@ -294,7 +294,7 @@ mod tests {
 
 **Step 3: Property-based testing for finding hidden edge cases**
 
-`proptest` generates thousands of random inputs automatically — it finds the edge cases your hand-written tests miss:
+`proptest` generates thousands of random inputs automatically - it finds the edge cases your hand-written tests miss:
 
 ```toml
 [dev-dependencies]
@@ -344,7 +344,7 @@ proptest! {
 Not all code needs coverage. Exclude noise:
 
 ```bash
-# Exclude test files themselves (always "covered" — they're what runs)
+# Exclude test files themselves (always "covered" - they're what runs)
 cargo llvm-cov --workspace --ignore-filename-regex 'tests?\.rs$'
 
 # Exclude generated code
@@ -357,11 +357,11 @@ cargo llvm-cov --workspace --ignore-filename-regex 'benches/'
 In code, mark paths that require hardware or specific environments:
 
 ```rust
-// For paths that only run on specific hardware — mark as intentionally uncovered
+// For paths that only run on specific hardware - mark as intentionally uncovered
 fn detect_audio_hardware() -> Option<AudioDevice> {
     #[cfg(not(test))]  // Only run detection in non-test builds
     {
-        // This path requires actual audio hardware — don't count against coverage
+        // This path requires actual audio hardware - don't count against coverage
         probe_alsa_devices()
     }
     #[cfg(test)]
@@ -406,13 +406,13 @@ When the response format changes intentionally, `cargo insta review` shows you w
 ## How It Breaks
 
 **Coverage masks bugs in branches you didn't test.**
-A test that calls `search_tracks("beatles")` might hit the happy path and nothing else. The "no results found" branch, the "database error" branch, and the "malformed query" branch are all uncovered — even though the function itself is 100% line-covered. Always check branch coverage, not just line coverage.
+A test that calls `search_tracks("beatles")` might hit the happy path and nothing else. The "no results found" branch, the "database error" branch, and the "malformed query" branch are all uncovered - even though the function itself is 100% line-covered. Always check branch coverage, not just line coverage.
 
 **`cargo tarpaulin` overcounting on macros.**
 Tarpaulin sometimes reports macro-expanded code as covered even when it wasn't actually executed. If your coverage numbers look suspiciously high, run `llvm-cov` to get the accurate picture.
 
 **Setting the threshold too low and never raising it.**
-Starting at 80% is fine. But if coverage drifts down to 70% and you just update the threshold, you've defeated the purpose. The threshold should only move upward. When coverage drops, write tests — don't lower the gate.
+Starting at 80% is fine. But if coverage drifts down to 70% and you just update the threshold, you've defeated the purpose. The threshold should only move upward. When coverage drops, write tests - don't lower the gate.
 
 **Coverage-driven test writing missing semantics.**
 Writing tests purely to hit uncovered lines produces tests that cover code but don't verify behavior. A test that calls `categorize_duration(100_000)` to hit the `"long"` branch covers the line, but if the function returns `"normal"` instead of `"long"`, the test passes. Coverage tells you what was touched. Tests tell you what was verified. You need both.

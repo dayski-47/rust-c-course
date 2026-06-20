@@ -1,7 +1,7 @@
 # Section 7 Project: taskforge
 
 A distributed task worker system. You are building the kind of infrastructure
-that powers every high-traffic web application — the background job queue.
+that powers every high-traffic web application - the background job queue.
 
 ---
 
@@ -243,7 +243,7 @@ impl Job<Failed> {
 }
 ```
 
-Calling `.complete()` on a `Job<Pending>` is a compile error — that method
+Calling `.complete()` on a `Job<Pending>` is a compile error - that method
 does not exist on `Job<Pending>`.
 
 ---
@@ -466,7 +466,7 @@ The type parameter `S` marks which state the job is in. The type changes at each
 ```rust
 use std::marker::PhantomData;
 
-// State marker types — zero-sized, only exist at the type level:
+// State marker types - zero-sized, only exist at the type level:
 pub struct Pending;
 pub struct Running;
 pub struct Completed;
@@ -479,7 +479,7 @@ pub struct Job<S> {
     _state: PhantomData<S>,  // "I carry the type S but no runtime data"
 }
 
-// Transition functions — the OLD state is CONSUMED, the NEW state is returned:
+// Transition functions - the OLD state is CONSUMED, the NEW state is returned:
 impl Job<Pending> {
     pub fn start(self, worker_id: WorkerId) -> Job<Running> {
         Job {
@@ -530,7 +530,7 @@ impl HandlerRegistry {
 }
 ```
 
-### 4. Redis BRPOP — Blocking Queue Read
+### 4. Redis BRPOP - Blocking Queue Read
 
 BRPOP blocks until an item is available in the queue:
 
@@ -542,7 +542,7 @@ redis::cmd("LPUSH")
     .query_async::<()>(&mut conn)
     .await?;
 
-// Pop a job — blocks for up to 30 seconds, then returns None:
+// Pop a job - blocks for up to 30 seconds, then returns None:
 let result: Option<(String, String)> = redis::cmd("BRPOP")
     .arg("jobs:pending")
     .arg(30)  // timeout in seconds (0 = block forever)
@@ -556,7 +556,7 @@ if let Some((_key, value)) = result {
 }
 ```
 
-BRPOP returns `(list_name, value)` — that's why it's a tuple. The first element is which queue the item came from (useful when watching multiple queues).
+BRPOP returns `(list_name, value)` - that's why it's a tuple. The first element is which queue the item came from (useful when watching multiple queues).
 
 ### 5. Exponential Backoff for Retries
 
@@ -633,7 +633,7 @@ Check that you're PUSHing to `LPUSH` (left push) and POPping with `BRPOP` (which
 
 ## The Generic Worker: The Key Design Challenge
 
-The worker binary needs to handle ANY job type — `SendEmailJob`, `ResizeImageJob`,
+The worker binary needs to handle ANY job type - `SendEmailJob`, `ResizeImageJob`,
 whatever you register. But the payload stored in Redis is just JSON with a type
 name. How does the worker know what to deserialize it into?
 
@@ -658,7 +658,7 @@ Each concrete job type implements JobHandler:
             let job: SendEmailJob = serde_json::from_value(payload)
                 .map_err(|e| JobError::Deserialization(e.to_string()))?;
             
-            // Chain both fallible operations with and_then — no unwrap in production paths
+            // Chain both fallible operations with and_then - no unwrap in production paths
             job.execute()
                 .await
                 .map_err(|e| JobError::Execution(e.to_string()))
@@ -721,14 +721,14 @@ This section is where every previous section's knowledge compounds:
 - **S1 Result/error handling:** your custom `JobError` uses the same `thiserror` pattern from S3, with variants you've been building since S1.
 - **S2 traits:** the `Collector` trait from S2 was your first trait. The `Job` trait is the same concept, now with async methods and associated types.
 - **S3 Arc<Mutex<T>>:** the in-memory job repository uses `Arc<Mutex<HashMap<JobId, JobRecord>>>`. You've been writing this since S3.
-- **S4 async/Tokio:** every job execution is an async task. `tokio::spawn`, `JoinSet`, `CancellationToken` — all from S4.
+- **S4 async/Tokio:** every job execution is an async task. `tokio::spawn`, `JoinSet`, `CancellationToken` - all from S4.
 - **S5 REST API:** the HTTP management API uses the same Axum handlers, extractors, and `AppError` pattern as S5.
-- **S6 Redis:** `BRPOP` for blocking queue reads, `HSET` for job status, `EXPIRE` for worker heartbeats — same Redis you learned in S6, different usage.
+- **S6 Redis:** `BRPOP` for blocking queue reads, `HSET` for job status, `EXPIRE` for worker heartbeats - same Redis you learned in S6, different usage.
 - **S6 pub/sub:** worker-to-coordinator communication uses the same pub/sub pattern from S6.
 
 ---
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 The task worker has three moving parts that work together.
 
@@ -736,7 +736,7 @@ The task worker has three moving parts that work together.
 
 **The worker loop:** each worker runs a tokio task in a loop. It calls `BRPOP` (which blocks on Redis until a job is available), deserializes the job payload from JSON (using serde), calls the appropriate job handler (looked up by job type name in the handler registry), then updates the job status in Redis (`HSET` on the job's hash key). If the handler returns an error, it increments the retry count and either re-queues the job (`LPUSH` back to the queue) or marks it dead.
 
-**The job registry:** this is the generic piece. The worker doesn't know about specific job types at compile time. Instead, it has a `HashMap<String, Box<dyn JobHandler>>` mapping job type names to handler objects. When a job arrives with type `"send_email"`, it looks up `"send_email"` in the registry, calls `handle(raw_json_payload)`, and gets back a `Result<JsonValue, JobError>`. The generics in the `Job` trait are erased into `Box<dyn JobHandler>` at this boundary — that's the dynamic dispatch tradeoff.
+**The job registry:** this is the generic piece. The worker doesn't know about specific job types at compile time. Instead, it has a `HashMap<String, Box<dyn JobHandler>>` mapping job type names to handler objects. When a job arrives with type `"send_email"`, it looks up `"send_email"` in the registry, calls `handle(raw_json_payload)`, and gets back a `Result<JsonValue, JobError>`. The generics in the `Job` trait are erased into `Box<dyn JobHandler>` at this boundary - that's the dynamic dispatch tradeoff.
 
 ---
 
@@ -773,7 +773,7 @@ retries). After max retries, move to `queue:dead`.
 heartbeat has expired and re-queue any jobs they were processing.
 
 **Milestone 9**: Write integration tests using `testcontainers-rs`. The tests
-spin up Redis in Docker — no local Redis required. Test the full flow: submit
+spin up Redis in Docker - no local Redis required. Test the full flow: submit
 via API → worker picks up → status updates.
 
 **Milestone 10**: Write Criterion benchmarks for job throughput. Measure

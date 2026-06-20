@@ -1,4 +1,4 @@
-# 05 — Performance Profiling and Optimization
+# 05 - Performance Profiling and Optimization
 
 > **Difficulty:** 🟡 think about it  
 > **You'll learn:** Why naive timing is broken, statistical benchmarking with Criterion,
@@ -19,7 +19,7 @@ For a storage engine, the performance model has specific known bottlenecks. You 
 still encounter them in your own measurements. The order matters:
 
 1. Make it correct (Milestone 1–6)
-2. Make it measurable (Milestone 11 — Criterion benchmarks)
+2. Make it measurable (Milestone 11 - Criterion benchmarks)
 3. Run a profiler and look at what it says
 4. Optimize the thing the profiler says is slow, not the thing you assume is slow
 
@@ -48,7 +48,7 @@ workflow requires you to explicitly build with `--release`.
 
 Naive timing with `Instant::now()` is broken for three reasons:
 - The compiler may optimize the computation away if the result is not used
-- A single sample has no statistical significance — thermal throttling, background
+- A single sample has no statistical significance - thermal throttling, background
   processes, and OS scheduling all add noise
 - You cannot detect regressions without a baseline
 
@@ -182,9 +182,9 @@ cargo flamegraph -- --bench storage_bench
 ```
 
 Reading the flamegraph:
-- **Width = time spent in that function** — wider is slower
-- **Height = call stack depth** — tall stacks just mean deep call chains, not slow
-- **Look for wide bars near the top** — those are leaf functions doing actual work
+- **Width = time spent in that function** - wider is slower
+- **Height = call stack depth** - tall stacks just mean deep call chains, not slow
+- **Look for wide bars near the top** - those are leaf functions doing actual work
 - If `crc32fast::hash` is 30% wide, your checksum computation is the bottleneck
 - If `syscall` or `write` is wide, you are making too many small writes
 
@@ -213,7 +213,7 @@ perf stat cargo run --release --bin ironkv -- bench --count 100000
 
 Cache miss rate above 5-10% for a hot path is a red flag. For random reads from
 a 100k entry database that doesn't fit in L3 cache, you will see high cache miss
-rates — that's expected. The question is whether your in-memory LRU cache layer
+rates - that's expected. The question is whether your in-memory LRU cache layer
 (Milestone 10) brings the hot-key miss rate down.
 
 ---
@@ -291,12 +291,12 @@ impl Engine {
     }
 
     fn get(&mut self, key: &[u8]) -> Option<Vec<u8>> {
-        // Cache hit — O(1), no disk access
+        // Cache hit - O(1), no disk access
         if let Some(value) = self.cache.get(key) {
             return Some(value.clone());
         }
 
-        // Cache miss — look up index, read from mmap
+        // Cache miss - look up index, read from mmap
         let (offset, value_len) = *self.index.get(key)?;
         let offset = offset as usize;
         let value = self.data[offset..offset + value_len as usize].to_vec();
@@ -321,10 +321,10 @@ When benchmarking, ensure your release profile is fully optimized:
 ```toml
 [profile.release]
 opt-level = 3          # Full optimization (default, but state it explicitly)
-lto = true             # Link-Time Optimization — removes dead code across crate boundaries
-codegen-units = 1      # Single codegen unit — slower build, better optimization
+lto = true             # Link-Time Optimization - removes dead code across crate boundaries
+codegen-units = 1      # Single codegen unit - slower build, better optimization
 strip = false          # Keep symbols for flamegraph (set true for final distribution)
-# debug = true         # Uncomment when profiling — re-comment for benchmark numbers
+# debug = true         # Uncomment when profiling - re-comment for benchmark numbers
 ```
 
 LTO (`lto = true`) is particularly valuable for a library that calls into `crc32fast`,
@@ -345,7 +345,7 @@ RUSTFLAGS="-C target-cpu=native" cargo bench
 ```
 
 For distribution, you cannot assume SSE4.2. `crc32fast` handles runtime dispatch
-automatically — no action required on your part. But for local benchmark numbers,
+automatically - no action required on your part. But for local benchmark numbers,
 `target-cpu=native` removes the dispatch overhead and gives you the true hardware ceiling.
 
 ---
@@ -439,9 +439,9 @@ cargo flamegraph --bench storage_bench -- --bench
 ```
 
 **How to read it:**
-- Look for the widest blocks near the TOP — those are the hot leaf functions
-- "Self time" = time in a function's own code (not in functions it calls) — the actual bottleneck
-- "Total time" = time in a function including all callees — tells you the call chain cost
+- Look for the widest blocks near the TOP - those are the hot leaf functions
+- "Self time" = time in a function's own code (not in functions it calls) - the actual bottleneck
+- "Total time" = time in a function including all callees - tells you the call chain cost
 - If you see a wide `memcpy` or `memmove` at the top, you're copying too much data
 - If you see wide allocator calls (`__rust_alloc`, `jemalloc_alloc`), you're allocating too much
 
@@ -470,4 +470,4 @@ panic = "abort"        # Smaller binary: no stack unwinding on panic
 
 `lto = "thin"` is the sweet spot: 5-15% binary size reduction with reasonable compile times. `lto = true` (fat LTO) gives more optimization but takes 3-5× longer to link.
 
-After enabling these, run your Criterion benchmarks again — LTO can change performance significantly (usually better, occasionally worse if it inlines something that was previously cache-friendly).
+After enabling these, run your Criterion benchmarks again - LTO can change performance significantly (usually better, occasionally worse if it inlines something that was previously cache-friendly).

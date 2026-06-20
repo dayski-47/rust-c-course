@@ -1,6 +1,6 @@
-# Doc 13 — Release Profiles and Shipping Binaries
+# Doc 13 - Release Profiles and Shipping Binaries
 
-🟡 The difference between a debug build and a well-tuned release build is typically 3–5× faster runtime and 60–80% smaller binary. For ironkv — a storage engine that processes millions of operations — that gap matters.
+🟡 The difference between a debug build and a well-tuned release build is typically 3–5× faster runtime and 60–80% smaller binary. For ironkv - a storage engine that processes millions of operations - that gap matters.
 
 This doc covers the knobs in Cargo's release profiles, how to measure binary size, how to strip unused code, and how to produce distributable binaries.
 
@@ -26,11 +26,11 @@ For ironkv production builds:
 ```toml
 # Cargo.toml
 [profile.release]
-lto = true           # Cross-crate optimization — biggest performance win
-codegen-units = 1    # Single codegen unit — lets LTO see everything
+lto = true           # Cross-crate optimization - biggest performance win
+codegen-units = 1    # Single codegen unit - lets LTO see everything
 panic = "abort"      # No unwinding overhead; slightly smaller binary
-strip = true         # Remove symbols — 50-70% binary size reduction
-overflow-checks = true   # Keep overflow checks — safety > micro-optimization
+strip = true         # Remove symbols - 50-70% binary size reduction
+overflow-checks = true   # Keep overflow checks - safety > micro-optimization
 ```
 
 **The impact of each setting:**
@@ -69,7 +69,7 @@ lto = false
 - Release builds in CI: `lto = "thin"` (good optimization, reasonable CI time)
 - Tagged releases for distribution: `lto = true` (maximum optimization, slower CI acceptable)
 
-Cross-language LTO (between Rust and C) is possible when the zstd compression feature is enabled, but requires matching LLVM versions between rustc and the C compiler — not worth the complexity for ironkv.
+Cross-language LTO (between Rust and C) is possible when the zstd compression feature is enabled, but requires matching LLVM versions between rustc and the C compiler - not worth the complexity for ironkv.
 
 ---
 
@@ -167,7 +167,7 @@ strip = true
 # Use: cargo build --profile release-tiny
 ```
 
-`opt-level = "z"` is more aggressive than `"s"` — it may disable some loop unrolling and inlining that would make code larger. For a storage engine, this typically costs 5–15% runtime throughput to achieve another 10–20% size reduction.
+`opt-level = "z"` is more aggressive than `"s"` - it may disable some loop unrolling and inlining that would make code larger. For a storage engine, this typically costs 5–15% runtime throughput to achieve another 10–20% size reduction.
 
 Don't use `opt-level = "z"` for the default release build. It's for specific size-constrained deployment contexts.
 
@@ -178,7 +178,7 @@ Don't use `opt-level = "z"` for the default release build. It's for specific siz
 The safest distribution format for Linux: a statically linked musl binary that runs on any Linux distribution regardless of glibc version:
 
 ```bash
-# Build for musl — produces a static binary
+# Build for musl - produces a static binary
 cargo build --release --target x86_64-unknown-linux-musl
 
 # Verify static linking

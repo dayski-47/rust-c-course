@@ -1,8 +1,8 @@
 # Control Flow and Functions
 
-🟢 Easy — most of this feels familiar, with one key twist: expressions vs statements.
+🟢 Easy - most of this feels familiar, with one key twist: expressions vs statements.
 
-If you know C control flow, you know 80% of this already. The big difference is that Rust control flow constructs are **expressions** — they produce values, not just side effects. Once that clicks, a lot of Rust idioms make sense.
+If you know C control flow, you know 80% of this already. The big difference is that Rust control flow constructs are **expressions** - they produce values, not just side effects. Once that clicks, a lot of Rust idioms make sense.
 
 ---
 
@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-`loop` can also return a value — you put the expression after `break`:
+`loop` can also return a value - you put the expression after `break`:
 
 ```rust
 fn main() {
@@ -87,7 +87,7 @@ Identical to C's `while`. Use it when you have a condition but not a known numbe
 
 ## `for` over ranges
 
-This is the idiomatic way to iterate in Rust. You won't write `for (int i = 0; i < n; i++)` — you write:
+This is the idiomatic way to iterate in Rust. You won't write `for (int i = 0; i < n; i++)` - you write:
 
 ```rust
 fn main() {
@@ -135,7 +135,7 @@ Key differences from C:
 
 - Parameter types are written after the parameter name: `a: i32` not `int a`
 - Return type comes after `->`: `-> i32` not `int add(...)`
-- **The last expression in a function body is the return value** — no `return` keyword needed if there's no semicolon
+- **The last expression in a function body is the return value** - no `return` keyword needed if there's no semicolon
 
 The implicit return is idiomatic Rust. The expression without a semicolon at the end is what the function returns. You can use explicit `return` for early exits:
 
@@ -174,7 +174,7 @@ fn main() {
 }
 ```
 
-This is how functions work under the hood — a function body is just a block, and the last expression is what it returns.
+This is how functions work under the hood - a function body is just a block, and the last expression is what it returns.
 
 ---
 
@@ -224,7 +224,7 @@ impl ScanResult {
         ScanResult { port, is_open: false }
     }
 
-    // Method (takes &self — immutable reference to the instance)
+    // Method (takes &self - immutable reference to the instance)
     fn display(&self) {
         if self.is_open {
             println!("Port {} is OPEN", self.port);
@@ -238,11 +238,11 @@ fn main() {
 }
 ```
 
-`&self` is like `const ScanResult *self` in C — a read-only pointer to the struct. `&mut self` would be a mutable pointer. No implicit `this` keyword in Rust; you always write it explicitly.
+`&self` is like `const ScanResult *self` in C - a read-only pointer to the struct. `&mut self` would be a mutable pointer. No implicit `this` keyword in Rust; you always write it explicitly.
 
 ---
 
-## `match` — Pattern Matching
+## `match` - Pattern Matching
 
 `match` is like `switch` in C but more powerful. You'll use it constantly with `Result` and `Option` (covered in doc 06). Quick preview:
 
@@ -260,7 +260,7 @@ fn main() {
 }
 ```
 
-Rust's `match` is exhaustive — you must cover all cases or the compiler complains. No falling through between cases. No forgetting a `break`.
+Rust's `match` is exhaustive - you must cover all cases or the compiler complains. No falling through between cases. No forgetting a `break`.
 
 ---
 

@@ -1,4 +1,4 @@
-# Project: nexus — A Binary Protocol Engine
+# Project: nexus - A Binary Protocol Engine
 
 > **Section 9 Capstone Project**  
 > You are building a custom binary protocol server: the same kind of infrastructure
@@ -99,7 +99,7 @@ Offset   Size   Type         Field
 **Why binary over text?**
 
 In C, you'd use a state machine with `switch(state)` and runtime checks. In nexus,
-the states are distinct types — `Connection<Unauthenticated>` vs
+the states are distinct types - `Connection<Unauthenticated>` vs
 `Connection<Active>`. The compiler rejects calling `publish()` on an
 unauthenticated connection because the method doesn't exist on that type.
 
@@ -360,7 +360,7 @@ Parse and serialize binary frames. Tests that verify:
 - Invalid version byte returns `ProtocolError::UnsupportedVersion`
 - payload_len larger than `max_payload_bytes` returns `ProtocolError::PayloadTooLarge`
 
-No networking yet — just the codec.
+No networking yet - just the codec.
 
 ### Milestone 2: TCP Listener and Basic Echo
 
@@ -380,7 +380,7 @@ Add a tracing span per connection with `connection_id` field.
 
 When a client in Active state sends a PUBLISH frame, register the topic if it doesn't exist (create a channel). Log the publish with tracing. Send PUBACK.
 
-No delivery to subscribers yet — just persistence of the topic.
+No delivery to subscribers yet - just persistence of the topic.
 
 ### Milestone 5: SUBSCRIBE and DELIVER
 
@@ -430,8 +430,8 @@ Criterion benchmarks for:
 
 Every section built toward nexus:
 
-- **S1:** `NexusError` is a `thiserror` enum with `#[from]` conversion chains — same pattern as your first error types.
-- **S3/S4:** The async TCP server is the same pattern as the chat server — `tokio::spawn` per connection, `select!` for concurrent events.
+- **S1:** `NexusError` is a `thiserror` enum with `#[from]` conversion chains - same pattern as your first error types.
+- **S3/S4:** The async TCP server is the same pattern as the chat server - `tokio::spawn` per connection, `select!` for concurrent events.
 - **S6/S7:** Type-state for `Connection<S>` uses `PhantomData` from Section 7's deep dive.
 - **S8:** Binary framing is the same `#[repr(C)]` and byte-level parsing mindset from ironkv.
 

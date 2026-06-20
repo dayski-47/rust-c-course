@@ -1,4 +1,4 @@
-# 04 — Binary Formats and Data Layout
+# 04 - Binary Formats and Data Layout
 
 > **Difficulty:** 🟡 think about it  
 > **You'll learn:** Why custom binary formats beat JSON for storage engines, how to
@@ -13,10 +13,10 @@ JSON is fine for APIs and config files. For a storage engine, it is the wrong to
 
 | Concern | JSON | Custom Binary |
 |---------|------|---------------|
-| Parse overhead | High — tokenize every char | Near-zero — seek to offset, cast bytes |
-| Disk space | Large — field names stored repeatedly | Compact — only data |
+| Parse overhead | High - tokenize every char | Near-zero - seek to offset, cast bytes |
+| Disk space | Large - field names stored repeatedly | Compact - only data |
 | Random access | Impossible without index | Direct offset arithmetic |
-| Type fidelity | Lossy — all numbers as floats | Exact — u32 is always 4 bytes |
+| Type fidelity | Lossy - all numbers as floats | Exact - u32 is always 4 bytes |
 | Corruption detection | None | Built-in CRC32 per record |
 
 A custom binary format lets you memory-map the file and access any record in O(1)
@@ -84,7 +84,7 @@ impl FileHeader {
 ```
 
 One important habit: verify the size with a compile-time `assert!`. If you add
-a field and the struct grows beyond 64 bytes, the compiler catches it immediately —
+a field and the struct grows beyond 64 bytes, the compiler catches it immediately -
 not when you open a file and the offsets are all wrong.
 
 ---
@@ -94,7 +94,7 @@ not when you open a file and the offsets are all wrong.
 x86/x86-64 is little-endian: the least significant byte is stored first. Most
 network protocols use big-endian. Your file format should pick one and be explicit.
 
-For a local-first storage engine, little-endian is the natural choice — no conversion
+For a local-first storage engine, little-endian is the natural choice - no conversion
 on the CPU that writes and reads the file. But make it explicit in code so anyone
 reading your implementation knows it is a deliberate choice:
 
@@ -134,16 +134,16 @@ by variable-length data:
 Record Layout:
   Offset  Size   Field
   ------  ----   -----
-  0       4      key_len    (u32 LE) — length of the key in bytes
-  4       4      value_len  (u32 LE) — length of the value in bytes; u32::MAX = tombstone
-  8       4      crc32      (u32 LE) — CRC32 of (key_bytes ++ value_bytes)
-  12      key_len  key      — raw key bytes
-  12+key_len  value_len  value — raw value bytes (possibly compressed)
+  0       4      key_len    (u32 LE) - length of the key in bytes
+  4       4      value_len  (u32 LE) - length of the value in bytes; u32::MAX = tombstone
+  8       4      crc32      (u32 LE) - CRC32 of (key_bytes ++ value_bytes)
+  12      key_len  key      - raw key bytes
+  12+key_len  value_len  value - raw value bytes (possibly compressed)
 
 Total record size = 12 + key_len + value_len (or 12 + key_len for tombstone)
 ```
 
-The tombstone convention — `value_len = u32::MAX` — marks a deleted key without
+The tombstone convention - `value_len = u32::MAX` - marks a deleted key without
 physically removing it from the file. This makes writes append-only, which is
 fast and crash-safe. Deleted space is reclaimed during compaction.
 
@@ -227,7 +227,7 @@ fn read_record(data: &[u8], offset: usize)
 ```
 
 `crc32fast` uses SIMD instructions on x86 (PCLMULQDQ / SSE4.2) automatically.
-Hardware CRC32 on modern Intel/AMD is extremely fast — typically 10+ GB/s.
+Hardware CRC32 on modern Intel/AMD is extremely fast - typically 10+ GB/s.
 
 ---
 
@@ -294,7 +294,7 @@ struct RecordHeader {
     value_len: u32,
     crc32: u32,
 }
-// sizeof = 12 — no padding, exactly right
+// sizeof = 12 - no padding, exactly right
 ```
 
 The danger: taking a reference to a field of a packed struct can produce an
@@ -307,7 +307,7 @@ let h: RecordHeader = ...;
 let p = &h.value_len;  // May be unaligned! UB on strict-alignment architectures.
 
 // CORRECT with repr(packed):
-let value_len = h.value_len;  // Copy into a local — now aligned
+let value_len = h.value_len;  // Copy into a local - now aligned
 ```
 
 For ironkv, `RecordHeader` has three `u32` fields (12 bytes) and the record

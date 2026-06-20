@@ -1,4 +1,4 @@
-# 01 — Why Async? When Threads Aren't Enough 🟢
+# 01 - Why Async? When Threads Aren't Enough 🟢
 
 ## Engineering Methodology: Resilience and Failure-Mode Thinking
 
@@ -9,9 +9,9 @@ Before writing any code that touches a network, for every external call, write d
 - What does failure look like? (and there are multiple kinds of failure)
 - What should your program do for each failure case?
 
-This is failure-mode thinking. Engineers who don't practice it write code that works in demos but crashes in production. The GitHub analyzer has at least five distinct failure modes: rate limit exceeded, invalid or nonexistent username, network timeout, malformed JSON in the response, and pagination failure on large accounts. Each one needs a deliberate response from your code — not the same response, specific ones.
+This is failure-mode thinking. Engineers who don't practice it write code that works in demos but crashes in production. The GitHub analyzer has at least five distinct failure modes: rate limit exceeded, invalid or nonexistent username, network timeout, malformed JSON in the response, and pagination failure on large accounts. Each one needs a deliberate response from your code - not the same response, specific ones.
 
-The `?` operator is not enough by itself. Using `?` handles the "something went wrong" case generically — it propagates the error upward. But it doesn't let you distinguish which thing went wrong, and it doesn't let you handle each failure differently. A rate limit error should trigger a sleep-and-retry. An invalid username should print a helpful message and exit. A malformed JSON response should log the raw response for debugging. These are different behaviors for different failure modes, and `?` alone can't express them.
+The `?` operator is not enough by itself. Using `?` handles the "something went wrong" case generically - it propagates the error upward. But it doesn't let you distinguish which thing went wrong, and it doesn't let you handle each failure differently. A rate limit error should trigger a sleep-and-retry. An invalid username should print a helpful message and exit. A malformed JSON response should log the raw response for debugging. These are different behaviors for different failure modes, and `?` alone can't express them.
 
 ---
 
@@ -48,7 +48,7 @@ fn check_all(servers: Vec<String>) {
 
 This spawns 1000 OS threads. Each thread blocks while waiting for the HTTP response. What does that cost?
 
-Each OS thread needs a **stack**. On Linux, the default stack size is 8MB, but even with a reduced 512KB stack, 1000 threads means 500MB of memory just for stacks — before you've even stored any data. The OS also has to schedule 1000 threads, context-switching between them constantly, even though almost all of them are just sitting idle waiting for network I/O.
+Each OS thread needs a **stack**. On Linux, the default stack size is 8MB, but even with a reduced 512KB stack, 1000 threads means 500MB of memory just for stacks - before you've even stored any data. The OS also has to schedule 1000 threads, context-switching between them constantly, even though almost all of them are just sitting idle waiting for network I/O.
 
 The CPU is not the bottleneck here. The *network* is. You're spending most of your time waiting. And threads are a terrible way to wait.
 
@@ -136,7 +136,7 @@ async fn fetch_url(url: &str) -> String {
 }
 ```
 
-The compiler transforms it into a state machine — roughly equivalent to:
+The compiler transforms it into a state machine - roughly equivalent to:
 
 ```rust
 enum FetchUrlState {
@@ -155,7 +155,7 @@ struct FetchUrlFuture {
 
 This means there is no runtime overhead unless you are actually doing async work. If you write a simple program with no `.await` calls, you pay nothing for the async machinery. The transformation is done at compile time.
 
-However — and this is critical — **someone still has to drive that state machine**. That's the executor's job. In Rust, the executor is *not* built in. You have to bring one. The most popular is **Tokio**, which is what we'll use throughout this section.
+However - and this is critical - **someone still has to drive that state machine**. That's the executor's job. In Rust, the executor is *not* built in. You have to bring one. The most popular is **Tokio**, which is what we'll use throughout this section.
 
 ---
 
@@ -171,7 +171,7 @@ Async is not always the right tool. Here's a practical guide:
 - You need to handle hundreds or thousands of concurrent lightweight tasks
 
 **Don't use async when:**
-- You're doing CPU-intensive computation (image processing, compression, encryption). For that, use OS threads or `rayon`. Async doesn't help — the CPU is the bottleneck, not I/O.
+- You're doing CPU-intensive computation (image processing, compression, encryption). For that, use OS threads or `rayon`. Async doesn't help - the CPU is the bottleneck, not I/O.
 - Your program does one thing at a time and doesn't need concurrency at all. Async adds complexity for no benefit.
 - You're working with existing blocking code you can't change. You need `spawn_blocking` to bridge the gap (covered in doc 03).
 - You're writing a quick script or CLI tool that makes a single request. Async is overkill; it adds a runtime dependency and boilerplate.
@@ -213,13 +213,13 @@ async fn simulate_http_request(name: &str) -> String {
 }
 ```
 
-Notice `tokio::time::sleep(...).await` — that `.await` is the yield point. While this task is sleeping, the Tokio executor is free to run other tasks. When the sleep completes, this task picks up right where it left off.
+Notice `tokio::time::sleep(...).await` - that `.await` is the yield point. While this task is sleeping, the Tokio executor is free to run other tasks. When the sleep completes, this task picks up right where it left off.
 
 ---
 
 ## Common Mistakes
 
-**Confusing concurrency with parallelism.** Async gives you concurrency — many tasks making progress by taking turns. For *parallelism* (multiple CPU cores doing computation simultaneously), you still need threads. The two can be combined: Tokio's multi-threaded runtime runs async tasks across multiple CPU cores.
+**Confusing concurrency with parallelism.** Async gives you concurrency - many tasks making progress by taking turns. For *parallelism* (multiple CPU cores doing computation simultaneously), you still need threads. The two can be combined: Tokio's multi-threaded runtime runs async tasks across multiple CPU cores.
 
 **Thinking async is always faster.** For a single HTTP request, async is actually slightly slower than a blocking call because of the state machine overhead. Async wins at scale, not in single-operation benchmarks.
 
@@ -231,8 +231,8 @@ Notice `tokio::time::sleep(...).await` — that `.await` is the yield point. Whi
 
 ## How It Breaks
 
-**Using async where you need CPU parallelism.** Async multiplexes I/O on fewer threads — it does not parallelize CPU work. If you have a task that hashes 10,000 files or runs a compression algorithm, putting it in an async task doesn't speed it up. All async tasks on a Tokio worker thread still take turns — one runs until it hits `.await`, then another gets a turn. If your task never yields (no I/O, no `.await`), it monopolizes the thread. For real CPU parallelism, use `rayon` (which creates a thread pool sized to CPU cores) or `tokio::task::spawn_blocking` (which moves the work to a separate blocking thread pool).
+**Using async where you need CPU parallelism.** Async multiplexes I/O on fewer threads - it does not parallelize CPU work. If you have a task that hashes 10,000 files or runs a compression algorithm, putting it in an async task doesn't speed it up. All async tasks on a Tokio worker thread still take turns - one runs until it hits `.await`, then another gets a turn. If your task never yields (no I/O, no `.await`), it monopolizes the thread. For real CPU parallelism, use `rayon` (which creates a thread pool sized to CPU cores) or `tokio::task::spawn_blocking` (which moves the work to a separate blocking thread pool).
 
-**Mixing sync and async: calling a blocking function from async code.** `std::thread::sleep`, synchronous file reads with `std::fs`, blocking database drivers, any C library that blocks — these all block the OS thread they run on. In an async context, that means the Tokio worker thread is frozen. While it's frozen, no other tasks on that thread can run. If your runtime has 4 worker threads and all 4 are blocked on synchronous calls, your entire async program is frozen. The fix is `spawn_blocking` for blocking operations, and the async equivalents (`tokio::time::sleep`, `tokio::fs`) for I/O.
+**Mixing sync and async: calling a blocking function from async code.** `std::thread::sleep`, synchronous file reads with `std::fs`, blocking database drivers, any C library that blocks - these all block the OS thread they run on. In an async context, that means the Tokio worker thread is frozen. While it's frozen, no other tasks on that thread can run. If your runtime has 4 worker threads and all 4 are blocked on synchronous calls, your entire async program is frozen. The fix is `spawn_blocking` for blocking operations, and the async equivalents (`tokio::time::sleep`, `tokio::fs`) for I/O.
 
 **Forgetting that the multi-thread runtime changes `Send` requirements.** In a single-threaded runtime (current_thread flavor), your tasks never move between threads, so they can hold non-`Send` types. When you switch to the default multi-threaded runtime, Tokio may move a task from one worker thread to another at any `.await` point. This means everything your task holds across `.await` must implement `Send`. If you were relying on non-`Send` types (like `Rc`, `RefCell`, raw pointers, or certain library types), the compiler will start rejecting your code when you switch runtime flavors. This is caught at compile time, but the error messages can be confusing if you don't know what's driving them.

@@ -1,8 +1,8 @@
-# Doc 10 — Wrapping and Replacing C Incrementally
+# Doc 10 - Wrapping and Replacing C Incrementally
 
 🟡 No one rewrites a large C system in one shot. The successful strategy is incremental: wrap existing C in safe Rust interfaces, test that the interfaces work, then replace the implementation piece by piece. This doc shows how to do it safely.
 
-ironkv uses zstd for optional compression — a real-world case of calling a battle-tested C library from Rust. Beyond that, the techniques here apply to any scenario where you inherit C code and want to introduce Rust without breaking everything.
+ironkv uses zstd for optional compression - a real-world case of calling a battle-tested C library from Rust. Beyond that, the techniques here apply to any scenario where you inherit C code and want to introduce Rust without breaking everything.
 
 ---
 
@@ -43,7 +43,7 @@ The pattern: keep `unsafe` in one module, expose only safe interfaces:
 ```rust
 /// Safe wrapper around the zstd C library.
 ///
-/// All `unsafe` calls are encapsulated here — callers see only safe Rust.
+/// All `unsafe` calls are encapsulated here - callers see only safe Rust.
 pub mod zstd {
     use super::*;
 
@@ -107,7 +107,7 @@ pub mod zstd {
     pub fn decompress(data: &[u8], max_output_size: usize) -> Result<Vec<u8>, ZstdError> {
         let mut output = vec![0u8; max_output_size];
 
-        // Safety: same argument as compress — valid byte slices, correct sizes.
+        // Safety: same argument as compress - valid byte slices, correct sizes.
         let decompressed_size = unsafe {
             zstd_decompress(
                 output.as_mut_ptr(),
@@ -124,7 +124,7 @@ pub mod zstd {
 }
 ```
 
-The `// Safety:` comment on every `unsafe` block is a project convention: it documents the invariants the programmer verified manually. Without it, unsafe blocks are unjustifiable — someone reading the code later has no idea whether the unsafe was carefully considered or just hacked in.
+The `// Safety:` comment on every `unsafe` block is a project convention: it documents the invariants the programmer verified manually. Without it, unsafe blocks are unjustifiable - someone reading the code later has no idea whether the unsafe was carefully considered or just hacked in.
 
 ---
 
@@ -162,12 +162,12 @@ fn main() {
 ```
 
 ```c
-// wrapper.h — the include file for bindgen
+// wrapper.h - the include file for bindgen
 #include <zstd.h>
 ```
 
 ```rust
-// src/ffi.rs — use the generated bindings
+// src/ffi.rs - use the generated bindings
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 ```
@@ -222,7 +222,7 @@ Once tests exist, replace the C call with a pure Rust implementation that passes
 pub fn compress_value(data: &[u8]) -> Vec<u8> {
     zstd::encode_all(data, 3).expect("compression failed")
 }
-// Same tests pass — behavior is identical, implementation has changed
+// Same tests pass - behavior is identical, implementation has changed
 ```
 
 The tests from Phase 2 are the regression barrier. As long as they pass, the replacement is safe.
@@ -263,7 +263,7 @@ pub fn open_legacy(path: &str) -> *mut core::ffi::c_void {
     // Safety: c_path is valid and null-terminated. open_legacy_db is a C function
     // that reads the path string but does not retain a pointer to it after returning.
     unsafe { open_legacy_db(c_path.as_ptr()) }
-    // c_path is dropped here — the C function has already copied the path
+    // c_path is dropped here - the C function has already copied the path
 }
 ```
 
@@ -343,9 +343,9 @@ impl Drop for LegacyDatabase {
 ```
 
 The RAII wrapper guarantees:
-- `legacy_db_close` is called exactly once — no leaks, no double-free
-- The handle is non-null when any method is called — methods on `LegacyDatabase` cannot be called after `drop`
-- The C allocation for returned values is freed before returning — no leaks in the get path
+- `legacy_db_close` is called exactly once - no leaks, no double-free
+- The handle is non-null when any method is called - methods on `LegacyDatabase` cannot be called after `drop`
+- The C allocation for returned values is freed before returning - no leaks in the get path
 
 This is the exact pattern for wrapping any C resource that has open/close lifecycle semantics.
 
@@ -355,9 +355,9 @@ This is the exact pattern for wrapping any C resource that has open/close lifecy
 
 Every `unsafe` block in ironkv should have a `// Safety:` comment explaining:
 
-1. **What invariants are being assumed** — e.g., "pointer is non-null and valid for N bytes"
-2. **Why those invariants hold** — e.g., "because we checked for null in the constructor"
-3. **What would go wrong if they didn't** — e.g., "null dereference / UB"
+1. **What invariants are being assumed** - e.g., "pointer is non-null and valid for N bytes"
+2. **Why those invariants hold** - e.g., "because we checked for null in the constructor"
+3. **What would go wrong if they didn't** - e.g., "null dereference / UB"
 
 This isn't bureaucracy. These comments are the audit trail for future maintainers who need to verify that the unsafe code is correct. Without them, every `unsafe` block is a mystery that requires re-deriving the proof from scratch.
 
@@ -393,7 +393,7 @@ The raw FFI examples in this doc exist to teach the mechanics. In production iro
 
 ## Exercises
 
-**Exercise 1 — Write the Safe zstd Wrapper**
+**Exercise 1 - Write the Safe zstd Wrapper**
 
 Using the raw `extern "C"` declarations from this doc, implement the `zstd::compress()`
 and `zstd::decompress()` functions with proper `// Safety:` comments. Then write a
@@ -413,18 +413,18 @@ fn compress_decompress_roundtrip() {
 Run under Miri: `cargo +nightly miri test compress_decompress_roundtrip`. If Miri
 complains about foreign functions (it can't execute C code), use `MIRIFLAGS="-Zmiri-disable-isolation"`.
 
-**Exercise 2 — RAII Wrapper**
+**Exercise 2 - RAII Wrapper**
 
 Implement the `LegacyDatabase` RAII wrapper from this doc. Write a test that:
 1. Opens a `LegacyDatabase`
-2. Calls `get()` for a key that doesn't exist — asserts `None` is returned
+2. Calls `get()` for a key that doesn't exist - asserts `None` is returned
 3. Drops the `LegacyDatabase` (let it go out of scope)
 4. Verifies (with a counter or log) that `legacy_db_close` was called exactly once
 
 For the test database, use a mock C library implemented in Rust using `#[no_mangle]`
 extern functions that store state in a global `Mutex<HashMap>`.
 
-**Exercise 3 — Incremental Replacement**
+**Exercise 3 - Incremental Replacement**
 
 Implement the three-phase replacement for ironkv's compression:
 

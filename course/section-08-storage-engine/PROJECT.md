@@ -1,8 +1,8 @@
-# Project: ironkv — A Persistent Key-Value Storage Engine
+# Project: ironkv - A Persistent Key-Value Storage Engine
 
 > **Section 8 Capstone Project**  
 > This is the final project of the course. You are building a real storage engine
-> from scratch — not a toy, not a tutorial exercise. A stripped-down but structurally
+> from scratch - not a toy, not a tutorial exercise. A stripped-down but structurally
 > honest version of what RocksDB, LevelDB, and LSDB are built on.
 
 ---
@@ -66,7 +66,7 @@ let db = IronKV::open("mydata.ikv")?;
 db.set(b"user:1:name", b"Alice")?;
 db.set(b"user:1:email", b"alice@example.com")?;
 
-// Read a value — returns None if the key does not exist
+// Read a value - returns None if the key does not exist
 let name: Option<Vec<u8>> = db.get(b"user:1:name")?;
 
 // Delete a key (writes a tombstone, not a physical delete)
@@ -110,7 +110,7 @@ ironkv scan mydata.ikv --start "user:1:" --end "user:2:"
 # Administration
 ironkv stats mydata.ikv          # file size, key count, cache hit rate
 ironkv compact mydata.ikv        # rewrite file, removing tombstones and stale versions
-ironkv verify mydata.ikv         # check all CRC32 checksums — report corruption
+ironkv verify mydata.ikv         # check all CRC32 checksums - report corruption
 ironkv bench mydata.ikv          # run the built-in benchmark
 ```
 
@@ -135,7 +135,7 @@ Offset   Size   Type        Field
 ```
 
 After the header comes the data section. Records are appended sequentially.
-The file is never modified in place — records are only appended:
+The file is never modified in place - records are only appended:
 
 ```
 For each record:
@@ -264,7 +264,7 @@ if &header.magic != b"IKVF" {
 }
 ```
 
-`bytemuck::from_bytes` is safe because `FileHeader` implements `Pod` (Plain Old Data) — no pointers, no padding bytes, no undefined states. The compiler verifies this through the derive.
+`bytemuck::from_bytes` is safe because `FileHeader` implements `Pod` (Plain Old Data) - no pointers, no padding bytes, no undefined states. The compiler verifies this through the derive.
 
 ### 3. Memory-Mapped File with memmap2
 
@@ -282,7 +282,7 @@ let mmap = unsafe { Mmap::map(&file)? };
 let header_bytes = &mmap[0..HEADER_SIZE];
 ```
 
-Why unsafe? Because the OS can change the file while you have it mapped — if the file is truncated, accessing mapped bytes beyond the new end is undefined behavior. As long as you never truncate a mapped file and only use immutable Mmap (not MmapMut), the safety invariants hold. Document this in a SAFETY comment.
+Why unsafe? Because the OS can change the file while you have it mapped - if the file is truncated, accessing mapped bytes beyond the new end is undefined behavior. As long as you never truncate a mapped file and only use immutable Mmap (not MmapMut), the safety invariants hold. Document this in a SAFETY comment.
 
 ### 4. CRC32 for Record Integrity
 
@@ -425,7 +425,7 @@ test test_basic_get_set ... ok
     store.set(b"key", b"value")?;
 }  // store drops, file closed
 
-// Second run — data should still be there:
+// Second run - data should still be there:
 {
     let store = IronKV::open("test.ikv")?;
     assert_eq!(store.get(b"key")?, Some(b"value".to_vec()));
@@ -542,7 +542,7 @@ Section 8 is the synthesis of everything:
 
 - **S1 error handling:** `StorageError` is your error type, same `thiserror` pattern you've used since S3. The `?` operator chains storage errors throughout.
 - **S2 structs with impl blocks:** the `IronKV` struct has an `impl` block with all the storage operations. `BTreeMap<Vec<u8>, (u64, u32)>` for the index uses the same `BTreeMap` you learned in S2.
-- **S3 Arc<Mutex<T>>:** concurrent access to the index uses `Arc<RwLock<BTreeMap<...>>>` — readers don't block each other, writers block readers. Same principle as S3's `Arc<Mutex<>>`, upgraded to `RwLock` for read-heavy workloads.
+- **S3 Arc<Mutex<T>>:** concurrent access to the index uses `Arc<RwLock<BTreeMap<...>>>` - readers don't block each other, writers block readers. Same principle as S3's `Arc<Mutex<>>`, upgraded to `RwLock` for read-heavy workloads.
 - **S4 async:** ironkv is mostly synchronous (I/O at this level is often synchronous for simplicity), but the HTTP API layer (if you add it) is async Axum from S5.
 - **S5 AppError pattern:** `StorageError` implements `IntoResponse` if you add the HTTP API.
 - **S7 trait patterns:** the storage engine could be behind a trait (`trait Storage { fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, StorageError>; }`) so it can be swapped with an in-memory implementation for tests. Same repository pattern from S7.
@@ -550,15 +550,15 @@ Section 8 is the synthesis of everything:
 
 ---
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 The storage engine is three layers.
 
-**Layer 1 — The file (disk):** your data lives in a binary file. On disk, it's a header followed by records in append order. Deleted records are marked with a tombstone. Updates are new records (the old one becomes stale). The file only grows — records are never modified in place. This is an append-only log, the simplest durable storage design.
+**Layer 1 - The file (disk):** your data lives in a binary file. On disk, it's a header followed by records in append order. Deleted records are marked with a tombstone. Updates are new records (the old one becomes stale). The file only grows - records are never modified in place. This is an append-only log, the simplest durable storage design.
 
-**Layer 2 — The index (memory):** when you open the database, you scan the entire data file and build a `BTreeMap` in memory mapping each key to its latest record's file offset and length. This is fast at runtime (key lookup is O(log n)) but takes time on startup for large files. The `BTreeMap` also enables range scans: find all keys between `"user:1:"` and `"user:2:"`.
+**Layer 2 - The index (memory):** when you open the database, you scan the entire data file and build a `BTreeMap` in memory mapping each key to its latest record's file offset and length. This is fast at runtime (key lookup is O(log n)) but takes time on startup for large files. The `BTreeMap` also enables range scans: find all keys between `"user:1:"` and `"user:2:"`.
 
-**Layer 3 — The WAL (write-ahead log):** before writing a record to the data file, you first write it to the WAL. On crash during the data file write, the WAL lets you replay the incomplete write on next startup. After successfully writing to the data file and updating the index, you truncate the WAL. This is the "write-ahead" in WAL: the log is written before the data, always.
+**Layer 3 - The WAL (write-ahead log):** before writing a record to the data file, you first write it to the WAL. On crash during the data file write, the WAL lets you replay the incomplete write on next startup. After successfully writing to the data file and updating the index, you truncate the WAL. This is the "write-ahead" in WAL: the log is written before the data, always.
 
 The `unsafe` code lives at the boundary between these layers: reading the file header and record headers from the mmap as typed structs (`bytemuck`), and the raw pointer operations in the ring buffer cache.
 
@@ -568,7 +568,7 @@ Everything else is safe Rust: `BTreeMap` for the index, file operations through 
 
 ## Milestones
 
-Work through these in order. Each milestone is a vertical slice — the database
+Work through these in order. Each milestone is a vertical slice - the database
 works end-to-end after each one, just with fewer features.
 
 ### Milestone 1: In-Memory Only
@@ -698,7 +698,7 @@ cargo fuzz add parse_header
 cargo +nightly fuzz run parse_header -- -max_total_time=300
 ```
 
-Fix every panic the fuzzer finds. The goal is that no input — however malformed —
+Fix every panic the fuzzer finds. The goal is that no input - however malformed -
 causes a panic. All bad inputs return `Err(...)`.
 
 ---
@@ -712,23 +712,23 @@ into the mmap with zero copying. Use `bytemuck::bytes_of(&header)` to write it.
 
 **Index rebuild from the mmap:**  
 Keep a `cursor: usize` starting at 64 (after the header). Read key_len, value_len,
-crc32 as little-endian u32. If value_len == u32::MAX, it's a tombstone — remove
+crc32 as little-endian u32. If value_len == u32::MAX, it's a tombstone - remove
 from BTreeMap. Otherwise, insert (key, (cursor + 12 + key_len as u64, value_len)).
 Advance cursor by 12 + key_len + value_len.
 
 **Range scans via BTreeMap:**  
 `BTreeMap::range(start_key..end_key)` gives you an iterator over all keys in that
-range. This is how `scan()` is implemented — iterate the range in the BTreeMap,
+range. This is how `scan()` is implemented - iterate the range in the BTreeMap,
 fetch each value from the mmap using the stored offset.
 
 **WAL replay:**  
 On `open()`, if the WAL file exists and is non-empty, read it entry by entry.
 For each Set entry, call the internal write-to-data-file path. For each Delete
 entry, write a tombstone. Then truncate the WAL. This is safe to do even if the
-WAL is truncated mid-entry — detect truncated entries by a CRC mismatch and stop.
+WAL is truncated mid-entry - detect truncated entries by a CRC mismatch and stop.
 
 **File growth invalidates mmap:**  
-After flushing (writing new records to the data file), the mmap must be refreshed. Why: `Mmap::map()` snapshots the file's current size into the mapping — bytes written after that point are outside the mapped region. Drop the old `Mmap`, then call `Mmap::map()` again. The new mmap covers the full updated file.
+After flushing (writing new records to the data file), the mmap must be refreshed. Why: `Mmap::map()` snapshots the file's current size into the mapping - bytes written after that point are outside the mapped region. Drop the old `Mmap`, then call `Mmap::map()` again. The new mmap covers the full updated file.
 
 **LRU cache sizing:**  
 Express cache size as a number of entries, not bytes, for simplicity. 10,000 entries
@@ -781,7 +781,7 @@ fn wal_recovery_after_crash() {
     {
         let db = IronKV::open(&path).unwrap();
         db.set(b"key_a", b"value_a").unwrap();  // Goes to WAL
-        // "Crash" — no flush, no close
+        // "Crash" - no flush, no close
         // Drop db without calling close()
     }
     // The WAL should have been written; reopen replays it
@@ -850,7 +850,7 @@ Document these in `src/lib.rs` at the top of the crate:
 - **Mmap lifetime.** The raw bytes obtained from the mmap are valid only while the
   `Mmap` value is alive. The `Mmap` is kept in the engine struct alongside the
   index. If the mmap is refreshed (after file growth), all references into the old
-  mmap are invalidated — Rust's borrow checker enforces this if the mmap is accessed
+  mmap are invalidated - Rust's borrow checker enforces this if the mmap is accessed
   via references tied to its lifetime.
 
 - **CRC32 per record.** No record is considered valid unless its CRC32 matches the
@@ -874,7 +874,7 @@ simultaneously. Only writes take an exclusive lock. Run ThreadSanitizer to verif
 **Bloom filters.**  
 Before a `get()` checks the index, check a Bloom filter. If the filter says "definitely
 not present," return `None` immediately. This eliminates a BTreeMap lookup for missing
-keys — critical for write-heavy workloads that frequently query non-existent keys.
+keys - critical for write-heavy workloads that frequently query non-existent keys.
 
 **Custom SIMD CRC32.**  
 Use `std::arch::x86_64::_mm_crc32_u64` to compute CRC32 directly with hardware
@@ -887,7 +887,7 @@ This enables ironkv to run on embedded targets with an allocator but no OS.
 File I/O becomes an injected trait (`trait Storage: Read + Write + Seek`).
 
 **TCP server.**  
-Wrap the engine in a TCP server with a simple binary protocol — similar in spirit
+Wrap the engine in a TCP server with a simple binary protocol - similar in spirit
 to the chat server from Section 3. Clients send `SET key value` and `GET key` commands.
 The server serializes responses in the ironkv binary format.
 
@@ -895,14 +895,14 @@ The server serializes responses in the ironkv binary format.
 
 ## What You've Learned: Course Completion
 
-You made it. Look back at where you started — a C developer who knew pointers but
+You made it. Look back at where you started - a C developer who knew pointers but
 not ownership, who knew structs but not traits, who knew "write and pray" but not
 the compile-time safety net.
 
 Here is what you can now do:
 
 **Safe, idiomatic Rust for systems programming.**  
-Ownership, borrowing, lifetimes. The borrow checker is not an obstacle —
+Ownership, borrowing, lifetimes. The borrow checker is not an obstacle -
 it is an always-on C++ undefined behavior scanner that runs at compile time.
 You now write code where the contract is in the types, not in the comments.
 

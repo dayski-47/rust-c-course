@@ -1,4 +1,4 @@
-# Doc 03 — Type-State and Newtype Patterns
+# Doc 03 - Type-State and Newtype Patterns
 
 These two patterns are where Rust diverges most dramatically from every other
 mainstream language. In Go or Python you validate data and then carry the raw
@@ -26,7 +26,7 @@ types. This matters when you write functions like:
 fn assign(job: JobId, worker: WorkerId) { ... }
 ```
 
-You cannot call `assign(worker_id, job_id)` — the compiler will reject it.
+You cannot call `assign(worker_id, job_id)` - the compiler will reject it.
 In a stringly-typed codebase, this kind of argument swap is the source of
 real production bugs. With newtypes, it is a compile error.
 
@@ -74,7 +74,7 @@ on `JobId` would mean you can pass a `&JobId` anywhere a `&Uuid` is expected.
 That sounds convenient, but it defeats the purpose of the newtype.
 
 If you can pass a `JobId` anywhere a `Uuid` is expected, you have not prevented
-the bug where someone passes a `WorkerId` instead — they just convert it to a
+the bug where someone passes a `WorkerId` instead - they just convert it to a
 `Uuid` first and the compiler shrugs. Keep the boundary explicit. Provide
 `.inner()` when you genuinely need the raw value.
 
@@ -91,7 +91,7 @@ This principle sounds simple but changes how you design entire systems.
 The bad approach: validate at the call site every time.
 
 ```rust
-// This is how most code works — validate, then carry the raw value
+// This is how most code works - validate, then carry the raw value
 fn send_email(to: String) {
     if !to.contains('@') {
         panic!("invalid email");
@@ -130,7 +130,7 @@ fn send_email(to: Email) {
 }
 ```
 
-The validation happens exactly once — at the boundary where untrusted data enters
+The validation happens exactly once - at the boundary where untrusted data enters
 the system (CLI args, HTTP request body, Redis payload). After that, the type
 carries the proof. You never need to re-validate.
 
@@ -201,7 +201,7 @@ pub struct Job<S> {
 }
 ```
 
-Wait — here we actually store the state in the struct, because states can carry
+Wait - here we actually store the state in the struct, because states can carry
 data (`Running` has `started_at`). The `PhantomData` is only needed when you have
 zero-sized state markers. Either way, the pattern is the same.
 
@@ -403,7 +403,7 @@ order is a compile error, not a runtime panic with a missing-field message.
 
 **Type-state becoming unwieldy.** If you have 10 states and 20 methods, you end up with 200 `impl` blocks. At some point, a runtime state enum is cleaner and easier to reason about. Type-state shines for 3-5 states with clear transitions.
 
-**Newtype wrapper forgotten.** You create `Email(String)`, but your database layer accepts `String`. You call `.0` to unwrap everywhere. This defeats the purpose — create `From<Email> for String` and use it at the database boundary.
+**Newtype wrapper forgotten.** You create `Email(String)`, but your database layer accepts `String`. You call `.0` to unwrap everywhere. This defeats the purpose - create `From<Email> for String` and use it at the database boundary.
 
 **Phantom type confusion.** `PhantomData<S>` makes the struct carry a type `S` it doesn't store. But if you're cloning the struct, you need `PhantomData<fn() -> S>` to avoid the compiler adding a spurious `S: Clone` bound.
 
@@ -488,7 +488,7 @@ impl std::ops::Deref for JobId {
 }
 ```
 
-`#[repr(transparent)]` guarantees the newtype has identical memory layout to the inner type. This matters if you're passing the type across FFI boundaries or storing it in shared memory — the ABI is identical.
+`#[repr(transparent)]` guarantees the newtype has identical memory layout to the inner type. This matters if you're passing the type across FFI boundaries or storing it in shared memory - the ABI is identical.
 
 ## Multiple Orthogonal State Dimensions
 
@@ -543,7 +543,7 @@ impl Connection<Authenticated, ReadWrite> {
 }
 ```
 
-This is two type-state machines composed. A `Connection<Unauthenticated, ReadWrite>` is literally impossible to construct — the state machines enforce the ordering.
+This is two type-state machines composed. A `Connection<Unauthenticated, ReadWrite>` is literally impossible to construct - the state machines enforce the ordering.
 
 ## When Runtime Enums Are Better
 

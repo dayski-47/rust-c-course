@@ -1,4 +1,4 @@
-# Doc 09 — Crate Architecture and API Design
+# Doc 09 - Crate Architecture and API Design
 
 🟡 A well-designed crate is easy to use correctly and hard to use wrong. This doc covers the structural decisions that make the difference between a library that everyone reaches for and one that everyone works around.
 
@@ -18,7 +18,7 @@ members = [
     "taskforge-worker",
     "taskforge-api",
 ]
-resolver = "2"  # Use the v2 feature resolver — required for most modern crates
+resolver = "2"  # Use the v2 feature resolver - required for most modern crates
 
 [workspace.dependencies]
 # Declare shared dependency versions once at the workspace level
@@ -67,7 +67,7 @@ taskforge-core/
     ├── lib.rs           # Public API: re-exports only
     ├── error.rs         # Error types (all crate errors in one place)
     ├── job/
-    │   ├── mod.rs       # pub use job::*; — re-exports the job domain
+    │   ├── mod.rs       # pub use job::*; - re-exports the job domain
     │   ├── types.rs     # Job, JobId, JobStatus, Priority enums
     │   ├── lifecycle.rs # JobHandle<S> type-state, transitions
     │   └── repository.rs # JobRepository trait
@@ -85,7 +85,7 @@ taskforge-core/
 ```
 
 ```rust
-// lib.rs — curate the public API with explicit re-exports
+// lib.rs - curate the public API with explicit re-exports
 mod error;
 mod job;
 mod queue;
@@ -111,18 +111,18 @@ Users write `use taskforge_core::JobId`, not `use taskforge_core::job::types::Jo
 // Public to everyone
 pub struct JobId(pub Uuid);
 
-// Public to this crate only — internal helpers, capabilities construction
+// Public to this crate only - internal helpers, capabilities construction
 pub(crate) struct WorkerAdminToken { _private: () }
 pub(crate) fn issue_admin_token() -> WorkerAdminToken { WorkerAdminToken { _private: () } }
 
-// Public to the parent module — fine-grained within a domain
+// Public to the parent module - fine-grained within a domain
 pub(super) fn validate_queue_depth(depth: u64) -> bool { depth < 10_000 }
 
-// Private — implementation detail within this file
+// Private - implementation detail within this file
 fn format_redis_key(job_id: &JobId) -> String { format!("job:{}", job_id.0) }
 ```
 
-A useful rule of thumb: make things as private as they can be, then loosen access when code in another module legitimately needs it. Starting public and trying to restrict it later is hard — published API is a contract.
+A useful rule of thumb: make things as private as they can be, then loosen access when code in another module legitimately needs it. Starting public and trying to restrict it later is hard - published API is a contract.
 
 ---
 
@@ -147,14 +147,14 @@ enqueue("queue:high", serde_json::to_vec(&job).unwrap()).await;
 // &str → String happens inside the function
 ```
 
-The conversion cost is identical — `impl Into<T>` just removes boilerplate from the call site. Accept `impl Into<T>` when you need ownership. Accept `impl AsRef<T>` when you only need to borrow.
+The conversion cost is identical - `impl Into<T>` just removes boilerplate from the call site. Accept `impl Into<T>` when you need ownership. Accept `impl AsRef<T>` when you only need to borrow.
 
 ### `impl AsRef<T>`: Borrow Without Owning
 
 ```rust
 use std::path::Path;
 
-// Accepts &str, String, PathBuf, &Path — all compile
+// Accepts &str, String, PathBuf, &Path - all compile
 pub fn log_job_artifact(path: impl AsRef<Path>) {
     let path = path.as_ref();
     tracing::info!(?path, "artifact written");
@@ -178,12 +178,12 @@ Use `Cow` when most callers pass a borrowed value but occasional callers need to
 ```rust
 use std::borrow::Cow;
 
-/// Normalize a job type string — lowercase, trim whitespace.
+/// Normalize a job type string - lowercase, trim whitespace.
 /// Only allocates if the string needs modification.
 pub fn normalize_job_type(s: &str) -> Cow<'_, str> {
     let trimmed = s.trim();
     if trimmed.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
-        Cow::Borrowed(trimmed)  // No allocation — string already valid
+        Cow::Borrowed(trimmed)  // No allocation - string already valid
     } else {
         Cow::Owned(trimmed.to_lowercase().replace(' ', "_"))  // Allocate only when needed
     }
@@ -207,12 +207,12 @@ Eight principles that distinguish a polished crate from a draft:
 **1. Return `Result`, not `panic!`**
 
 ```rust
-// ❌ Panics on invalid input — caller has no recovery path
+// ❌ Panics on invalid input - caller has no recovery path
 pub fn parse_job_id(s: &str) -> JobId {
     JobId(s.parse().expect("invalid UUID"))
 }
 
-// ✅ Returns Result — caller decides how to handle errors
+// ✅ Returns Result - caller decides how to handle errors
 pub fn parse_job_id(s: &str) -> Result<JobId, TaskforgeError> {
     let id = s.parse().map_err(|_| TaskforgeError::InvalidJobId(s.to_string()))?;
     Ok(JobId(id))
@@ -252,7 +252,7 @@ pub struct JobReservation {
 
 #[must_use]
 pub async fn try_reserve_job(&self, queue: &str) -> Option<JobReservation> {
-    // Returns None if queue is empty — returning Some and ignoring it is a bug
+    // Returns None if queue is empty - returning Some and ignoring it is a bug
     None
 }
 ```
@@ -260,7 +260,7 @@ pub async fn try_reserve_job(&self, queue: &str) -> Option<JobReservation> {
 **4. Seal traits you don't want external code to implement**
 
 ```rust
-// Internal seal — prevents external implementations
+// Internal seal - prevents external implementations
 mod private {
     pub trait Sealed {}
 }
@@ -280,7 +280,7 @@ impl StorageBackend for RedisBackend {
 }
 ```
 
-Sealed traits let you evolve the interface without breaking callers — add a method to `StorageBackend` without worrying that external implementors break.
+Sealed traits let you evolve the interface without breaking callers - add a method to `StorageBackend` without worrying that external implementors break.
 
 **5. Use `#[non_exhaustive]` for public enums**
 
@@ -301,7 +301,7 @@ External code must use a wildcard arm in match statements:
 match status {
     JobStatus::Completed => record_success(),
     JobStatus::Failed => schedule_retry(),
-    _ => {}  // Required — can't exhaust non_exhaustive enum
+    _ => {}  // Required - can't exhaust non_exhaustive enum
 }
 ```
 
@@ -310,9 +310,9 @@ This means adding `JobStatus::Retrying` in a future version is a minor release, 
 **6. Accept references, return owned**
 
 ```rust
-// ✅ Take reference, return owned — maximizes caller flexibility
+// ✅ Take reference, return owned - maximizes caller flexibility
 pub async fn create_job(&self, spec: &JobSpec) -> Result<JobId, TaskforgeError> {
-    // Creates a copy of spec internally if needed — caller keeps theirs
+    // Creates a copy of spec internally if needed - caller keeps theirs
     Ok(JobId(Uuid::new_v4()))
 }
 
@@ -371,10 +371,10 @@ pub struct JobSpec {
     pub priority: u8,      // could be out of range
 }
 
-// ✅ Validates at construction — type carries proof of validity
+// ✅ Validates at construction - type carries proof of validity
 pub struct JobSpec {
     job_type: ValidJobType,   // newtype with private constructor
-    priority: Priority,        // enum — only valid values exist
+    priority: Priority,        // enum - only valid values exist
 }
 ```
 
@@ -398,7 +398,7 @@ sqlx = { version = "0.7", optional = true, features = ["runtime-tokio"] }
 ```
 
 ```rust
-// In lib.rs — conditional compilation based on features
+// In lib.rs - conditional compilation based on features
 #[cfg(feature = "redis-backend")]
 pub mod redis_backend;
 
@@ -452,18 +452,18 @@ pub async fn get_job(&self, id: &JobId) -> Result<Job, TaskforgeError> { /* ... 
 
 ## The Library / Binary Split
 
-`taskforge-core` is a library — it has no `main` function, no hard-coded configuration, no logging setup. The binaries (`taskforge-worker`, `taskforge-api`) own these:
+`taskforge-core` is a library - it has no `main` function, no hard-coded configuration, no logging setup. The binaries (`taskforge-worker`, `taskforge-api`) own these:
 
 ```rust
 // taskforge-worker/src/main.rs
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing — only the binary does this
+    // Initialize tracing - only the binary does this
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    // Load configuration — only the binary knows where config comes from
+    // Load configuration - only the binary knows where config comes from
     let config = Config::from_env()?;
 
     // Build the library objects

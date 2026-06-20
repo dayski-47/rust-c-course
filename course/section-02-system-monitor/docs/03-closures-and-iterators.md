@@ -1,10 +1,10 @@
 # Doc 03: Closures and Iterators
 
-C has function pointers. They're useful but they can't capture local variables without passing a context struct around manually. Rust closures can capture their environment directly. Combined with iterators, they let you write data processing pipelines that are cleaner than any C loop and — critically — just as fast.
+C has function pointers. They're useful but they can't capture local variables without passing a context struct around manually. Rust closures can capture their environment directly. Combined with iterators, they let you write data processing pipelines that are cleaner than any C loop and - critically - just as fast.
 
 ---
 
-## Closures — Anonymous Functions That Capture Their Environment
+## Closures - Anonymous Functions That Capture Their Environment
 
 The syntax uses `||` instead of `()`:
 
@@ -54,12 +54,12 @@ By default, Rust closures borrow what they capture:
 ```rust
 let threshold = 80.0f64;
 
-// `threshold` is borrowed — the closure holds &f64
+// `threshold` is borrowed - the closure holds &f64
 let is_high = |pct: f64| pct > threshold;
 
 println!("{}", is_high(75.0));  // false
 println!("{}", is_high(85.0));  // true
-println!("threshold still here: {}", threshold); // OK — it was only borrowed
+println!("threshold still here: {}", threshold); // OK - it was only borrowed
 ```
 
 When you need the closure to own its captured data (e.g., when passing it to a thread), use `move`:
@@ -67,7 +67,7 @@ When you need the closure to own its captured data (e.g., when passing it to a t
 ```rust
 let label = String::from("CPU");
 
-// `label` is MOVED into the closure — the closure owns it
+// `label` is MOVED into the closure - the closure owns it
 let printer = move || println!("Metric: {}", label);
 
 // label is gone from this scope
@@ -76,7 +76,7 @@ let printer = move || println!("Metric: {}", label);
 printer(); // "Metric: CPU"
 ```
 
-`move` closures are required when the closure outlives the scope where the captured data was defined — threads are the most common case.
+`move` closures are required when the closure outlives the scope where the captured data was defined - threads are the most common case.
 
 ---
 
@@ -110,11 +110,11 @@ run_with_counter(|| count += 1);
 println!("Called 3 times: {}", count); // 3
 ```
 
-For the system monitor, you'll mostly use `Fn` — closures that filter, transform, and display data without mutating anything.
+For the system monitor, you'll mostly use `Fn` - closures that filter, transform, and display data without mutating anything.
 
 ---
 
-## Iterators — Processing Collections Without Loops
+## Iterators - Processing Collections Without Loops
 
 In C, you'd process an array of CPU readings like this:
 
@@ -151,7 +151,7 @@ let avg = {
 println!("Average (non-zero): {:.1}", avg); // 58.9
 ```
 
-Both versions do the same work. The iterator version is not slower — the compiler optimizes it to the same machine code as the loop.
+Both versions do the same work. The iterator version is not slower - the compiler optimizes it to the same machine code as the loop.
 
 ---
 
@@ -162,22 +162,22 @@ This trips people up. Three different methods, three different semantics:
 ```rust
 let v = vec![1, 2, 3, 4, 5];
 
-// iter() — borrows each element as &T (most common)
+// iter() - borrows each element as &T (most common)
 // v is still usable after
 for x in v.iter() {
     println!("{}", x);  // x is &i32
 }
 println!("v still here: {:?}", v);
 
-// into_iter() — moves the collection, yields owned T
+// into_iter() - moves the collection, yields owned T
 // v is consumed and no longer usable
 for x in v.into_iter() {
     println!("{}", x);  // x is i32
 }
-// println!("{:?}", v); // Would not compile — v was moved
+// println!("{:?}", v); // Would not compile - v was moved
 
 let mut v2 = vec![1, 2, 3];
-// iter_mut() — borrows each element as &mut T, allows modification
+// iter_mut() - borrows each element as &mut T, allows modification
 for x in v2.iter_mut() {
     *x *= 2;  // double each element in place
 }
@@ -192,7 +192,7 @@ Rule of thumb: use `iter()` unless you specifically need ownership (`into_iter()
 
 These are the ones you'll use every day:
 
-### map — transform each element
+### map - transform each element
 
 ```rust
 let mb_values = vec![1024u64, 2048, 4096, 8192];
@@ -204,7 +204,7 @@ let gb_values: Vec<f64> = mb_values.iter()
 println!("{:?}", gb_values); // [1.0, 2.0, 4.0, 8.0]
 ```
 
-### filter — keep only matching elements
+### filter - keep only matching elements
 
 ```rust
 let processes = vec![
@@ -227,9 +227,9 @@ for (name, cpu) in &heavy {
 // cargo: 91.3%
 ```
 
-### collect — materialize the results
+### collect - materialize the results
 
-`collect()` is lazy — the whole chain doesn't run until you call it. It needs a type hint:
+`collect()` is lazy - the whole chain doesn't run until you call it. It needs a type hint:
 
 ```rust
 // Type annotation on the variable
@@ -257,7 +257,7 @@ println!("All healthy: {}", all_healthy);
 println!("First high: {:?}", first_high);
 ```
 
-### fold — reduce to a single value
+### fold - reduce to a single value
 
 The general accumulation tool:
 
@@ -274,7 +274,7 @@ println!("Total: {} GB", total_gb); // 800
 
 ## enumerate and zip
 
-### enumerate — index + value together
+### enumerate - index + value together
 
 Replaces `for (int i = 0; ...)`:
 
@@ -290,7 +290,7 @@ for (i, mount) in mount_points.iter().enumerate() {
 // [3] /tmp
 ```
 
-### zip — pair elements from two collections
+### zip - pair elements from two collections
 
 ```rust
 let names = vec!["cpu_usage", "mem_used", "disk_io"];
@@ -309,15 +309,15 @@ for line in &pairs {
 // disk_io: 125.3
 ```
 
-`zip` stops at the shorter of the two iterators — no off-by-one errors possible.
+`zip` stops at the shorter of the two iterators - no off-by-one errors possible.
 
 ---
 
 ## 🔴 Why Iterators Are Zero-Cost
 
-You might wonder: all these `.map()` and `.filter()` calls — don't they add overhead? Each adapter is a new struct that wraps the previous one. Doesn't that mean extra function calls, extra indirection?
+You might wonder: all these `.map()` and `.filter()` calls - don't they add overhead? Each adapter is a new struct that wraps the previous one. Doesn't that mean extra function calls, extra indirection?
 
-No. Rust's iterators are zero-cost abstractions. The compiler inlines every closure and adapter call. The resulting machine code is identical to a hand-written `for` loop with manual index tracking. You can verify this by looking at compiler output — there's no extra allocation, no vtable, no indirection.
+No. Rust's iterators are zero-cost abstractions. The compiler inlines every closure and adapter call. The resulting machine code is identical to a hand-written `for` loop with manual index tracking. You can verify this by looking at compiler output - there's no extra allocation, no vtable, no indirection.
 
 The key is that all the types are known at compile time. The compiler generates a specialized version of every iterator chain for the exact types involved. This is called monomorphization, and you'll learn more about it in the traits document.
 
@@ -390,7 +390,7 @@ impl Iterator for MetricWindow {
 }
 ```
 
-That's it — `type Item` and `fn next`. The moment you implement those two things, **every iterator adapter in the standard library is available for free**: `.map()`, `.filter()`, `.sum()`, `.max_by()`, `.enumerate()`, `.zip()`, `.take()`, `.skip()` — all of them work with no extra code.
+That's it - `type Item` and `fn next`. The moment you implement those two things, **every iterator adapter in the standard library is available for free**: `.map()`, `.filter()`, `.sum()`, `.max_by()`, `.enumerate()`, `.zip()`, `.take()`, `.skip()` - all of them work with no extra code.
 
 ```rust
 let window = MetricWindow::new(vec![42.3, 80.1, 55.0, 91.7, 38.2]);
@@ -403,13 +403,13 @@ let critical: Vec<f64> = window
 println!("{:?}", critical);  // [80.1, 91.7]
 ```
 
-This is how Rust builds a large API from a small core. You implement two methods; the trait provides 80+ adapters. The same pattern appears throughout the standard library — `Read`, `Write`, `Display` — implement one or two required methods, get rich behavior.
+This is how Rust builds a large API from a small core. You implement two methods; the trait provides 80+ adapters. The same pattern appears throughout the standard library - `Read`, `Write`, `Display` - implement one or two required methods, get rich behavior.
 
 ---
 
 ## How It Breaks
 
-**Iterator adapters are lazy — nothing runs until you consume.**
+**Iterator adapters are lazy - nothing runs until you consume.**
 This is the most common iterator mistake:
 ```rust
 let readings = vec![40.0, 50.0, 60.0];
@@ -456,13 +456,13 @@ let ten_zeros: Vec<f64> = std::iter::repeat(0.0).take(10).collect();
 ```rust
 let mounts = vec!["/", "/home", "/tmp"];
 
-// This fails — &str is not String
+// This fails - &str is not String
 let owned: Vec<String> = mounts.iter().collect();  // ERROR
 
 // This works
 let owned: Vec<String> = mounts.iter().map(|s| s.to_string()).collect();
 
-// This also works — keep them as &str
+// This also works - keep them as &str
 let borrowed: Vec<&&str> = mounts.iter().collect();
 ```
 
@@ -470,7 +470,7 @@ let borrowed: Vec<&&str> = mounts.iter().collect();
 
 ## Common Mistakes
 
-**1. Forgetting to call collect().** `.map()` and `.filter()` are lazy — they don't do anything by themselves. You need a consuming operation (`.collect()`, `.for_each()`, `.sum()`, etc.) at the end.
+**1. Forgetting to call collect().** `.map()` and `.filter()` are lazy - they don't do anything by themselves. You need a consuming operation (`.collect()`, `.for_each()`, `.sum()`, etc.) at the end.
 
 **2. Missing a type hint for collect().** The compiler can't always infer what collection type you want. Add a type annotation on the variable or use turbofish: `.collect::<Vec<_>>()`.
 

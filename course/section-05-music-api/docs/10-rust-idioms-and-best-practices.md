@@ -1,8 +1,8 @@
-# Doc 10 — Rust Idioms and Best Practices
+# Doc 10 - Rust Idioms and Best Practices
 
 🟢 These are the patterns that separate working Rust from idiomatic Rust.
 
-By now you've built the music API: routing, database, validation, middleware, deployment, build scripts, coverage. This doc steps back and names the patterns you've been using — the idioms and habits that experienced Rust developers apply without thinking. Understanding them explicitly helps you recognize them in unfamiliar codebases and apply them to new problems.
+By now you've built the music API: routing, database, validation, middleware, deployment, build scripts, coverage. This doc steps back and names the patterns you've been using - the idioms and habits that experienced Rust developers apply without thinking. Understanding them explicitly helps you recognize them in unfamiliar codebases and apply them to new problems.
 
 ---
 
@@ -25,11 +25,11 @@ Because `String` can be empty, null, or 500,000 characters long. `TrackTitle` ca
 The newtype also prevents logic errors that the compiler can't catch with raw primitives:
 
 ```rust
-// Easy bug with raw types — swapped arguments
+// Easy bug with raw types - swapped arguments
 fn insert_track(title: String, artist: String) { /* ... */ }
 insert_track(artist_name, track_title);  // compiles, wrong order
 
-// Impossible with newtypes — compiler catches the swap
+// Impossible with newtypes - compiler catches the swap
 fn insert_track(title: TrackTitle, artist: ArtistName) { /* ... */ }
 insert_track(artist_name, track_title);  // compile error: types don't match
 ```
@@ -41,7 +41,7 @@ insert_track(artist_name, track_title);  // compile error: types don't match
 When a struct has many optional or interdependent fields, don't take them all as constructor arguments:
 
 ```rust
-// Hard to use — 7 arguments, easy to confuse order
+// Hard to use - 7 arguments, easy to confuse order
 let query = TrackQuery::new(
     Some("jazz"),
     None,
@@ -53,7 +53,7 @@ let query = TrackQuery::new(
     true,
 );
 
-// Builder — self-documenting, order doesn't matter
+// Builder - self-documenting, order doesn't matter
 let query = TrackQuery::builder()
     .genre("jazz")
     .max_duration_ms(1_800_000)
@@ -126,14 +126,14 @@ Note the method chaining: each method takes `self` and returns `Self`. This lets
 When you want to return something that implements a trait without naming the exact type, use `impl Trait`:
 
 ```rust
-// Without impl Trait — must name the exact type (not always possible)
+// Without impl Trait - must name the exact type (not always possible)
 fn routes() -> axum::Router {
     axum::Router::new()
         .route("/tracks", get(list_tracks))
         .route("/tracks/:id", get(get_track).put(update_track))
 }
 
-// With impl Trait — return "something that is a Future"
+// With impl Trait - return "something that is a Future"
 fn fetch_tracks(db: &SqlitePool) -> impl Future<Output = Vec<Track>> + '_ {
     async move {
         sqlx::query_as!(Track, "SELECT * FROM tracks")
@@ -143,7 +143,7 @@ fn fetch_tracks(db: &SqlitePool) -> impl Future<Output = Vec<Track>> + '_ {
     }
 }
 
-// In function parameters — accept "anything that implements Iterator<Item = Track>"
+// In function parameters - accept "anything that implements Iterator<Item = Track>"
 fn process_tracks<'a>(tracks: impl Iterator<Item = &'a Track>) -> Summary {
     let total_duration: u32 = tracks
         .map(|t| t.duration.milliseconds())
@@ -152,7 +152,7 @@ fn process_tracks<'a>(tracks: impl Iterator<Item = &'a Track>) -> Summary {
 }
 ```
 
-`impl Trait` in parameters is syntactic sugar for a generic (`<T: Trait>`) — use either form. In return position, `impl Trait` hides the concrete type from callers, which is useful for returning closures and complex iterators.
+`impl Trait` in parameters is syntactic sugar for a generic (`<T: Trait>`) - use either form. In return position, `impl Trait` hides the concrete type from callers, which is useful for returning closures and complex iterators.
 
 ---
 
@@ -209,7 +209,7 @@ This pattern (thiserror + `#[from]`) is the industry standard for applications. 
 When transforming data, iterator chains express intent more clearly than mutable loops:
 
 ```rust
-// Mutable loop — intent is buried in mutation details
+// Mutable loop - intent is buried in mutation details
 fn summarize_tracks(tracks: &[Track]) -> TrackStats {
     let mut total_duration = 0u64;
     let mut count = 0usize;
@@ -224,7 +224,7 @@ fn summarize_tracks(tracks: &[Track]) -> TrackStats {
     TrackStats { total_duration, count, genre_distribution: genres }
 }
 
-// Iterator chain — transformations are named and linear
+// Iterator chain - transformations are named and linear
 fn summarize_tracks(tracks: &[Track]) -> TrackStats {
     let total_duration: u64 = tracks.iter()
         .map(|t| t.duration.milliseconds() as u64)
@@ -257,7 +257,7 @@ Use a loop when:
 Option combinators flatten nested match/if let chains:
 
 ```rust
-// Nested if-let — hard to read at depth
+// Nested if-let - hard to read at depth
 fn get_genre_display(track: &Track) -> String {
     if let Some(genre) = &track.genre {
         if let Some(display) = GENRE_NAMES.get(genre) {
@@ -270,7 +270,7 @@ fn get_genre_display(track: &Track) -> String {
     }
 }
 
-// Option combinators — linear flow
+// Option combinators - linear flow
 fn get_genre_display(track: &Track) -> String {
     track.genre.as_ref()
         .map(|g| GENRE_NAMES.get(g).copied().unwrap_or(g.as_str()))
@@ -284,22 +284,22 @@ Common combinators and when to use each:
 ```rust
 let opt: Option<String> = Some("jazz".to_string());
 
-// .map(f)        — transform the value if Some
+// .map(f)        - transform the value if Some
 opt.map(|s| s.to_uppercase())          // Some("JAZZ")
 
-// .and_then(f)   — flatMap: apply f which returns Option (avoids Some(Some(...)))
+// .and_then(f)   - flatMap: apply f which returns Option (avoids Some(Some(...)))
 opt.and_then(|s| lookup_genre(&s))     // None if lookup returns None
 
-// .unwrap_or(x)  — default value if None
+// .unwrap_or(x)  - default value if None
 opt.unwrap_or_else(|| "unknown".to_string())  // "unknown" if None
 
-// .filter(pred)  — None if predicate fails
+// .filter(pred)  - None if predicate fails
 opt.filter(|s| !s.is_empty())          // None if s is empty
 
-// .ok_or(err)    — convert Option to Result
+// .ok_or(err)    - convert Option to Result
 opt.ok_or(AppError::NotFound)?         // propagate NotFound if None
 
-// .zip(other)    — combine two Options — None if either is None
+// .zip(other)    - combine two Options - None if either is None
 let a: Option<i32> = Some(1);
 let b: Option<i32> = Some(2);
 a.zip(b)                               // Some((1, 2))
@@ -312,7 +312,7 @@ a.zip(b)                               // Some((1, 2))
 Deep nesting makes code hard to read. Early returns flatten it:
 
 ```rust
-// Deep nesting — hard to follow
+// Deep nesting - hard to follow
 async fn get_track_with_lyrics(
     db: &SqlitePool,
     lyrics_api: &LyricsClient,
@@ -329,7 +329,7 @@ async fn get_track_with_lyrics(
     }
 }
 
-// Early return — flat and readable
+// Early return - flat and readable
 async fn get_track_with_lyrics(
     db: &SqlitePool,
     lyrics_api: &LyricsClient,
@@ -354,13 +354,13 @@ The pattern: validate your prerequisites with `?` and `ok_or()` at the top of th
 Cloning is safe and correct, but can be expensive. Prefer moving ownership into functions when the caller doesn't need it afterward:
 
 ```rust
-// Unnecessary clone — track is moved into the response, caller never uses it again
+// Unnecessary clone - track is moved into the response, caller never uses it again
 async fn create_and_return(db: &Db, track: Track) -> Json<Track> {
     db.insert(track.clone()).await;  // clone just to keep ownership
     Json(track)                     // then move
 }
 
-// Better — move into db first, construct response from the data you need
+// Better - move into db first, construct response from the data you need
 async fn create_and_return(db: &Db, body: CreateTrackBody) -> Result<Json<TrackResponse>, AppError> {
     let track = ValidatedTrack::try_from(body)?;
     let id = db.insert(&track).await?;  // pass reference
@@ -385,14 +385,14 @@ Common patterns where cloning is appropriate:
 The derive macros handle the boilerplate. Manual implementations are only needed when the derived behavior is wrong:
 
 ```rust
-// Derive everything that can be derived — less code, harder to get wrong
+// Derive everything that can be derived - less code, harder to get wrong
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TrackId(pub i64);
 
 // Only implement manually when you need custom behavior
 impl Display for TrackId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "track#{}", self.0)  // custom format — derive wouldn't know this
+        write!(f, "track#{}", self.0)  // custom format - derive wouldn't know this
     }
 }
 
@@ -417,15 +417,15 @@ Always derive: `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`, `Serialize`, `Deseri
 Tests should assert what a function does, not how it does it:
 
 ```rust
-// Tests implementation details — fragile, breaks on refactoring
+// Tests implementation details - fragile, breaks on refactoring
 #[test]
 fn test_track_has_three_fields() {
     let track = Track { id: 1, title: "test".to_string(), duration_ms: 1000 };
-    // Asserting struct field existence — not useful
+    // Asserting struct field existence - not useful
     assert!(track.title.len() > 0);
 }
 
-// Tests behavior — what actually matters
+// Tests behavior - what actually matters
 #[test]
 fn search_by_genre_returns_only_matching_tracks() {
     let tracks = vec![
@@ -455,14 +455,14 @@ A good test fails when behavior breaks, not when you rename a variable or split 
 
 Looking back at what you've built, the idioms compound:
 
-- **Newtype** (`TrackTitle`, `TrackDuration`) — validation lives in the type
-- **Parse, don't validate** — `TryFrom` at the HTTP boundary, `&ValidatedTrack` everywhere else
-- **Builder** — `TrackQueryBuilder` for search parameters
-- **`?` with `From`** — error handling flows through the entire call stack
-- **Iterator chains** — `tracks.iter().map().filter().sum()` for summaries
-- **Early returns** — `ok_or(NotFound)?` before operating on data
-- **`impl Trait`** — function signatures that accept any `Into<String>` or return any `Future`
-- **`#[derive]`** — serialization, debugging, and equality without boilerplate
+- **Newtype** (`TrackTitle`, `TrackDuration`) - validation lives in the type
+- **Parse, don't validate** - `TryFrom` at the HTTP boundary, `&ValidatedTrack` everywhere else
+- **Builder** - `TrackQueryBuilder` for search parameters
+- **`?` with `From`** - error handling flows through the entire call stack
+- **Iterator chains** - `tracks.iter().map().filter().sum()` for summaries
+- **Early returns** - `ok_or(NotFound)?` before operating on data
+- **`impl Trait`** - function signatures that accept any `Into<String>` or return any `Future`
+- **`#[derive]`** - serialization, debugging, and equality without boilerplate
 
 These patterns interact. The newtype makes validation explicit. Parse-don't-validate delivers the newtype at the right layer. The `?` operator propagates validation errors cleanly. Iterator chains process the validated data without mutation. The result is code that's harder to misuse than to use correctly.
 
@@ -480,6 +480,6 @@ Before marking the music API project complete:
 - [ ] Coverage is measured and branch coverage is above 80%
 - [ ] Clippy warnings are addressed: `cargo clippy --workspace -- -D warnings`
 - [ ] No unused imports or dead code: `cargo check 2>&1 | grep "unused"`
-- [ ] `cargo fmt --check` passes — consistent formatting
+- [ ] `cargo fmt --check` passes - consistent formatting
 
 The last three items are enforced by CI automatically (section 5's docker deployment doc covers the CI setup). Adding `cargo clippy` and `cargo fmt --check` to CI means these checks can't be forgotten on a busy day.

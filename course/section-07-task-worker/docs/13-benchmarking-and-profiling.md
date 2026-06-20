@@ -1,6 +1,6 @@
-# Doc 13 — Benchmarking and Profiling
+# Doc 13 - Benchmarking and Profiling
 
-🟡 A benchmark you can't trust is worse than no benchmark. This doc teaches you to produce numbers that mean something — and to find the code that actually matters to optimize.
+🟡 A benchmark you can't trust is worse than no benchmark. This doc teaches you to produce numbers that mean something - and to find the code that actually matters to optimize.
 
 Performance work has two phases: *measuring* (figuring out what's slow) and *optimizing* (making it faster). Beginners skip the measuring phase and optimize what they guessed was slow. This is almost always wrong. The only way to know where time goes is to measure it.
 
@@ -21,10 +21,10 @@ println!("Took {:?}", elapsed);
 
 Problems:
 
-1. **Dead code elimination** — the compiler may prove `result` is unused and skip the computation entirely
-2. **Single sample** — one timing tells you nothing about variance or statistical significance
-3. **No warm-up** — the first call hits cold CPU caches and branch predictor; not representative
-4. **No regression tracking** — you can't compare this run to last week's run
+1. **Dead code elimination** - the compiler may prove `result` is unused and skip the computation entirely
+2. **Single sample** - one timing tells you nothing about variance or statistical significance
+3. **No warm-up** - the first call hits cold CPU caches and branch predictor; not representative
+4. **No regression tracking** - you can't compare this run to last week's run
 
 Criterion solves all four.
 
@@ -123,7 +123,7 @@ fn bench_queue_routing(c: &mut Criterion) {
     group.finish();
 }
 
-// ── Benchmark 4: Throughput — how many jobs can we route per second? ─────────
+// ── Benchmark 4: Throughput - how many jobs can we route per second? ─────────
 
 fn bench_routing_throughput(c: &mut Criterion) {
     let jobs: Vec<Job> = (0..1000)
@@ -192,10 +192,10 @@ cargo bench -- deserialize_job
 ### `black_box()`: why it matters
 
 ```rust
-// Without black_box — compiler may skip the computation
+// Without black_box - compiler may skip the computation
 b.iter(|| serde_json::to_vec(&spec))
 
-// With black_box — compiler must treat spec as "could have changed" and recompute
+// With black_box - compiler must treat spec as "could have changed" and recompute
 b.iter(|| serde_json::to_vec(black_box(&spec)))
 ```
 
@@ -241,7 +241,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           alert-threshold: '110%'  # Alert if 10% slower than baseline
-          fail-on-alert: false     # Don't fail CI — performance is informational
+          fail-on-alert: false     # Don't fail CI - performance is informational
 ```
 
 The benchmark CI job is informational, not a hard gate. A 10% slowdown on a CPU that varies ±5% run-to-run is noise, not a regression. Use the data to catch *large* regressions (>15–20%) and to track trends over time.
@@ -402,7 +402,7 @@ When a user reports "taskforge feels slow at scale":
 
 1. **Write a benchmark** that exercises the reported slow path
 2. **Run `cargo bench`** to establish baseline numbers
-3. **Compare against expectations** — is 38µs for 1000 jobs reasonable? (Yes, ~38ns each)
+3. **Compare against expectations** - is 38µs for 1000 jobs reasonable? (Yes, ~38ns each)
 4. **Run flamegraph** if numbers are worse than expected
 5. **Identify the hot function** in the flamegraph
 6. **Optimize that function** (not the ones around it)

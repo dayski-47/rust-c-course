@@ -1,7 +1,7 @@
-# Project: hexview — Binary File Hex Dump Viewer
+# Project: hexview - Binary File Hex Dump Viewer
 
 **Project name:** `hexview`  
-**Difficulty:** 🟢→🟡 — Milestones 1-3 are straightforward. Milestones 5-6 require real thinking.
+**Difficulty:** 🟢→🟡 - Milestones 1-3 are straightforward. Milestones 5-6 require real thinking.
 
 ---
 
@@ -48,25 +48,25 @@ This is a real tool. The output format:
 
 - **Column 1:** byte offset in the file, printed as 8 lowercase hex digits, followed by a colon
 - **Column 2:** the 16 bytes in hex, printed as two-digit pairs, grouped as pairs-of-two with a space between groups
-- **Column 3:** the same 16 bytes as ASCII — printable characters shown directly, all others shown as `.`
+- **Column 3:** the same 16 bytes as ASCII - printable characters shown directly, all others shown as `.`
 
 The last line may have fewer than 16 bytes. The hex column must be padded with spaces so the ASCII column aligns on every line.
 
 ---
 
-## How This Project Uses Rust — Connection to the Docs
+## How This Project Uses Rust - Connection to the Docs
 
-This is a first-principles explanation of how each doc topic shows up in the actual program. No code — just the concepts.
+This is a first-principles explanation of how each doc topic shows up in the actual program. No code - just the concepts.
 
-**Doc 01 (Why Rust):** In C, if your loop assumes 16 bytes per chunk but the last chunk has 5, you process 11 bytes of garbage. Rust's slice system prevents this — `&buf[0..n]` is guaranteed to be exactly `n` bytes of valid data. The compiler won't let you access beyond it.
+**Doc 01 (Why Rust):** In C, if your loop assumes 16 bytes per chunk but the last chunk has 5, you process 11 bytes of garbage. Rust's slice system prevents this - `&buf[0..n]` is guaranteed to be exactly `n` bytes of valid data. The compiler won't let you access beyond it.
 
-**Doc 03 (Types):** Byte values are `u8` (exactly 0–255, never negative). File offsets are `u64` (files can exceed 4GB, so not `u32`). Array indices and sizes are `usize` — Rust's machine-word-sized integer for all lengths and indices. Mixing `u64` and `usize` requires explicit casts (`as`), which is intentional — the compiler forces you to think about the conversion.
+**Doc 03 (Types):** Byte values are `u8` (exactly 0–255, never negative). File offsets are `u64` (files can exceed 4GB, so not `u32`). Array indices and sizes are `usize` - Rust's machine-word-sized integer for all lengths and indices. Mixing `u64` and `usize` requires explicit casts (`as`), which is intentional - the compiler forces you to think about the conversion.
 
 **Doc 04 (Control flow):** The read loop uses `loop { ... break }` rather than a `while` because the exit condition (EOF) comes from inside the loop body, not before it. Printability checking is a range check on `u8`. Formatting the line uses iteration over the chunk bytes.
 
-**Doc 05 (Ownership):** `File::open()` gives you an owned `File` value. You move it into `BufReader::new()` — after that, the variable `file` is gone. The `BufReader` owns everything for the rest of the function. When `BufReader` goes out of scope, `Drop` closes the file descriptor. No `fclose`. This is Rust's RAII in action.
+**Doc 05 (Ownership):** `File::open()` gives you an owned `File` value. You move it into `BufReader::new()` - after that, the variable `file` is gone. The `BufReader` owns everything for the rest of the function. When `BufReader` goes out of scope, `Drop` closes the file descriptor. No `fclose`. This is Rust's RAII in action.
 
-**Doc 06 (Error handling):** Every I/O call returns `Result`. You use `?` to propagate errors from inner functions to `main`. In `main`, you handle the final `Err` by printing to `eprintln!` and calling `std::process::exit(1)`. This exact pattern — `run() -> Result<(), E>` called from `main` — is what you'll use in every section.
+**Doc 06 (Error handling):** Every I/O call returns `Result`. You use `?` to propagate errors from inner functions to `main`. In `main`, you handle the final `Err` by printing to `eprintln!` and calling `std::process::exit(1)`. This exact pattern - `run() -> Result<(), E>` called from `main` - is what you'll use in every section.
 
 **Doc 07 (File I/O, slices, iterators):** The core of the project. `BufReader` for efficient reads. `read(&mut buf)` returning the byte count. `&buf[0..n]` for slicing to valid data. `chunks(16).enumerate()` for the line loop. `format!("{:02x}", byte)` for hex digits.
 
@@ -78,7 +78,7 @@ These patterns appear in later sections too. Learn them here first.
 
 **`run()` → `main()` separation.** Never put logic directly in `main` when it can fail. Write `fn run() -> Result<(), AppError>` that contains the real work. In `main`, call `run()` and convert `Err` to a stderr message + exit code. This keeps `main` clean and makes error handling centralized.
 
-**Newtype for semantics.** A `u64` for a byte offset and a `u64` for a byte length are the same type but mean different things. As you build larger programs, consider wrapper types like `struct ByteOffset(u64)` and `struct ByteCount(u64)` — the compiler will stop you from passing one where the other is expected. You don't have to do this in Milestone 1, but recognize where it would help.
+**Newtype for semantics.** A `u64` for a byte offset and a `u64` for a byte length are the same type but mean different things. As you build larger programs, consider wrapper types like `struct ByteOffset(u64)` and `struct ByteCount(u64)` - the compiler will stop you from passing one where the other is expected. You don't have to do this in Milestone 1, but recognize where it would help.
 
 **Early return on error, not nested ifs.** Use `?` to exit a function early on failure rather than nesting your success path inside an `if let Ok(...)` chain. The success path should read left-to-right without nesting.
 
@@ -88,10 +88,10 @@ These patterns appear in later sections too. Learn them here first.
 
 ## Scope: What You Will NOT Build
 
-- No hex editing or writing — read-only
-- No TUI or interactive mode — plain stdout
+- No hex editing or writing - read-only
+- No TUI or interactive mode - plain stdout
 - No color output
-- No reading from stdin — file path only
+- No reading from stdin - file path only
 - No multiple files
 - No reverse hex dump (hex back to binary)
 
@@ -112,7 +112,7 @@ $ hexview /etc/hostname
 13 bytes
 ```
 
-You will fight your first error type issue when `?` won't work in `main`. Fix it: change `main` to `fn main() -> Result<(), Box<dyn std::error::Error>>`. You'll understand why later — for now, just do it.
+You will fight your first error type issue when `?` won't work in `main`. Fix it: change `main` to `fn main() -> Result<(), Box<dyn std::error::Error>>`. You'll understand why later - for now, just do it.
 
 **Stuck? Key shapes:**
 
@@ -159,7 +159,7 @@ $ hexview /etc/hostname
 
 Focus on getting the format exactly right: `{offset:08x}: {hex pairs}  {ascii}`. Two spaces between the hex and ASCII columns.
 
-**The tricky part — hex grouping:**
+**The tricky part - hex grouping:**
 
 The output groups bytes in pairs: `7f45 4c46` not `7f 45 4c 46`. That's 2 bytes per group, space between groups. Here's the grouping logic shape:
 
@@ -183,11 +183,11 @@ Expected output for the first line of `/etc/hostname` (value: "desktop-lnx\n"):
 ```
 00000000: 6465 7363 746f 702d 6c6e 780a            desktop-lnx.
 ```
-Note: that trailing gap before `desktop-lnx.` is the padding for a short line. Wait — for MILESTONE 2 only the first line, and if it happens to be a short file, you'll see the padding issue early. That's fine for now — fix it properly in milestone 3.
+Note: that trailing gap before `desktop-lnx.` is the padding for a short line. Wait - for MILESTONE 2 only the first line, and if it happens to be a short file, you'll see the padding issue early. That's fine for now - fix it properly in milestone 3.
 
 ### Milestone 3: Full Dump
 
-Loop and dump the entire file, 16 bytes per line. Handle the last line being shorter than 16 bytes — the hex portion needs right-padding of `(16 - chunk.len()) * 3` spaces so the ASCII column stays aligned.
+Loop and dump the entire file, 16 bytes per line. Handle the last line being shorter than 16 bytes - the hex portion needs right-padding of `(16 - chunk.len()) * 3` spaces so the ASCII column stays aligned.
 
 Verify against `xxd`:
 ```bash
@@ -214,7 +214,7 @@ This is the kind of off-by-one detail that makes you stare at your output next t
 
 Add `-o <N>` and `-n <N>` flags. Parse them manually from `std::env::args()`. Use `std::io::Seek` (`SeekFrom::Start(offset)`) to skip to the start offset. Track bytes processed and stop when you hit the length limit.
 
-The offset column always shows the actual file offset — not "0" even if you started mid-file.
+The offset column always shows the actual file offset - not "0" even if you started mid-file.
 
 ### Milestone 5: Proper CLI with clap
 

@@ -1,4 +1,4 @@
-# 04 — Tokio Channels and Sync Primitives 🟡
+# 04 - Tokio Channels and Sync Primitives 🟡
 
 In section 3 you used `std::sync::mpsc` channels to communicate between threads. Tokio has its own channel implementations that work the same way conceptually, but with a critical difference: they're async-aware. They won't block OS threads when waiting for messages.
 
@@ -8,7 +8,7 @@ This doc covers Tokio's four channel types, async mutexes, and semaphores. By th
 
 ## Why Tokio Has Its Own Channels
 
-The channels in `std::sync::mpsc` are perfectly good for threaded code. But in async code, `recv()` is a *blocking* call — it puts the OS thread to sleep until a message arrives. In an async context, that blocks the entire executor thread, starving all other tasks.
+The channels in `std::sync::mpsc` are perfectly good for threaded code. But in async code, `recv()` is a *blocking* call - it puts the OS thread to sleep until a message arrives. In an async context, that blocks the entire executor thread, starving all other tasks.
 
 Tokio's channels solve this by making `recv()` an async function. Instead of blocking, it yields to the executor when no messages are available, allowing other tasks to run:
 
@@ -42,7 +42,7 @@ Broadcast event to all subscribers        broadcast
 Share latest config/state change          watch
 ```
 
-### mpsc — Multi-Producer, Single Consumer
+### mpsc - Multi-Producer, Single Consumer
 
 The workhorse. One receiver, many senders. Messages are queued and delivered in order.
 
@@ -52,7 +52,7 @@ use tokio::sync::mpsc;
 #[tokio::main]
 async fn main() {
     // Buffer size: how many messages can be queued before senders block.
-    // Bounded channels provide backpressure — if the receiver falls behind,
+    // Bounded channels provide backpressure - if the receiver falls behind,
     // senders automatically slow down.
     let (tx, mut rx) = mpsc::channel::<String>(100);
 
@@ -76,7 +76,7 @@ async fn main() {
 
 This is the right channel for `ghanalyze`: worker tasks (fetching repo details) send results back to the main task for collection.
 
-### oneshot — Single Value, One Time
+### oneshot - Single Value, One Time
 
 A channel that carries exactly one message, from one sender to one receiver. Perfect for request/response patterns.
 
@@ -101,9 +101,9 @@ struct WorkRequest {
 }
 ```
 
-The sender doesn't need `.await` — `oneshot::Sender::send()` is a regular function that either succeeds or fails instantly (if the receiver was dropped).
+The sender doesn't need `.await` - `oneshot::Sender::send()` is a regular function that either succeeds or fails instantly (if the receiver was dropped).
 
-### broadcast — One Publisher, Many Subscribers
+### broadcast - One Publisher, Many Subscribers
 
 Every subscriber receives every message. Messages are *cloned* for each subscriber. If a slow subscriber falls too far behind, it misses messages (the buffer wraps around).
 
@@ -131,9 +131,9 @@ async fn main() {
 
 Use broadcast for: shutdown signals, configuration change notifications, log fanout, or any situation where you need "everyone gets the message."
 
-### watch — Latest Value, Multiple Readers
+### watch - Latest Value, Multiple Readers
 
-Like broadcast, but only the *latest* value matters. Readers don't miss messages — they always read the current value, even if they're slow. Older values are overwritten.
+Like broadcast, but only the *latest* value matters. Readers don't miss messages - they always read the current value, even if they're slow. Older values are overwritten.
 
 ```rust
 use tokio::sync::watch;
@@ -162,7 +162,7 @@ Use watch for: rate limit state (is the API throttled?), configuration hot-reloa
 
 ---
 
-## tokio::sync::Mutex — The Async Mutex
+## tokio::sync::Mutex - The Async Mutex
 
 You already know `std::sync::Mutex`. Tokio's version works the same way, with one difference: `.lock()` is async. If the mutex is already locked, instead of blocking the OS thread, it yields to the executor.
 
@@ -178,7 +178,7 @@ async fn main() {
     for _ in 0..10 {
         let counter = Arc::clone(&counter);
         let handle = tokio::spawn(async move {
-            let mut guard = counter.lock().await;  // Async lock — doesn't block thread
+            let mut guard = counter.lock().await;  // Async lock - doesn't block thread
             *guard += 1;
         }); // Guard dropped here, lock released
         handles.push(handle);
@@ -197,7 +197,7 @@ async fn main() {
 This is one of the most dangerous mistakes in async Rust. It compiles, it might work sometimes, and it causes subtle deadlocks in production:
 
 ```rust
-use std::sync::Mutex;  // NOT tokio — this is the std Mutex
+use std::sync::Mutex;  // NOT tokio - this is the std Mutex
 
 async fn dangerous(data: &Mutex<Vec<String>>) {
     let mut guard = data.lock().unwrap();    // Lock acquired
@@ -206,7 +206,7 @@ async fn dangerous(data: &Mutex<Vec<String>>) {
     slow_network_call().await;               // ← PROBLEM HERE
 
     guard.push("another".to_string());
-}   // Guard dropped here — lock released
+}   // Guard dropped here - lock released
 ```
 
 What goes wrong: while `slow_network_call()` is awaited, the executor might schedule another task on the same OS thread. If that other task also tries to lock `data`, it will try to acquire the std Mutex from the *same thread that already holds it*. On a single-threaded runtime, this is an instant deadlock. On multi-threaded, it's a performance trap that blocks a worker thread.
@@ -249,7 +249,7 @@ async fn also_safe(data: &std::sync::Mutex<Vec<String>>) {
 
 ---
 
-## tokio::sync::Semaphore — Limiting Concurrency
+## tokio::sync::Semaphore - Limiting Concurrency
 
 A semaphore starts with N permits. Tasks acquire a permit to proceed; when they're done, they release it. If no permits are available, the task waits asynchronously.
 
@@ -285,7 +285,7 @@ async fn fetch_repos_with_limit(repos: Vec<String>, concurrency: usize) {
 
 The permit is held for as long as `_permit` is in scope. When the async block ends and `_permit` is dropped, the semaphore counter increments back and a waiting task can proceed.
 
-For `ghanalyze`, you'll use a semaphore to avoid hammering GitHub's API. GitHub allows 60 requests/hour unauthenticated and 5000/hour authenticated — you don't want to spawn 500 tasks all firing simultaneously.
+For `ghanalyze`, you'll use a semaphore to avoid hammering GitHub's API. GitHub allows 60 requests/hour unauthenticated and 5000/hour authenticated - you don't want to spawn 500 tasks all firing simultaneously.
 
 ---
 
@@ -318,7 +318,7 @@ RwLock                 Shared data with frequent reads, rare writes
 
 **Forgetting to clone the semaphore before moving it.** A semaphore used across multiple spawned tasks needs `Arc<Semaphore>`. If you move the semaphore into the first task, you can't use it for the rest.
 
-**Creating per-request channels instead of shared channels.** Creating a new channel for each item in a loop is usually wrong — create one channel before the loop, then clone the sender for each task.
+**Creating per-request channels instead of shared channels.** Creating a new channel for each item in a loop is usually wrong - create one channel before the loop, then clone the sender for each task.
 
 ---
 
@@ -326,6 +326,6 @@ RwLock                 Shared data with frequent reads, rare writes
 
 **`mpsc` sender outliving the receiver.** You drop the receiver (perhaps by returning from the function that owns it, or by explicitly dropping it), but senders still exist and are still calling `send()`. Each `send()` returns `Err(SendError)` because there is no receiver. If your code uses `.unwrap()` on sends, every subsequent send panics. If your code uses `.ok()` to ignore send errors, data is silently discarded. The fix depends on the design: either keep the receiver alive as long as senders exist, or check for `SendError` and treat it as a shutdown signal.
 
-**`broadcast` channel lagging.** The broadcast channel stores messages in a fixed-size ring buffer. If a subscriber is slow — it doesn't call `recv()` quickly enough — the ring buffer wraps around and old messages are overwritten before the slow subscriber reads them. The next time that subscriber calls `recv()`, it gets `Err(RecvError::Lagged(n))` where `n` is the number of messages that were dropped. This is not a crash, but it means the subscriber missed data. If missing messages is unacceptable, increase the buffer size, add backpressure, or switch to `mpsc` with per-subscriber channels.
+**`broadcast` channel lagging.** The broadcast channel stores messages in a fixed-size ring buffer. If a subscriber is slow - it doesn't call `recv()` quickly enough - the ring buffer wraps around and old messages are overwritten before the slow subscriber reads them. The next time that subscriber calls `recv()`, it gets `Err(RecvError::Lagged(n))` where `n` is the number of messages that were dropped. This is not a crash, but it means the subscriber missed data. If missing messages is unacceptable, increase the buffer size, add backpressure, or switch to `mpsc` with per-subscriber channels.
 
-**`watch` channel: holding a borrow across an `.await`.** `rx.borrow()` returns a reference to the current value inside the watch channel. That borrow holds a read lock on the channel's internal state. If you hold that borrow across an `.await` point, the lock is held while the task is suspended. During that time, the sender cannot update the value — `tx.send()` will block or return an error. The fix is simple: grab the value you need, drop the borrow immediately, then do your async work with the extracted value rather than the live reference.
+**`watch` channel: holding a borrow across an `.await`.** `rx.borrow()` returns a reference to the current value inside the watch channel. That borrow holds a read lock on the channel's internal state. If you hold that borrow across an `.await` point, the lock is held while the task is suspended. During that time, the sender cannot update the value - `tx.send()` will block or return an error. The fix is simple: grab the value you need, drop the borrow immediately, then do your async work with the extracted value rather than the live reference.

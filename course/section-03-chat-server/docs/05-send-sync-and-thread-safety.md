@@ -1,6 +1,6 @@
-# Doc 05 — Send, Sync, and Thread Safety
+# Doc 05 - Send, Sync, and Thread Safety
 
-🔴 This is where C developers hit a wall — and then realize it's actually a net.
+🔴 This is where C developers hit a wall - and then realize it's actually a net.
 
 If you're building the chat server and you tried to share an `Rc<RefCell<Vec<TcpStream>>>` across threads, you've already seen the error. The compiler stopped you from writing a data race. This doc explains exactly what happened, why, and how the type system provides thread-safety guarantees that C can't.
 
@@ -17,7 +17,7 @@ int sensor_buf[64];
 int buf_index = 0;
 
 void sensor_irq_handler(void) {
-    /* WRONG: forgot to lock — race condition */
+    /* WRONG: forgot to lock - race condition */
     sensor_buf[buf_index++] = read_sensor();
 }
 
@@ -58,7 +58,7 @@ This is structural. You don't annotate it. Adding a single `Rc<T>` field to a st
 
 ## Why `Rc<T>` is `!Send`
 
-`Rc<T>` is a reference-counted pointer. The reference count is a plain `usize` — **not atomic**. If two threads both try to clone or drop an `Rc` simultaneously, the non-atomic increment/decrement creates a data race.
+`Rc<T>` is a reference-counted pointer. The reference count is a plain `usize` - **not atomic**. If two threads both try to clone or drop an `Rc` simultaneously, the non-atomic increment/decrement creates a data race.
 
 The compiler knows this because `Rc`'s source code explicitly marks it:
 
@@ -96,12 +96,12 @@ use std::sync::Arc;
 let clients = Arc::new(vec![]);         // Arc is Send
 let clients_clone = Arc::clone(&clients);
 
-std::thread::spawn(move || {            // Works — Arc is Send
+std::thread::spawn(move || {            // Works - Arc is Send
     println!("{}", clients_clone.len());
 });
 ```
 
-But `Arc<Vec<TcpStream>>` alone is not enough for mutable shared state — multiple threads can't all call `.push()` at the same time. You need `Arc<Mutex<T>>`:
+But `Arc<Vec<TcpStream>>` alone is not enough for mutable shared state - multiple threads can't all call `.push()` at the same time. You need `Arc<Mutex<T>>`:
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -120,7 +120,7 @@ std::thread::spawn(move || {
 });
 ```
 
-The key insight: `Mutex<T>` makes it **structurally impossible** to access the inner `T` without holding the lock. You call `.lock()`, you get a `MutexGuard`. The `MutexGuard` implements `DerefMut` to `&mut T`. When the guard drops (at the end of the scope), the lock releases. There's no way to forget to unlock — the lock releases automatically when the guard goes out of scope.
+The key insight: `Mutex<T>` makes it **structurally impossible** to access the inner `T` without holding the lock. You call `.lock()`, you get a `MutexGuard`. The `MutexGuard` implements `DerefMut` to `&mut T`. When the guard drops (at the end of the scope), the lock releases. There's no way to forget to unlock - the lock releases automatically when the guard goes out of scope.
 
 ---
 
@@ -128,7 +128,7 @@ The key insight: `Mutex<T>` makes it **structurally impossible** to access the i
 
 | Type | Send? | Sync? | Why |
 |------|:-----:|:-----:|-----|
-| `i32`, `u64`, `bool`, `f64` | ✅ | ✅ | Primitives — no pointers, no shared state |
+| `i32`, `u64`, `bool`, `f64` | ✅ | ✅ | Primitives - no pointers, no shared state |
 | `String`, `Vec<T>` (if T: Send) | ✅ | ✅ | Owned, heap-allocated, no interior mutability |
 | `Arc<T>` (if T: Send + Sync) | ✅ | ✅ | Atomic reference counting |
 | `Mutex<T>` (if T: Send) | ✅ | ✅ | Serializes all access |
@@ -136,7 +136,7 @@ The key insight: `Mutex<T>` makes it **structurally impossible** to access the i
 | `Cell<T>` | ✅ | ❌ | Can mutate through shared ref, but not atomic |
 | `RefCell<T>` | ✅ | ❌ | Runtime borrow checking, not atomic |
 | `Rc<T>` | ❌ | ❌ | Non-atomic reference count |
-| `*const T`, `*mut T` | ❌ | ❌ | Raw pointers — no safety guarantees |
+| `*const T`, `*mut T` | ❌ | ❌ | Raw pointers - no safety guarantees |
 
 The ❌ entries are compile-time restrictions, not runtime checks.
 
@@ -144,7 +144,7 @@ The ❌ entries are compile-time restrictions, not runtime checks.
 
 ## Why `Mutex<T>` Makes `T: !Sync` Safe to Share
 
-`RefCell<T>` is `!Sync` — you can't share a `&RefCell<T>` across threads. But `Mutex<RefCell<T>>` IS `Sync`. Why?
+`RefCell<T>` is `!Sync` - you can't share a `&RefCell<T>` across threads. But `Mutex<RefCell<T>>` IS `Sync`. Why?
 
 Because `Mutex` adds the missing synchronization. The compiler knows:
 - `Mutex<T>: Sync` if `T: Send`
@@ -188,10 +188,10 @@ The fix: move ownership into the thread instead of borrowing:
 ```rust
 let data = vec![1, 2, 3];
 
-thread::spawn(move || {          // Works — data is moved, not borrowed
+thread::spawn(move || {          // Works - data is moved, not borrowed
     println!("{}", data[0]);
 });
-// Note: data is gone from this scope — it was moved
+// Note: data is gone from this scope - it was moved
 ```
 
 ---
@@ -229,7 +229,7 @@ fn handle_client(stream: TcpStream, clients: ClientList) {
         }
     }
 
-    // Client disconnected — remove from list
+    // Client disconnected - remove from list
     let mut guard = clients.lock().unwrap();
     guard.retain(|c| c.peer_addr().map(|a| a != peer).unwrap_or(false));
 }
@@ -304,7 +304,7 @@ unsafe impl Send for LibraryContext {}
 unsafe impl Sync for LibraryContext {}
 ```
 
-The `unsafe` keyword here means: **you** are making a promise the compiler can't verify. You must uphold it. If you lie, you get undefined behavior — the same as C, but explicitly opted into rather than silently fallen into.
+The `unsafe` keyword here means: **you** are making a promise the compiler can't verify. You must uphold it. If you lie, you get undefined behavior - the same as C, but explicitly opted into rather than silently fallen into.
 
 This is rare. The standard approach is to use `Arc<Mutex<T>>` and let the compiler handle it.
 
@@ -330,20 +330,20 @@ Understanding `Send` now makes that error instantly recognizable when you hit it
 ## How It Breaks
 
 **`unwrap()` on a poisoned mutex causing a second panic.**
-If a mutex is poisoned and you `.unwrap()` the `lock()` result, you get a second panic. In a multi-threaded server, this can cascade — one panic poisons the mutex, every subsequent access panics. Consider handling the `Err` case with `.unwrap_or_else(|e| e.into_inner())` if you want to continue.
+If a mutex is poisoned and you `.unwrap()` the `lock()` result, you get a second panic. In a multi-threaded server, this can cascade - one panic poisons the mutex, every subsequent access panics. Consider handling the `Err` case with `.unwrap_or_else(|e| e.into_inner())` if you want to continue.
 
 **Holding a `MutexGuard` across an `await` point.**
 `MutexGuard` is `!Send`. If you hold a guard and then `.await` something, the future becomes `!Send` and can't be spawned on a multi-threaded runtime. Solution: structure your code so the guard is dropped before the `.await`:
 
 ```rust
-// Wrong — guard held across await
+// Wrong - guard held across await
 async fn bad(data: Arc<Mutex<Vec<u8>>>) {
     let guard = data.lock().unwrap();
-    some_async_operation().await;  // guard is still alive here — !Send
+    some_async_operation().await;  // guard is still alive here - !Send
     println!("{}", guard.len());
 }
 
-// Correct — clone or extract what you need, drop the guard before await
+// Correct - clone or extract what you need, drop the guard before await
 async fn good(data: Arc<Mutex<Vec<u8>>>) {
     let len = {
         let guard = data.lock().unwrap();
@@ -360,7 +360,7 @@ Rust's `Mutex` is not reentrant. If a thread calls `.lock()` while already holdi
 ```rust
 let data = Mutex::new(vec![]);
 let guard1 = data.lock().unwrap();
-let guard2 = data.lock().unwrap();  // DEADLOCK — waiting for guard1 to release
+let guard2 = data.lock().unwrap();  // DEADLOCK - waiting for guard1 to release
 ```
 
 Structure your code to hold locks for the shortest possible time and never call a function that might lock the same mutex while you're holding it.

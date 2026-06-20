@@ -1,8 +1,8 @@
-# Doc 09 — Rust Idioms and Best Practices
+# Doc 09 - Rust Idioms and Best Practices
 
 🟢 The section 06 idioms are where async, systems, and type discipline intersect.
 
-The music queue is the most complex project yet: it has async WebSocket connections, Redis message streams, JWT authentication, connection pooling, graceful shutdown, rate limiting, and now single-use type guarantees. This doc names the patterns that made it work — the idioms that experienced async Rust developers apply instinctively.
+The music queue is the most complex project yet: it has async WebSocket connections, Redis message streams, JWT authentication, connection pooling, graceful shutdown, rate limiting, and now single-use type guarantees. This doc names the patterns that made it work - the idioms that experienced async Rust developers apply instinctively.
 
 ---
 
@@ -13,13 +13,13 @@ The single most important rule in async Rust: **never call a blocking operation 
 The async runtime expects every task to yield back to the executor quickly (within microseconds). If a task blocks (sleeping, waiting on I/O with sync primitives, doing heavy computation), it starves every other task on that worker thread:
 
 ```rust
-// WRONG — blocks the Tokio thread, starves all other tasks on this worker
+// WRONG - blocks the Tokio thread, starves all other tasks on this worker
 async fn hash_password(password: &str) -> String {
-    // bcrypt is intentionally slow (that's the point) — 100-300ms of CPU
+    // bcrypt is intentionally slow (that's the point) - 100-300ms of CPU
     bcrypt::hash(password, 12).unwrap()
 }
 
-// CORRECT — moves the blocking work to a dedicated thread pool
+// CORRECT - moves the blocking work to a dedicated thread pool
 async fn hash_password(password: &str) -> Result<String, Error> {
     let password = password.to_owned();
     tokio::task::spawn_blocking(move || {
@@ -74,7 +74,7 @@ impl AppState {
     }
 }
 
-// Each task gets a clone of AppState — cheap (just clones the Arc pointers)
+// Each task gets a clone of AppState - cheap (just clones the Arc pointers)
 async fn start_all_workers(state: AppState, shutdown: watch::Receiver<bool>) {
     let state2 = state.clone();
     let state3 = state.clone();
@@ -85,7 +85,7 @@ async fn start_all_workers(state: AppState, shutdown: watch::Receiver<bool>) {
 }
 ```
 
-The `#[derive(Clone)]` on `AppState` derives `Clone` automatically because every field is `Arc<T>`. Cloning `AppState` is cheap — it just increments reference counts on the inner `Arc`s.
+The `#[derive(Clone)]` on `AppState` derives `Clone` automatically because every field is `Arc<T>`. Cloning `AppState` is cheap - it just increments reference counts on the inner `Arc`s.
 
 ---
 
@@ -142,10 +142,10 @@ config_tx.send(new_config)?;
 `tokio::select!` is powerful but has subtle cancellation behavior (doc 08 of section 04 covers this). Apply it at clean logical boundaries:
 
 ```rust
-// GOOD: select! at the top of the event loop — all state is consistent here
+// GOOD: select! at the top of the event loop - all state is consistent here
 loop {
     tokio::select! {
-        biased;  // Check shutdown first — highest priority
+        biased;  // Check shutdown first - highest priority
 
         _ = shutdown.changed() => {
             if *shutdown.borrow() { break; }
@@ -170,7 +170,7 @@ async fn update_queue(db: &Db, queue_id: i64, track: Track) {
             tx.commit().await.unwrap();
         }
         _ = shutdown.changed() => {
-            // tx rolls back via Drop — this is correct for the DB
+            // tx rolls back via Drop - this is correct for the DB
             // but the caller has no way to know the state changed
         }
     }
@@ -225,7 +225,7 @@ futures::future::join_all(tasks).await;
 
 ## Clone the Minimum, Move What You Can
 
-In async code, closures passed to `tokio::spawn` must be `'static`. This means you can't capture references — you must either own the data or clone it before the spawn:
+In async code, closures passed to `tokio::spawn` must be `'static`. This means you can't capture references - you must either own the data or clone it before the spawn:
 
 ```rust
 // Pattern: clone only what the task needs, before spawning
@@ -240,7 +240,7 @@ async fn spawn_track_fetch(
         let tx = result_tx.clone();              // clone the sender (cheap)
         
         tokio::spawn(async move {
-            // client and tx are owned by this task — no shared reference
+            // client and tx are owned by this task - no shared reference
             if let Ok(metadata) = fetch_metadata(&client, track_id).await {
                 let _ = tx.send(metadata).await;
             }
@@ -249,7 +249,7 @@ async fn spawn_track_fetch(
 }
 ```
 
-**Clone `Arc`s, not the data behind them.** Cloning an `Arc<T>` is an atomic reference count increment — nanoseconds. Cloning the `T` itself might be expensive (a `Vec`, a connection pool, a large config struct). Always clone the `Arc`, never the underlying data.
+**Clone `Arc`s, not the data behind them.** Cloning an `Arc<T>` is an atomic reference count increment - nanoseconds. Cloning the `T` itself might be expensive (a `Vec`, a connection pool, a large config struct). Always clone the `Arc`, never the underlying data.
 
 ---
 
@@ -297,13 +297,13 @@ async fn test_websocket_receives_queue_updates() {
 }
 ```
 
-For tests that need a real timeout (not infinite wait), always use `tokio::time::timeout`. A hanging test is worse than a failing test — it blocks the entire CI run.
+For tests that need a real timeout (not infinite wait), always use `tokio::time::timeout`. A hanging test is worse than a failing test - it blocks the entire CI run.
 
 ---
 
 ## Structured Logging in Async Code
 
-In multi-task async services, `println!` is not enough — you need to know **which task** logged each message. The `tracing` crate handles this:
+In multi-task async services, `println!` is not enough - you need to know **which task** logged each message. The `tracing` crate handles this:
 
 ```toml
 [dependencies]
@@ -361,15 +361,15 @@ With `tracing`, you get:
 
 Before marking the music queue project complete:
 
-- [ ] No blocking operations on async tasks — bcrypt and heavy computation use `spawn_blocking`
-- [ ] Shutdown propagated via `watch::channel` — all tasks check it in their event loops
-- [ ] Channel types chosen deliberately — `mpsc` for work queues, `broadcast` for WebSocket events, `watch` for config
-- [ ] `Arc<T>` for shared state — not globals, not thread-local statics
+- [ ] No blocking operations on async tasks - bcrypt and heavy computation use `spawn_blocking`
+- [ ] Shutdown propagated via `watch::channel` - all tasks check it in their event loops
+- [ ] Channel types chosen deliberately - `mpsc` for work queues, `broadcast` for WebSocket events, `watch` for config
+- [ ] `Arc<T>` for shared state - not globals, not thread-local statics
 - [ ] Single-use session tokens enforce one-connection-per-token at compile time
-- [ ] Message acknowledgments are single-use — `PendingMessage` moves to `ack()` or `nack()`
-- [ ] `#[tokio::test]` for all async tests — with `timeout` wrappers where infinite wait is possible
-- [ ] `tracing` for structured logging — not `println!` in async handlers
-- [ ] `JoinSet` manages WebSocket connection lifetimes — cleans up on disconnect and on shutdown
-- [ ] `tokio::select!` only at top-level event loop boundaries — not inside multi-step operations
+- [ ] Message acknowledgments are single-use - `PendingMessage` moves to `ack()` or `nack()`
+- [ ] `#[tokio::test]` for all async tests - with `timeout` wrappers where infinite wait is possible
+- [ ] `tracing` for structured logging - not `println!` in async handlers
+- [ ] `JoinSet` manages WebSocket connection lifetimes - cleans up on disconnect and on shutdown
+- [ ] `tokio::select!` only at top-level event loop boundaries - not inside multi-step operations
 
 These aren't arbitrary rules. Each one exists because the alternative causes a class of bugs: blocking hangs the runtime, missing shutdown makes deployments painful, wrong channel causes data loss, globals make testing hard, and so on. The idioms encode hard-won operational experience into patterns that are easy to check and verify.

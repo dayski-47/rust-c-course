@@ -1,4 +1,4 @@
-# Doc 02 — Streams, AsyncRead, and AsyncWrite
+# Doc 02 - Streams, AsyncRead, and AsyncWrite
 
 🟡 A TCP connection is a byte stream. The client sends bytes; you read them,
 interpret them as protocol frames, and act on each frame. The question is: what
@@ -9,7 +9,7 @@ abstractions handle this well in async Rust? This doc covers `AsyncRead`,
 
 ## The Fundamental Problem: Bytes vs Frames
 
-TCP is a stream protocol — it delivers a sequence of bytes with no inherent message
+TCP is a stream protocol - it delivers a sequence of bytes with no inherent message
 boundaries. When your client sends two frames back-to-back, they might arrive as:
 - Two separate `read()` calls (one frame each)
 - One `read()` call containing both frames
@@ -19,7 +19,7 @@ boundaries. When your client sends two frames back-to-back, they might arrive as
 bugs live:
 
 ```c
-// Naive C — will silently fail on partial reads
+// Naive C - will silently fail on partial reads
 ssize_t n = read(fd, buf, sizeof(buf));
 process_frame(buf, n);  // WRONG: n might be 7, not 16
 
@@ -35,7 +35,7 @@ uint32_t payload_len = ntohl(*(uint32_t*)(buf + 4));
 ```
 
 Rust's async ecosystem solves this with `BufReader`, `AsyncReadExt`, and most
-importantly `tokio_util::codec` — a battle-tested framing abstraction.
+importantly `tokio_util::codec` - a battle-tested framing abstraction.
 
 ---
 
@@ -58,17 +58,17 @@ The foundation is two traits from `tokio::io`:
 ```rust
 // Conceptual shapes (simplified)
 trait AsyncRead {
-    // Poll::Ready(Ok(())) — data written into buf
-    // Poll::Pending        — no data yet; this task will be woken when data arrives
-    // Poll::Ready(Err(e)) — connection error
+    // Poll::Ready(Ok(())) - data written into buf
+    // Poll::Pending        - no data yet; this task will be woken when data arrives
+    // Poll::Ready(Err(e)) - connection error
     fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>)
         -> Poll<io::Result<()>>;
 }
 
 trait AsyncWrite {
-    // Poll::Ready(Ok(n))  — n bytes written (may be less than buf.len())
-    // Poll::Pending        — write buffer full; wake when drained
-    // Poll::Ready(Err(e)) — connection error
+    // Poll::Ready(Ok(n))  - n bytes written (may be less than buf.len())
+    // Poll::Pending        - write buffer full; wake when drained
+    // Poll::Ready(Err(e)) - connection error
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8])
         -> Poll<io::Result<usize>>;
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>>;
@@ -143,7 +143,7 @@ async fn handle_connection(stream: TcpStream) {
 ```
 
 `into_split()` splits the TCP stream into independent read and write halves. This
-lets you read and write concurrently — two async tasks or two sides of a `select!`.
+lets you read and write concurrently - two async tasks or two sides of a `select!`.
 
 ---
 
@@ -194,12 +194,12 @@ impl Decoder for NexusCodec {
         let total_len = 16 + payload_len;
 
         if src.len() < total_len {
-            // Not enough data yet — tell the codec framework to reserve more space
+            // Not enough data yet - tell the codec framework to reserve more space
             src.reserve(total_len - src.len());
             return Ok(None);
         }
 
-        // We have a complete frame — consume the bytes
+        // We have a complete frame - consume the bytes
         let frame_bytes: Bytes = src.split_to(total_len).freeze();
 
         let sequence_id = u64::from_be_bytes(frame_bytes[8..16].try_into().unwrap());
@@ -258,7 +258,7 @@ async fn handle_connection(stream: TcpStream) {
     while let Some(result) = framed.next().await {
         match result {
             Ok(frame) => {
-                // Frame is fully parsed — handle it
+                // Frame is fully parsed - handle it
                 handle_frame(&mut framed, frame).await;
             }
             Err(ProtocolError::PayloadTooLarge { .. }) => {
@@ -279,7 +279,7 @@ async fn handle_connection(stream: TcpStream) {
 from the stream, runs them through `decode()`, and returns a complete `Frame` when
 enough bytes are available. `framed.send(frame).await` encodes and writes.
 
-**The key insight**: you wrote `decode()` once. The framework handles the rest —
+**The key insight**: you wrote `decode()` once. The framework handles the rest -
 buffering, partial reads, backpressure. This is the same abstraction that hyper,
 tonic, and tokio-postgres use internally.
 
@@ -308,14 +308,14 @@ The three possible results from `poll_next`:
 
 | Result | Meaning |
 |--------|---------|
-| `Poll::Ready(Some(item))` | An item is available — process it |
-| `Poll::Pending` | No item yet — suspend the task, reschedule when the source has data |
-| `Poll::Ready(None)` | Stream is exhausted — no more items will ever be produced |
+| `Poll::Ready(Some(item))` | An item is available - process it |
+| `Poll::Pending` | No item yet - suspend the task, reschedule when the source has data |
+| `Poll::Ready(None)` | Stream is exhausted - no more items will ever be produced |
 
-The `None` case is how `Framed` signals a clean TCP disconnect — the stream ends,
+The `None` case is how `Framed` signals a clean TCP disconnect - the stream ends,
 and the connection loop exits.
 
-`Stream` yields items asynchronously — each call to `poll_next` either returns a
+`Stream` yields items asynchronously - each call to `poll_next` either returns a
 value, says "not ready yet" (and schedules a wakeup), or ends the stream.
 
 ### StreamExt: The Stream Combinators
@@ -390,7 +390,7 @@ fn messages_for_subscriber(
 
 This is the async equivalent of a generator function. The `yield` keyword suspends
 the generator and produces a value. The `while let` loop ends when the channel
-closes — the stream ends naturally.
+closes - the stream ends naturally.
 
 In the connection handler, merge the incoming frame stream with the subscriber
 message stream:
@@ -428,7 +428,7 @@ async fn active_connection_loop(
 ```
 
 `select!` polls both futures concurrently and acts on whichever is ready first. This
-is the correct way to "fan-in" multiple async event sources — no busy-waiting,
+is the correct way to "fan-in" multiple async event sources - no busy-waiting,
 no polling interval.
 
 ---
@@ -454,12 +454,12 @@ impl TopicSubscriber {
 
     /// Returns false if the subscriber is slow or disconnected.
     pub fn try_deliver(&self, seq: u64, payload: Bytes) -> bool {
-        // try_send doesn't wait — returns Err if the channel is full
+        // try_send doesn't wait - returns Err if the channel is full
         match self.tx.try_send((seq, payload)) {
             Ok(()) => true,
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-                // Subscriber is slow — could drop the message or disconnect them
-                tracing::warn!("Subscriber channel full — dropping message");
+                // Subscriber is slow - could drop the message or disconnect them
+                tracing::warn!("Subscriber channel full - dropping message");
                 false
             }
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
@@ -471,7 +471,7 @@ impl TopicSubscriber {
 }
 ```
 
-`try_send` is non-blocking — if the channel is full, the message is dropped (or the
+`try_send` is non-blocking - if the channel is full, the message is dropped (or the
 subscriber is disconnected). `send().await` would block the publisher, which could
 cascade into blocking all publishers waiting for slow subscribers.
 
@@ -482,13 +482,13 @@ capacity can burst; a subscriber with 10-message capacity is tightly flow-contro
 
 | Situation | Use |
 |-----------|-----|
-| Publisher cannot afford to wait (broadcast router) | `try_send` — drop or disconnect slow subscribers |
-| Publisher must deliver every message (reliable queue) | `send().await` — apply backpressure to the sender |
+| Publisher cannot afford to wait (broadcast router) | `try_send` - drop or disconnect slow subscribers |
+| Publisher must deliver every message (reliable queue) | `send().await` - apply backpressure to the sender |
 | Checking capacity without committing | `sender.capacity()` before `try_send` |
 
 In nexus, the router uses `try_send`: one slow subscriber should not block messages
 to all other subscribers on the same topic. For durable delivery (guaranteed
-delivery queues), the architecture requires a different design — bounded `send().await`
+delivery queues), the architecture requires a different design - bounded `send().await`
 with the publisher as the flow-controlled party.
 
 ---
@@ -528,7 +528,7 @@ async fn handle_connection(stream: TcpStream) {
 }
 ```
 
-This is the "split actor" pattern — one task owns the read half, one owns the write
+This is the "split actor" pattern - one task owns the read half, one owns the write
 half. They communicate via an `mpsc` channel. The channel provides backpressure on
 writes.
 
@@ -576,7 +576,7 @@ is the `Err` branch. The difference is that in Rust, this logic is written once 
 
 ## Exercises
 
-**Exercise 1 — Implement NexusCodec**
+**Exercise 1 - Implement NexusCodec**
 
 Implement `Decoder for NexusCodec` so that:
 - `decode()` returns `Ok(None)` when fewer than 16 bytes are available
@@ -588,14 +588,14 @@ Write a unit test that encodes a frame with the `Encoder` impl, then decodes it 
 three separate `decode()` calls (to simulate partial reads): 5 bytes, 11 bytes, and
 then the payload bytes.
 
-**Exercise 2 — Timeout on Idle Connections**
+**Exercise 2 - Timeout on Idle Connections**
 
 Add an inactivity timeout to the connection frame stream. Using `tokio_stream::StreamExt::timeout`,
 wrap `framed.next()` so that connections that send no frames in 30 seconds receive
 a `DISCONNECT` frame and are closed. Write a test using `tokio::time::pause()` and
 `tokio::time::advance()` to simulate the 30-second timeout without waiting.
 
-**Exercise 3 — Split Reader/Writer**
+**Exercise 3 - Split Reader/Writer**
 
 Refactor `handle_connection` to use `framed.split()` so:
 - A reader task processes incoming frames and sends messages to a channel
@@ -609,10 +609,10 @@ block the reader from receiving new frames.
 
 ## Checklist
 
-- [ ] All TCP reading uses `BufReader` or a codec — no manual partial-read loops
+- [ ] All TCP reading uses `BufReader` or a codec - no manual partial-read loops
 - [ ] `Framed` + codec for all protocol parsing
 - [ ] `into_split()` when reading and writing happen in separate tasks
-- [ ] Bounded `mpsc` channels for backpressure — never `unbounded()`
+- [ ] Bounded `mpsc` channels for backpressure - never `unbounded()`
 - [ ] `try_send` for non-blocking delivery to slow subscribers
 - [ ] `select!` to fan-in multiple event sources (incoming frames + outgoing messages)
 - [ ] `StreamExt::timeout` on the outer frame stream to detect idle connections

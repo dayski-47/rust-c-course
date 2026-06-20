@@ -1,4 +1,4 @@
-# 03 — Memory-Mapped Files and Zero-Copy I/O
+# 03 - Memory-Mapped Files and Zero-Copy I/O
 
 > **Difficulty:** 🟡 think about it  
 > **You'll learn:** How `mmap` works at the OS level, the `memmap2` crate, zero-copy
@@ -16,7 +16,7 @@ per read.
 Memory-mapped I/O is different. The OS maps a region of the file into your process's
 virtual address space. When you access `mmap[i]`, if the page isn't in RAM yet, a
 page fault fires, the OS loads that page from disk into the page cache, and execution
-resumes — transparently. No explicit read call. The data is just *there*, at a memory
+resumes - transparently. No explicit read call. The data is just *there*, at a memory
 address.
 
 ```text
@@ -41,7 +41,7 @@ seeking to a record is just pointer arithmetic. No lseek + read pair per lookup.
 memmap2 = "0.9"
 ```
 
-Basic usage — mapping a file read-only:
+Basic usage - mapping a file read-only:
 
 ```rust
 use memmap2::Mmap;
@@ -59,15 +59,15 @@ fn read_file_with_mmap(path: &str) -> std::io::Result<()> {
     println!("File size: {} bytes", mmap.len());
     println!("First 4 bytes: {:?}", &mmap[..4]);
 
-    // Access any byte by index — no syscall
+    // Access any byte by index - no syscall
     let byte_at_1000 = mmap[1000];
 
-    // Get a slice from the middle of the file — zero copy
+    // Get a slice from the middle of the file - zero copy
     let chunk = &mmap[512..1024];
 
     Ok(())
 }
-// mmap is dropped here — the OS unmaps the region
+// mmap is dropped here - the OS unmaps the region
 ```
 
 Writing with `MmapMut`:
@@ -119,7 +119,7 @@ your parsed struct internally inconsistent.
 **2. File truncation causes SIGBUS.** If the file is truncated while mapped, and you
 access a page that no longer has backing disk space, the OS sends `SIGBUS` to your
 process. This terminates the process by default and cannot be caught as a Rust error.
-No `Result`, no panic — just death.
+No `Result`, no panic - just death.
 
 The `unsafe` is there to force you to acknowledge these conditions and document what
 you are guaranteeing about the file's lifetime and stability.
@@ -134,7 +134,7 @@ That is sufficient to make `Mmap::map` sound.
 Once you have a `Mmap`, you have `&[u8]` pointing directly into the file. The next
 step is interpreting those bytes as typed structures. Here is where performance lives.
 
-**The unsafe way (transmute) — do not do this:**
+**The unsafe way (transmute) - do not do this:**
 
 ```rust
 // EXTREMELY DANGEROUS. Do not do this.
@@ -145,7 +145,7 @@ let header: FileHeader = unsafe {
 // If the file data is malicious or corrupt, this reads garbage as a Header.
 ```
 
-**The safe way — bytemuck:**
+**The safe way - bytemuck:**
 
 ```toml
 bytemuck = { version = "1", features = ["derive"] }
@@ -194,7 +194,7 @@ the mapped file page.
 ## Iterating Through Records
 
 After parsing the header, you need to walk the data section reading records. The
-pattern is a cursor — track your current offset and advance it:
+pattern is a cursor - track your current offset and advance it:
 
 ```rust
 fn rebuild_index(mmap: &Mmap, header: &FileHeader) -> BTreeMap<Vec<u8>, (u64, u32)> {
@@ -213,11 +213,11 @@ fn rebuild_index(mmap: &Mmap, header: &FileHeader) -> BTreeMap<Vec<u8>, (u64, u3
         offset += key_len;
 
         if value_len == u32::MAX {
-            // Tombstone: deleted key — remove from index
+            // Tombstone: deleted key - remove from index
             index.remove(&key);
         } else {
             // Live record: insert into index
-            // Store (data_offset, value_len) — data_offset points to the value bytes
+            // Store (data_offset, value_len) - data_offset points to the value bytes
             index.insert(key, (offset as u64, value_len));
         }
 
@@ -247,7 +247,7 @@ bytes = "1"
 use bytes::Bytes;
 
 // Bytes is reference-counted, like Arc<[u8]>.
-// Clone is O(1) — increments a refcount, does not copy data.
+// Clone is O(1) - increments a refcount, does not copy data.
 let data = Bytes::from(vec![1u8, 2, 3, 4, 5, 6, 7, 8]);
 
 let header = data.slice(0..4);   // Bytes pointing into the same buffer
@@ -255,7 +255,7 @@ let payload = data.slice(4..8);  // Another view, same allocation
 
 // Both header and payload are valid; data can be dropped
 drop(data);
-// header and payload still valid — refcount was 3, now 2
+// header and payload still valid - refcount was 3, now 2
 println!("{:?}", header);   // [1, 2, 3, 4]
 println!("{:?}", payload);  // [5, 6, 7, 8]
 ```

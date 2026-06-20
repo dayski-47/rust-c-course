@@ -1,10 +1,10 @@
-# Doc 08 — Single-Use Types and Move as Proof
+# Doc 08 - Single-Use Types and Move as Proof
 
 🟡 This is Rust's ownership system used as a correctness tool, not just a memory tool.
 
 Every Rust developer learns that ownership prevents memory bugs: no dangling pointers, no double-frees. But ownership does something more interesting that most developers miss: it can **prove behavioral constraints** at compile time.
 
-If a type is `!Clone` and `!Copy`, it can only be used **once**. When you pass it to a function, it's gone. The compiler prevents you from using it again — not at runtime, not as a defensive check, not through a lock: at **compile time, before the program runs**.
+If a type is `!Clone` and `!Copy`, it can only be used **once**. When you pass it to a function, it's gone. The compiler prevents you from using it again - not at runtime, not as a defensive check, not through a lock: at **compile time, before the program runs**.
 
 This is a linear type system. Rust has one built into the language. This doc shows how to use it to enforce "this must happen exactly once" properties in the music queue.
 
@@ -14,10 +14,10 @@ This is a linear type system. Rust has one built into the language. This doc sho
 
 The music queue interacts with several single-use resources:
 
-- **WebSocket session tokens** — a handshake token must be consumed to establish a session; using it twice would establish two sessions with the same identity
-- **Message delivery receipts** — acknowledging a message twice in a message broker causes duplicate processing
-- **Transaction handles** — a database transaction can be committed or rolled back, but not both
-- **One-time event triggers** — "start playback" for a new queue should only fire once per queue creation
+- **WebSocket session tokens** - a handshake token must be consumed to establish a session; using it twice would establish two sessions with the same identity
+- **Message delivery receipts** - acknowledging a message twice in a message broker causes duplicate processing
+- **Transaction handles** - a database transaction can be committed or rolled back, but not both
+- **One-time event triggers** - "start playback" for a new queue should only fire once per queue creation
 
 In C, these are "documented" constraints:
 
@@ -26,7 +26,7 @@ In C, these are "documented" constraints:
 void start_queue_playback(QueueContext *ctx);
 ```
 
-Nothing prevents you from calling it twice. The second call might start a duplicate stream, corrupt the playback position, or crash — depending on what `start_queue_playback` happens to do with already-initialized state.
+Nothing prevents you from calling it twice. The second call might start a duplicate stream, corrupt the playback position, or crash - depending on what `start_queue_playback` happens to do with already-initialized state.
 
 ---
 
@@ -38,11 +38,11 @@ Rust's ownership rules create a linear type system: a value can be consumed exac
 struct SessionToken {
     token_id: uuid::Uuid,
     user_id: i64,
-    // NOT Clone, NOT Copy — deliberate
+    // NOT Clone, NOT Copy - deliberate
 }
 
 fn establish_websocket_session(token: SessionToken, ws: WebSocket) -> ActiveSession {
-    // token is moved here — consumed
+    // token is moved here - consumed
     ActiveSession {
         user_id: token.user_id,
         ws,
@@ -59,19 +59,19 @@ fn bad_code() {
 }
 ```
 
-The compiler proves nonce reuse is impossible — not by checking at runtime, but by making it a type error.
+The compiler proves nonce reuse is impossible - not by checking at runtime, but by making it a type error.
 
 ---
 
 ## Case Study: One-Time Queue Start Token
 
-The music queue server creates a `QueueSession` when a user starts listening. The first HTTP request authenticates the user and creates a session token. That token — consumed exactly once — initializes the WebSocket connection. If someone tries to reuse the token (replay attack, client bug), the compiler prevents it:
+The music queue server creates a `QueueSession` when a user starts listening. The first HTTP request authenticates the user and creates a session token. That token - consumed exactly once - initializes the WebSocket connection. If someone tries to reuse the token (replay attack, client bug), the compiler prevents it:
 
 ```rust
 use uuid::Uuid;
 
 /// A one-time-use token for establishing a WebSocket music queue session.
-/// Not Clone, not Copy — can be used exactly once.
+/// Not Clone, not Copy - can be used exactly once.
 pub struct QueueSessionToken {
     pub token_id: Uuid,
     pub user_id: i64,
@@ -87,7 +87,7 @@ pub struct ActiveQueueSession {
 }
 
 /// Upgrade from a session token to an active session.
-/// Consumes the token — it cannot be used again.
+/// Consumes the token - it cannot be used again.
 pub fn upgrade_to_session(
     token: QueueSessionToken,  // moved, not borrowed
     ws: WebSocket,
@@ -103,7 +103,7 @@ pub fn upgrade_to_session(
         queue_id: token.queue_id,
         connection_id: Uuid::new_v4(),
     })
-    // token is gone — using it again would be a compile error
+    // token is gone - using it again would be a compile error
 }
 ```
 
@@ -115,7 +115,7 @@ Message queues (Redis Streams, RabbitMQ, Kafka) require you to acknowledge each 
 
 ```rust
 /// A Redis Streams message waiting to be processed.
-/// Not Clone — the acknowledgment can only happen once.
+/// Not Clone - the acknowledgment can only happen once.
 pub struct PendingMessage {
     pub stream_key: String,
     pub message_id: String,  // Redis message ID (e.g., "1234567890-0")
@@ -124,7 +124,7 @@ pub struct PendingMessage {
 }
 
 impl PendingMessage {
-    /// Acknowledge this message — consumes the token, prevents double-ack.
+    /// Acknowledge this message - consumes the token, prevents double-ack.
     pub async fn ack(self, redis: &mut redis::aio::Connection) -> Result<(), redis::RedisError> {
         redis::cmd("XACK")
             .arg(&self.stream_key)
@@ -132,11 +132,11 @@ impl PendingMessage {
             .arg(&self.message_id)
             .query_async(redis)
             .await
-        // self is consumed — this message can never be acked again
+        // self is consumed - this message can never be acked again
     }
 
     /// Reject this message (move it back to the pending list).
-    /// Also consumes — you can't reject and then ack.
+    /// Also consumes - you can't reject and then ack.
     pub async fn nack(self, redis: &mut redis::aio::Connection) -> Result<(), redis::RedisError> {
         // Move the message back to the head of the pending list
         redis::cmd("XCLAIM")
@@ -147,7 +147,7 @@ impl PendingMessage {
             .arg(&self.message_id)
             .query_async(redis)
             .await
-        // self is consumed — can't nack twice or ack after nacking
+        // self is consumed - can't nack twice or ack after nacking
     }
 }
 
@@ -165,7 +165,7 @@ async fn process_queue_event(msg: PendingMessage, db: &Pool) {
             msg.nack(&mut db.redis()).await.unwrap();  // msg is consumed
         }
     }
-    // After either branch, msg is gone — no double-ack possible
+    // After either branch, msg is gone - no double-ack possible
 }
 ```
 
@@ -173,11 +173,11 @@ async fn process_queue_event(msg: PendingMessage, db: &Pool) {
 
 ## Case Study: Database Transaction Handle
 
-A database transaction can be committed or rolled back, but not both — and not committed twice. The transaction handle as a single-use type enforces this:
+A database transaction can be committed or rolled back, but not both - and not committed twice. The transaction handle as a single-use type enforces this:
 
 ```rust
 /// A database transaction. Must be committed or rolled back exactly once.
-/// Not Clone — the commit or rollback action is non-repeatable.
+/// Not Clone - the commit or rollback action is non-repeatable.
 pub struct Transaction<'a> {
     conn: &'a mut sqlx::SqliteConnection,
     committed: bool,
@@ -189,7 +189,7 @@ impl<'a> Transaction<'a> {
         Ok(Transaction { conn, committed: false })
     }
 
-    /// Commit the transaction — consumes it, preventing double-commit or rollback.
+    /// Commit the transaction - consumes it, preventing double-commit or rollback.
     pub async fn commit(mut self) -> Result<(), sqlx::Error> {
         sqlx::query("COMMIT").execute(&mut *self.conn).await?;
         self.committed = true;
@@ -197,11 +197,11 @@ impl<'a> Transaction<'a> {
         // self is consumed
     }
 
-    /// Explicit rollback — also consumes the transaction.
+    /// Explicit rollback - also consumes the transaction.
     pub async fn rollback(self) -> Result<(), sqlx::Error> {
         sqlx::query("ROLLBACK").execute(&mut *self.conn).await?;
         Ok(())
-        // self is consumed — committed is still false, so Drop will NOT rollback again
+        // self is consumed - committed is still false, so Drop will NOT rollback again
     }
 
     /// Execute a query within the transaction
@@ -272,7 +272,7 @@ fn issue_token_and_ignore() {
 A single-use type only works if external code can't construct it directly (bypassing the validation that ensures the "exactly one" invariant). The `sealed` pattern prevents this:
 
 ```rust
-// In lib.rs or mod.rs — the type is public, but _sealed prevents outside construction
+// In lib.rs or mod.rs - the type is public, but _sealed prevents outside construction
 pub struct QueueSessionToken {
     pub token_id: Uuid,
     pub user_id: i64,
@@ -282,7 +282,7 @@ pub struct QueueSessionToken {
 }
 
 impl QueueSessionToken {
-    // The only constructor — validates before creating
+    // The only constructor - validates before creating
     pub(crate) fn issue(user_id: i64, queue_id: i64, ttl: std::time::Duration) -> Self {
         QueueSessionToken {
             token_id: Uuid::new_v4(),
@@ -337,7 +337,7 @@ establish_session(token);       // token consumed
 The single-use guarantee is on the **token**, not on the UUID inside it. If the server validates sessions by UUID, the attacker can still try to use the UUID directly. The type-level guarantee needs to be paired with server-side validation that a UUID is only valid once.
 
 **Ignoring the `#[must_use]` warning with `let _ =`.**
-`let _ = issue_token()` satisfies the compiler but means the token is immediately dropped — wasted. Make `#[must_use]` an error in your codebase by adding to `lib.rs`:
+`let _ = issue_token()` satisfies the compiler but means the token is immediately dropped - wasted. Make `#[must_use]` an error in your codebase by adding to `lib.rs`:
 ```rust
 #![deny(unused_must_use)]
 ```

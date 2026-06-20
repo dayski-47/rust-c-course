@@ -1,6 +1,6 @@
-# Doc 06 — Error Handling Patterns: thiserror and Friends
+# Doc 06 - Error Handling Patterns: thiserror and Friends
 
-You've been using `Result<T, E>` and `.unwrap()` since Section 1. `unwrap()` is fine for learning, and it's even fine for prototyping. But a TCP server that's handling multiple clients can't just panic when a client sends bad data — that would crash the whole server.
+You've been using `Result<T, E>` and `.unwrap()` since Section 1. `unwrap()` is fine for learning, and it's even fine for prototyping. But a TCP server that's handling multiple clients can't just panic when a client sends bad data - that would crash the whole server.
 
 This chapter teaches you how to define real error types, propagate them cleanly, and make decisions about what to crash on versus what to recover from.
 
@@ -44,7 +44,7 @@ In a real server you might get:
 - Your own error from invalid chat protocol
 - A lock poison error if a thread panics
 
-If each function returns a different error type, you can't use `?` to propagate across function boundaries — the types don't match. You need a single error type that can represent all of these.
+If each function returns a different error type, you can't use `?` to propagate across function boundaries - the types don't match. You need a single error type that can represent all of these.
 
 Without a crate, you'd write this yourself:
 ```rust
@@ -140,19 +140,19 @@ The `#[error("...")]` string supports field interpolation:
 ```rust
 #[derive(Error, Debug)]
 pub enum ChatError {
-    // Tuple struct — access fields by index: {0}, {1}
+    // Tuple struct - access fields by index: {0}, {1}
     #[error("connection refused: {0}")]
     Refused(String),
 
-    // Named fields — access by name
+    // Named fields - access by name
     #[error("user '{username}' not found in room '{room}'")]
     UserNotFound { username: String, room: String },
 
-    // {0} with #[from] — show the source error
+    // {0} with #[from] - show the source error
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    // #[error(transparent)] — delegate Display to the inner error completely
+    // #[error(transparent)] - delegate Display to the inner error completely
     // Use when you want to pass an error through without adding context
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -163,9 +163,9 @@ pub enum ChatError {
 
 ## anyhow: The Application Error Crate 🟡
 
-`thiserror` is for libraries — when you want callers to be able to match on specific error variants.
+`thiserror` is for libraries - when you want callers to be able to match on specific error variants.
 
-`anyhow` is for application code — when you just want errors to propagate and display nicely without defining a type for every possible failure.
+`anyhow` is for application code - when you just want errors to propagate and display nicely without defining a type for every possible failure.
 
 Add to `Cargo.toml`:
 ```toml
@@ -196,7 +196,7 @@ fn main() -> Result<()> {  // main() can return Result with anyhow
 }
 ```
 
-`anyhow::Error` carries the full error chain — each `.context()` wraps the previous error. When you print an `anyhow::Error` with `{:#}` (alternate debug format), you see the full chain:
+`anyhow::Error` carries the full error chain - each `.context()` wraps the previous error. When you print an `anyhow::Error` with `{:#}` (alternate debug format), you see the full chain:
 
 ```
 Error: failed to read config from 'chat.toml'
@@ -211,8 +211,8 @@ Caused by:
 
 | Situation | Use |
 |---|---|
-| You're writing a library crate | `thiserror` — callers need to match on errors |
-| You're writing a binary/application | `anyhow` — just make errors propagate cleanly |
+| You're writing a library crate | `thiserror` - callers need to match on errors |
+| You're writing a binary/application | `anyhow` - just make errors propagate cleanly |
 | You need both | `thiserror` in library modules, `anyhow` in main.rs |
 | Quick prototype | `Box<dyn std::error::Error>` or just `.unwrap()` |
 
@@ -279,7 +279,7 @@ fn handle_client_inner(mut stream: TcpStream) -> Result<(), ClientError> {
 }
 ```
 
-The structure: inner functions return `Result`, the outer `handle_client` function calls the inner one and logs errors. The thread doesn't panic — it just ends cleanly.
+The structure: inner functions return `Result`, the outer `handle_client` function calls the inner one and logs errors. The thread doesn't panic - it just ends cleanly.
 
 ---
 
@@ -317,12 +317,12 @@ This outputs structured logs you can filter and search. For the project, plain `
 The rule: use `Result` for *expected* failures. Use `panic!` for *programming errors* (invariant violations, bugs).
 
 ```rust
-// EXPECTED failure — use Result
+// EXPECTED failure - use Result
 fn parse_message(input: &str) -> Result<ChatMessage, ChatError> {
     // Input might be malformed. That's expected. Return Err.
 }
 
-// PROGRAMMING ERROR — panic is correct
+// PROGRAMMING ERROR - panic is correct
 fn get_client_sender(clients: &ClientMap, username: &str) -> Sender<String> {
     clients.lock().unwrap()
         .get(username)
@@ -332,7 +332,7 @@ fn get_client_sender(clients: &ClientMap, username: &str) -> Sender<String> {
 }
 ```
 
-In the chat server, you'll use `Result` for all client-facing operations (I/O, parsing) and `.expect("descriptive message")` for internal invariant checks. The `.expect()` messages are your documentation of assumptions — when they fail, you know exactly which assumption was wrong.
+In the chat server, you'll use `Result` for all client-facing operations (I/O, parsing) and `.expect("descriptive message")` for internal invariant checks. The `.expect()` messages are your documentation of assumptions - when they fail, you know exactly which assumption was wrong.
 
 ---
 
@@ -377,12 +377,12 @@ fn handle_client(stream: TcpStream) -> Result<()> {
 
 ## Common Mistakes
 
-**Using `unwrap()` in client handlers.** If `read_line().unwrap()` panics on a bad client, it panics the handler thread. Because threads in Rust are isolated, this won't crash the server — but it leaves the client registered in the client map forever, and you'll see a poisoned mutex if you're sharing state. Always use `?` in handler code.
+**Using `unwrap()` in client handlers.** If `read_line().unwrap()` panics on a bad client, it panics the handler thread. Because threads in Rust are isolated, this won't crash the server - but it leaves the client registered in the client map forever, and you'll see a poisoned mutex if you're sharing state. Always use `?` in handler code.
 
 **Defining an error type per function.** Start with one error enum per module. You can always split later. Over-engineering the error hierarchy early makes code unreadable.
 
 **Forgetting to add `#[from]` and wondering why `?` doesn't compile.** If you get "the trait `From<io::Error>` is not implemented for `ChatError`", you either need `#[from]` on the variant or a manual `From` impl.
 
-**Using `anyhow` in a library crate.** `anyhow::Error` is opaque — callers can't match on specific error variants. If you're building code others will call programmatically, use `thiserror` so they can handle errors discriminately.
+**Using `anyhow` in a library crate.** `anyhow::Error` is opaque - callers can't match on specific error variants. If you're building code others will call programmatically, use `thiserror` so they can handle errors discriminately.
 
 **Printing errors with `{:?}` instead of `{}`**. The `{}` (Display) format gives the human-readable error message from `#[error("...")]`. The `{:?}` (Debug) format gives the internal representation, which is often noisy. Use `{}` for user-facing messages and `{:?}` or `{:#?}` when debugging.

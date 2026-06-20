@@ -1,4 +1,4 @@
-# 02 — FFI: Calling C Libraries from Rust
+# 02 - FFI: Calling C Libraries from Rust
 
 > **Difficulty:** 🟡 think about it  
 > **You'll learn:** `extern "C"` blocks, C types in Rust, `CString`/`CStr` for string interop,
@@ -11,11 +11,11 @@
 
 You come from C. FFI is where your existing knowledge pays off most directly.
 You understand calling conventions, null-terminated strings, `int` return codes,
-and who owns what memory. Rust gives you a structured way to express all of that —
+and who owns what memory. Rust gives you a structured way to express all of that -
 plus it enforces the rules at compile time where possible.
 
 The core truth: **you can call any C library from Rust**. The entire POSIX API,
-every compression library, every database driver, every OS-level interface —
+every compression library, every database driver, every OS-level interface -
 all accessible through FFI. This is how Rust becomes a systems language in practice.
 
 ---
@@ -44,7 +44,7 @@ The `"C"` in `extern "C"` is the ABI (Application Binary Interface). It specifie
 - Names are not mangled (so the linker can find them by the exact name you wrote)
 - Return values follow C conventions
 
-Rust has its own calling convention for internal functions — it is unstable and
+Rust has its own calling convention for internal functions - it is unstable and
 intentionally not documented. **Never use Rust-to-Rust FFI without `extern "C"`.**
 The ABI could change between compiler versions.
 
@@ -73,7 +73,7 @@ These types are defined to match the platform's C ABI. They exist precisely beca
 `int` is 16 bits on some embedded platforms, 32 bits on most others.
 
 For functions that expect fixed-width integers (`uint32_t`, `int64_t`), use
-Rust's `u32`, `i64` etc. directly — those are always the right width.
+Rust's `u32`, `i64` etc. directly - those are always the right width.
 
 ---
 
@@ -88,7 +88,7 @@ use std::ffi::{CString, CStr, c_char};
 fn demonstrate_c_strings() {
     // CString: Rust-owned, null-terminated. Use to pass a string TO C.
     let message = CString::new("Hello from Rust").expect("interior null byte");
-    // message.as_ptr() gives *const c_char — valid for the lifetime of message
+    // message.as_ptr() gives *const c_char - valid for the lifetime of message
     let ptr: *const c_char = message.as_ptr();
     // SAFETY: strlen is a standard C function. ptr is a valid null-terminated
     //         string that lives as long as message.
@@ -113,7 +113,7 @@ A critical mistake to avoid:
 //        ptr is a dangling pointer when it reaches the C function
 fn bad_example() -> *const c_char {
     let s = CString::new("hello").unwrap();
-    s.as_ptr()  // DANGLING — s is dropped at the end of this function
+    s.as_ptr()  // DANGLING - s is dropped at the end of this function
 }
 
 // CORRECT: Keep CString alive for the duration of the C call
@@ -162,7 +162,7 @@ Use `#[repr(C)]` for:
 - File headers, network packet structures, hardware register maps
 
 Do NOT use `#[repr(C)]` for:
-- Rust-internal types that never cross an FFI boundary — you pay a size cost for no reason
+- Rust-internal types that never cross an FFI boundary - you pay a size cost for no reason
 
 There is also `#[repr(packed)]` which eliminates all padding between fields.
 Useful for dense binary formats, but dangerous: accessing a `u32` field at an
@@ -204,7 +204,7 @@ with `std::panic::catch_unwind`, or set `panic = "abort"` in your Cargo profile.
 
 ## Exporting Rust Functions to C
 
-Going the other direction — letting C call Rust:
+Going the other direction - letting C call Rust:
 
 ```rust
 // #[no_mangle]: do not mangle the function name. C needs to find "add" exactly.
@@ -243,7 +243,7 @@ extern "C" {
     // ZSTD_isError: pass the result of ZSTD_compress to check for error
     fn ZSTD_isError(code: c_size_t) -> c_uint;
 
-    // Returns a string literal — do NOT free this pointer
+    // Returns a string literal - do NOT free this pointer
     fn ZSTD_getErrorName(code: c_size_t) -> *const c_char;
 }
 
@@ -380,7 +380,7 @@ Always use `CString`.
 `#[repr(C)]`, the C code reads fields at the wrong offsets. The bug may only appear
 on certain platforms or compiler versions where Rust chooses a different layout.
 
-**Creating a dangling CString pointer.** `CString::new("hello").unwrap().as_ptr()` —
+**Creating a dangling CString pointer.** `CString::new("hello").unwrap().as_ptr()` -
 the CString is created, you get the pointer, then the CString is immediately dropped.
 The pointer is dangling. Assign the CString to a variable that lives long enough.
 

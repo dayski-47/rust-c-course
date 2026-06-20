@@ -1,4 +1,4 @@
-# Doc 06 — Structured Logging with Tracing
+# Doc 06 - Structured Logging with Tracing
 
 🟢 `println!` debugging is what you do once. `tracing` is what you do when the
 server is in production, handling 10,000 connections, and you need to understand
@@ -54,10 +54,10 @@ thread. The Tokio runtime correctly enters and exits the span each time it polls
 the future, regardless of which thread runs it.
 
 This is why:
-- `#[instrument]` works correctly on async functions — it's sugar for `.instrument(span)`
-- You must use `.instrument(span)` on futures passed to `tokio::spawn` — the spawned
+- `#[instrument]` works correctly on async functions - it's sugar for `.instrument(span)`
+- You must use `.instrument(span)` on futures passed to `tokio::spawn` - the spawned
   task will run on a thread pool, and without `.instrument()`, the parent span is lost
-- You should NOT call `span.enter()` and hold the guard across an `.await` — this
+- You should NOT call `span.enter()` and hold the guard across an `.await` - this
   holds the span on the thread even while the task is parked, corrupting context for
   other tasks that run on the same thread
 
@@ -72,7 +72,7 @@ tracing::warn!(error = ?e, "Frame decode error");
 tracing::debug!(topic = "alerts", seq = 42, bytes = 128, "Message delivered");
 ```
 
-**Spans** are durations — they represent "while this was happening":
+**Spans** are durations - they represent "while this was happening":
 ```rust
 let span = tracing::span!(
     tracing::Level::DEBUG,
@@ -178,7 +178,7 @@ function is called and ends when it returns:
 use tracing::{info, debug, warn, error, instrument};
 
 #[instrument(
-    skip(stream, engine),              // Don't log these — too large or not useful
+    skip(stream, engine),              // Don't log these - too large or not useful
     fields(                            // Add these fields to every log inside this span
         conn_id = tracing::field::Empty,   // Will be set after allocation
         peer = %stream.peer_addr().unwrap_or("[unknown]".parse().unwrap()),
@@ -271,7 +271,7 @@ When you search for `conn_id=4729` you get the complete story of that connection
 tracing::error!(
     conn_id = conn.id,
     error = ?e,
-    "Store write failed — message may be lost"
+    "Store write failed - message may be lost"
 );
 
 // WARN: Client did something unusual (not a server bug)
@@ -280,7 +280,7 @@ tracing::warn!(
     topic = topic,
     payload_bytes = payload.len(),
     limit = engine.config.max_payload_bytes,
-    "Payload too large — rejecting publish"
+    "Payload too large - rejecting publish"
 );
 
 // INFO: Normal lifecycle events
@@ -290,7 +290,7 @@ tracing::info!(
     "Connection established"
 );
 
-// DEBUG: Per-message events (high volume — disable in production)
+// DEBUG: Per-message events (high volume - disable in production)
 tracing::debug!(
     conn_id = conn.id,
     command = ?frame.command,
@@ -332,7 +332,7 @@ Output:
 ```
 
 `time_busy_us` is the microseconds actually executing. `time_idle_us` is time spent
-waiting on async operations. For a connection handler, `time_idle_us` dominates —
+waiting on async operations. For a connection handler, `time_idle_us` dominates -
 connections spend most of their time waiting for the next frame.
 
 ---
@@ -362,7 +362,7 @@ tokio::spawn(
 );
 ```
 
-Without `.instrument()`, the spawned task has no span context — its logs appear
+Without `.instrument()`, the spawned task has no span context - its logs appear
 unattributed. With it, every log from `deliver_messages` carries `conn_id` and
 `topic`.
 
@@ -404,7 +404,7 @@ Every log line carries context from all open spans. When you filter for
 **Don't log auth tokens, passwords, or personally identifying data:**
 
 ```rust
-// ❌ Security violation — token appears in logs
+// ❌ Security violation - token appears in logs
 tracing::debug!(token = token, "Validating auth token");
 
 // ✅ Log that validation happened, not the token itself
@@ -422,14 +422,14 @@ tracing::debug!(payload = ?payload, "Message received");
 tracing::debug!(payload_bytes = payload.len(), "Message received");
 ```
 
-**Don't log at DEBUG in production by default** — DEBUG events may be high volume
+**Don't log at DEBUG in production by default** - DEBUG events may be high volume
 and expensive to format. They exist for investigation, not for always-on monitoring.
 
 ---
 
 ## Exercises
 
-**Exercise 1 — Per-Connection Span**
+**Exercise 1 - Per-Connection Span**
 
 Add `#[instrument]` to `handle_connection`. Configure it to:
 - Skip the `stream` and `engine` arguments
@@ -440,7 +440,7 @@ Write a test using the `tracing-test` crate that verifies:
 - After the connection is handled, the span was closed
 - The `conn_id` field appeared in at least one log event
 
-**Exercise 2 — JSON Output**
+**Exercise 2 - JSON Output**
 
 Add a `--json` CLI flag to `nexus-server`. When passed:
 - Initialize the subscriber with `.json()` format
@@ -451,12 +451,12 @@ Test by running the server with `--json` and piping output to `jq`. Verify that:
 - Lines inside the connection span have a `conn_id` field
 - The `level` field is present as a string
 
-**Exercise 3 — Span Timing**
+**Exercise 3 - Span Timing**
 
 Enable `FmtSpan::CLOSE` on the subscriber. For each of these spans in the connection
 lifecycle, observe what `time_busy_us` and `time_idle_us` report and explain why:
-- `handle_connection` span (mostly idle — waiting for TCP)
-- `handle_publish` span (mostly busy — routing is CPU work)
+- `handle_connection` span (mostly idle - waiting for TCP)
+- `handle_publish` span (mostly busy - routing is CPU work)
 
 Add a Criterion benchmark that measures `handle_publish` span duration vs raw routing
 duration (without the span). The overhead of `#[instrument]` should be under 100 ns.
@@ -472,5 +472,5 @@ duration (without the span). The overhead of `#[instrument]` should be under 100
 - [ ] All logs inside connection handler carry `conn_id` automatically via span
 - [ ] Log levels: ERROR for server bugs, WARN for client errors, INFO for lifecycle, DEBUG for hot paths
 - [ ] No auth tokens, passwords, or full payloads in log output
-- [ ] `RUST_LOG` env var controls log level — no recompile needed
+- [ ] `RUST_LOG` env var controls log level - no recompile needed
 - [ ] JSON format enabled in release builds for log aggregation systems

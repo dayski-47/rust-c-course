@@ -1,4 +1,4 @@
-# 05 — Connection Pooling and Backpressure 🟡
+# 05 - Connection Pooling and Backpressure 🟡
 
 Every time you establish a new database or Redis connection, you pay a cost: TCP handshake, TLS negotiation, database authentication, memory allocation on the server. For PostgreSQL, this is typically 50–150ms. If every HTTP request created a new connection, your service would spend more time connecting than actually doing work.
 
@@ -35,11 +35,11 @@ async fn use_pool(pool: &Pool) {
     use redis::AsyncCommands;
     let _: () = conn.set("key", "value").await.unwrap();
 
-    // conn drops here — automatically returned to pool
+    // conn drops here - automatically returned to pool
 }
 ```
 
-The connection is returned even if your function returns early via `?` or panics. Rust's drop semantics guarantee it. This is the same pattern as `MutexGuard` — the borrow returns when the guard leaves scope.
+The connection is returned even if your function returns early via `?` or panics. Rust's drop semantics guarantee it. This is the same pattern as `MutexGuard` - the borrow returns when the guard leaves scope.
 
 ## Pool Configuration
 
@@ -68,7 +68,7 @@ cfg.pool = Some(PoolConfig {
 
 Backpressure is the mechanism by which a slow consumer tells a fast producer to slow down.
 
-Without backpressure, if a producer sends faster than a consumer can process, work accumulates in a buffer. If the buffer is unbounded, memory grows without limit until the process runs out of RAM and the OS kills it. This is one of the most common causes of mysterious production outages — everything looks fine until suddenly the server dies.
+Without backpressure, if a producer sends faster than a consumer can process, work accumulates in a buffer. If the buffer is unbounded, memory grows without limit until the process runs out of RAM and the OS kills it. This is one of the most common causes of mysterious production outages - everything looks fine until suddenly the server dies.
 
 ```
 No backpressure (dangerous):
@@ -104,10 +104,10 @@ You've been using `mpsc::channel` since Section 4. The difference between bounde
 ```rust
 use tokio::sync::mpsc;
 
-// Unbounded — dangerous, never use in production for request handling
+// Unbounded - dangerous, never use in production for request handling
 let (tx, rx) = mpsc::unbounded_channel::<WorkItem>();
 
-// Bounded — safe, provides backpressure
+// Bounded - safe, provides backpressure
 let (tx, mut rx) = mpsc::channel::<WorkItem>(100); // max 100 items buffered
 
 // Sending to a full channel blocks the sender
@@ -127,7 +127,7 @@ tokio::spawn(async move {
 });
 ```
 
-In `queuemaster`, each WebSocket client's send buffer is bounded. If a client's network is slow and their outbound buffer fills up, `try_send` fails. You can drop the message (acceptable for real-time updates — the client will get the next one) or close the connection (appropriate if the client is too far behind to be useful).
+In `queuemaster`, each WebSocket client's send buffer is bounded. If a client's network is slow and their outbound buffer fills up, `try_send` fails. You can drop the message (acceptable for real-time updates - the client will get the next one) or close the connection (appropriate if the client is too far behind to be useful).
 
 ```rust
 // Broadcasting with backpressure handling
@@ -135,12 +135,12 @@ for (client_id, sender) in &room.clients {
     match sender.try_send(event.clone()) {
         Ok(_) => {}
         Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-            // Client's buffer is full — they're too slow
+            // Client's buffer is full - they're too slow
             // For music queue: drop this event, they'll get the next state update
             tracing::warn!("Client {} is lagging, dropping event", client_id);
         }
         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-            // Channel is closed — client disconnected
+            // Channel is closed - client disconnected
             // Mark for cleanup (remove from room on next tick)
             disconnected.push(*client_id);
         }
@@ -150,7 +150,7 @@ for (client_id, sender) in &room.clients {
 
 ## Semaphore: Limiting Concurrency
 
-A `Semaphore` lets you limit how many concurrent operations happen at once. It's like a pool of permits — each operation acquires a permit, does its work, and releases the permit.
+A `Semaphore` lets you limit how many concurrent operations happen at once. It's like a pool of permits - each operation acquires a permit, does its work, and releases the permit.
 
 Use this when you want to limit concurrent database queries, concurrent file operations, or concurrent external API calls.
 
@@ -162,7 +162,7 @@ use tokio::sync::Semaphore;
 let api_semaphore = Arc::new(Semaphore::new(10));
 
 async fn fetch_song_metadata(song_id: i64, semaphore: Arc<Semaphore>) -> SongMetadata {
-    // Acquire a permit — blocks if 10 others are already running
+    // Acquire a permit - blocks if 10 others are already running
     let _permit = semaphore.acquire().await.unwrap();
     // _permit is dropped at end of scope, releasing the slot
 
@@ -170,7 +170,7 @@ async fn fetch_song_metadata(song_id: i64, semaphore: Arc<Semaphore>) -> SongMet
     external_api::get_song(song_id).await.unwrap()
 }
 
-// Called from multiple places concurrently — semaphore keeps it bounded
+// Called from multiple places concurrently - semaphore keeps it bounded
 let semaphore = Arc::new(Semaphore::new(10));
 let futures: Vec<_> = song_ids.iter().map(|&id| {
     let sem = semaphore.clone();
@@ -258,7 +258,7 @@ tokio::spawn(async move {
         if status.waiting > 0 {
             tracing::warn!(
                 waiting = status.waiting,
-                "Redis pool pressure — consider increasing max_size"
+                "Redis pool pressure - consider increasing max_size"
             );
         }
     }
@@ -275,7 +275,7 @@ Here is a realistic failure scenario. You have a WebSocket broadcast that sends 
 2. Memory usage climbs steadily
 3. GC (well, allocator) pressure causes latency spikes
 4. Eventually the process runs out of memory
-5. OOM kill — all 500 clients disconnected simultaneously
+5. OOM kill - all 500 clients disconnected simultaneously
 
 The fix is to use bounded channels for client send buffers and `try_send` instead of `send`. Slow clients get dropped, but fast clients keep working. The service stays up.
 

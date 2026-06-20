@@ -1,8 +1,8 @@
-# Doc 08 — Your First Macro
+# Doc 08 - Your First Macro
 
-🟡 Think about it — you've used macros since line 1 (`println!`). Now you'll understand what they are and write your own.
+🟡 Think about it - you've used macros since line 1 (`println!`). Now you'll understand what they are and write your own.
 
-Every Rust program you've written so far has used macros: `println!`, `vec!`, `assert_eq!`, `format!`. The `!` suffix is not decoration — it's how Rust distinguishes macros from function calls. This doc explains what macros are, when to reach for them over functions, and walks you through writing the `hex_line!` macro that the hexview project uses to format its output.
+Every Rust program you've written so far has used macros: `println!`, `vec!`, `assert_eq!`, `format!`. The `!` suffix is not decoration - it's how Rust distinguishes macros from function calls. This doc explains what macros are, when to reach for them over functions, and walks you through writing the `hex_line!` macro that the hexview project uses to format its output.
 
 ---
 
@@ -17,7 +17,7 @@ Functions and generics handle most code reuse in Rust. Macros fill the gaps wher
 | Log with file name and line number | ❌ A function doesn't know its call site | ✅ `dbg!`, `panic!` | Macros expand at the call site |
 | Embed a file at compile time | ❌ | ✅ `include_bytes!` | Runs before compilation, not at runtime |
 
-**The rule:** if a function can do it, use a function — it has better error messages, IDE support, and is easier to read. Reach for macros only when functions can't solve the problem.
+**The rule:** if a function can do it, use a function - it has better error messages, IDE support, and is easier to read. Reach for macros only when functions can't solve the problem.
 
 ---
 
@@ -26,7 +26,7 @@ Functions and generics handle most code reuse in Rust. Macros fill the gaps wher
 If you're coming from C, your instinct is that macros are textual substitution:
 
 ```c
-// C preprocessor — dumb text replacement
+// C preprocessor - dumb text replacement
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 int x = 5;
@@ -35,16 +35,16 @@ int y = MAX(x++, 3);  // UB: x is incremented twice because (a) expands twice!
 
 C macros have a fundamental flaw: they operate on raw text before the compiler even sees it. The compiler gets the expanded text, not the macro. This causes:
 - Double-evaluation bugs (like `x++` above)
-- Name collisions — a macro variable leaks into the caller's scope
-- Debugging is impossible — error messages point at the expanded text
+- Name collisions - a macro variable leaks into the caller's scope
+- Debugging is impossible - error messages point at the expanded text
 
-Rust macros are completely different. They operate on the **syntax tree** — the compiler parses your code first, then macros transform it. This means:
-- No textual substitution — `$x:expr` matches a full, well-formed expression
+Rust macros are completely different. They operate on the **syntax tree** - the compiler parses your code first, then macros transform it. This means:
+- No textual substitution - `$x:expr` matches a full, well-formed expression
 - Variables created inside a macro don't collide with the caller's variables (**hygiene**)
 - Error messages point at the original macro call, not the expansion
 
 ```rust
-// Rust macro — operates on syntax, not text
+// Rust macro - operates on syntax, not text
 macro_rules! max {
     ($a:expr, $b:expr) => {
         if $a > $b { $a } else { $b }
@@ -52,14 +52,14 @@ macro_rules! max {
 }
 
 let x = 5;
-let y = max!(x, 3);  // Safe — $a is evaluated once
+let y = max!(x, 3);  // Safe - $a is evaluated once
 ```
 
 ---
 
 ## Declarative Macros with `macro_rules!`
 
-The most common kind. They use **pattern matching on syntax** — similar to how `match` matches on values.
+The most common kind. They use **pattern matching on syntax** - similar to how `match` matches on values.
 
 ```rust
 macro_rules! say_hello {
@@ -84,7 +84,7 @@ When a pattern contains arguments, you specify what kind of syntax each argument
 | `$x:ident` | An identifier | `my_var`, `SomeStruct` |
 | `$x:pat` | A pattern | `Some(x)`, `(a, b)`, `_` |
 | `$x:literal` | A literal value | `42`, `"hello"`, `true` |
-| `$x:tt` | Any single token tree | Anything — the wildcard |
+| `$x:tt` | Any single token tree | Anything - the wildcard |
 
 ```rust
 macro_rules! greet {
@@ -100,11 +100,11 @@ fn main() {
 }
 ```
 
-Notice the third arm: `$n:expr times` matches an expression followed by the literal identifier `times`. Macros can create mini-DSLs that look nothing like normal Rust — this is powerful but easy to abuse. Keep macro syntax close to normal Rust.
+Notice the third arm: `$n:expr times` matches an expression followed by the literal identifier `times`. Macros can create mini-DSLs that look nothing like normal Rust - this is powerful but easy to abuse. Keep macro syntax close to normal Rust.
 
 ### Repetition
 
-This is what makes macros worth learning. Macros can match and repeat patterns — something no function can do:
+This is what makes macros worth learning. Macros can match and repeat patterns - something no function can do:
 
 ```rust
 macro_rules! print_all {
@@ -146,7 +146,7 @@ In C, this is a real problem:
 #define INIT_VAR(type) type temp = 0  // 'temp' might shadow the caller's 'temp'
 ```
 
-In Rust, every identifier created inside a macro lives in the macro's own scope — it cannot shadow the caller's variables:
+In Rust, every identifier created inside a macro lives in the macro's own scope - it cannot shadow the caller's variables:
 
 ```rust
 macro_rules! make_temp {
@@ -162,7 +162,7 @@ fn main() {
 }
 ```
 
-The macro's `temp` and the caller's `temp` are different variables, even though they share a name. You never need to prefix macro-internal variables with `__` or similar guards — hygiene handles it automatically.
+The macro's `temp` and the caller's `temp` are different variables, even though they share a name. You never need to prefix macro-internal variables with `__` or similar guards - hygiene handles it automatically.
 
 ---
 
@@ -175,15 +175,15 @@ These are all macros, not functions. Understanding that changes how you read the
 | `println!("{}", x)` | Computes format at compile time, writes to stdout at runtime |
 | `format!("{}", x)` | Same but allocates and returns a `String` |
 | `eprintln!("{}", x)` | Same as `println!` but to stderr |
-| `vec![1, 2, 3]` | Creates a `Vec` — expands to repeated `.push()` calls |
-| `assert!(cond)` | Panics if `cond` is false — includes file/line in message |
+| `vec![1, 2, 3]` | Creates a `Vec` - expands to repeated `.push()` calls |
+| `assert!(cond)` | Panics if `cond` is false - includes file/line in message |
 | `assert_eq!(a, b)` | Panics with both values shown: `left: 5, right: 3` |
 | `dbg!(expr)` | Prints `[file:line] expr = value` to stderr, returns the value |
 | `include_bytes!("file")` | Embeds file as `&[u8]` at compile time |
-| `todo!()` | `panic!("not yet implemented")` — marks incomplete code |
-| `unreachable!()` | `panic!("unreachable")` — marks impossible branches |
+| `todo!()` | `panic!("not yet implemented")` - marks incomplete code |
+| `unreachable!()` | `panic!("unreachable")` - marks impossible branches |
 
-### `dbg!` — insert-anywhere debugging
+### `dbg!` - insert-anywhere debugging
 
 `dbg!` is unusually useful because it **returns the value it wraps**. You can insert it anywhere without changing program behavior:
 
@@ -217,15 +217,15 @@ let byte: u8 = 0xAB;
 let offset: usize = 256;
 let ascii_char = '·';
 
-// Hex formatting — critical for hexview
-println!("{byte:02x}");        // "ab"  — lowercase hex, zero-padded to 2 digits
-println!("{byte:02X}");        // "AB"  — uppercase hex
-println!("{byte:#04x}");       // "0xab" — with 0x prefix, padded to 4 total
+// Hex formatting - critical for hexview
+println!("{byte:02x}");        // "ab"  - lowercase hex, zero-padded to 2 digits
+println!("{byte:02X}");        // "AB"  - uppercase hex
+println!("{byte:#04x}");       // "0xab" - with 0x prefix, padded to 4 total
 
 // Integer formatting
-println!("{offset:>8}");       // "     256" — right-aligned, width 8
-println!("{offset:0>8}");      // "00000256" — zero-padded, width 8
-println!("{offset:#010x}");    // "0x00000100" — hex with prefix, padded
+println!("{offset:>8}");       // "     256" - right-aligned, width 8
+println!("{offset:0>8}");      // "00000256" - zero-padded, width 8
+println!("{offset:#010x}");    // "0x00000100" - hex with prefix, padded
 
 // Multiple values
 println!("{offset:08x}: {byte:02x}  {ascii_char}");
@@ -299,7 +299,7 @@ fn main() {
 }
 ```
 
-The double braces `{{ ... }}` in the expansion create a new block scope — this lets the macro define local variables (`bytes`, `hex_part`, etc.) without polluting the caller's scope.
+The double braces `{{ ... }}` in the expansion create a new block scope - this lets the macro define local variables (`bytes`, `hex_part`, etc.) without polluting the caller's scope.
 
 ### Why a macro instead of a function here?
 
@@ -334,7 +334,7 @@ struct HexViewConfig {
 }
 ```
 
-`#[derive(Debug)]` is a **procedural macro** that reads your struct's field names and types at compile time and generates a `Debug` implementation automatically. Without it, you'd write this by hand — every time you add a field:
+`#[derive(Debug)]` is a **procedural macro** that reads your struct's field names and types at compile time and generates a `Debug` implementation automatically. Without it, you'd write this by hand - every time you add a field:
 
 ```rust
 // What #[derive(Debug)] generates (simplified):
@@ -356,18 +356,18 @@ These are almost free in terms of runtime cost and you'll regret not having them
 
 | Derive | Enables | Derive it when |
 |--------|---------|----------------|
-| `Debug` | `{:?}` printing | Always — no reason not to |
+| `Debug` | `{:?}` printing | Always - no reason not to |
 | `Clone` | `.clone()` | Your type contains no file handles/sockets |
 | `PartialEq` | `==` and `!=` | You need to compare values in tests |
 | `Default` | `Type::default()` | Your type has a sensible "zero" state |
 
-Don't derive `Copy` unless your type is small and stack-only (think: a single integer or small array). `Copy` means "assignment makes a copy" — fine for `u64`, wrong for `Vec<u8>`.
+Don't derive `Copy` unless your type is small and stack-only (think: a single integer or small array). `Copy` means "assignment makes a copy" - fine for `u64`, wrong for `Vec<u8>`.
 
 ---
 
 ## Procedural Macros: The Full Picture (Conceptual)
 
-`macro_rules!` is powerful but limited — it can only match syntax patterns. **Procedural macros** are full Rust programs that run at compile time and can do arbitrary computation on your code's syntax tree.
+`macro_rules!` is powerful but limited - it can only match syntax patterns. **Procedural macros** are full Rust programs that run at compile time and can do arbitrary computation on your code's syntax tree.
 
 You won't write one in this section, but you'll use them constantly:
 
@@ -378,7 +378,7 @@ You won't write one in this section, but you'll use them constantly:
 | `#[tokio::main]` | Rewrites `async fn main()` to set up the Tokio runtime |
 | `#[instrument]` from `tracing` | Wraps your function to emit tracing spans |
 
-In section 8 (Storage Engine), you'll write your own `#[derive(KvSerialize)]` proc macro. By then you'll know why — manual serialization code is repetitive and error-prone.
+In section 8 (Storage Engine), you'll write your own `#[derive(KvSerialize)]` proc macro. By then you'll know why - manual serialization code is repetitive and error-prone.
 
 ---
 
@@ -396,13 +396,13 @@ macro_rules! count_recursive {
 The limit is 128 by default (or 32 in older Rust). For large inputs, use iteration or const generics instead.
 
 **Ambiguous `$x:expr` matching causing parse errors.**
-`expr` is greedy — it will consume the longest valid expression. If your macro expects `something, more` but the expression before the comma is itself complex (like a closure), the parser can get confused. The fix is usually to use `tt` for more flexibility, or to restructure your macro's syntax.
+`expr` is greedy - it will consume the longest valid expression. If your macro expects `something, more` but the expression before the comma is itself complex (like a closure), the parser can get confused. The fix is usually to use `tt` for more flexibility, or to restructure your macro's syntax.
 
 **Forgetting the `$(,)?` trailing comma.**
 Users expect to write macros with trailing commas: `my_macro!(a, b, c,)`. Without `$(,)?` at the end of your pattern, that trailing comma causes a parse error. Always add it.
 
 **Using `dbg!` in production code.**
-`dbg!` prints to stderr with `[file:line]` labels. In production, this appears in logs or console output unexpectedly. Treat `dbg!` like a breakpoint — insert it to debug, remove it before committing.
+`dbg!` prints to stderr with `[file:line]` labels. In production, this appears in logs or console output unexpectedly. Treat `dbg!` like a breakpoint - insert it to debug, remove it before committing.
 
 **Writing macros when functions would work.**
 The most common mistake: writing a `macro_rules!` macro for something a generic function handles perfectly. Macros have worse error messages and no IDE auto-complete inside the body. If a function can do it, write a function.
@@ -413,7 +413,7 @@ The most common mistake: writing a `macro_rules!` macro for something a generic 
 
 **Using macros for constants.** In C, `#define MAX_SIZE 1024` is idiomatic. In Rust, use `const MAX_SIZE: usize = 1024;`. It's type-safe, scoped, and shows up in docs. Macros for constants are an antipattern.
 
-**Expecting textual substitution.** `$x:expr` in a macro pattern matches a full expression — you can't use it to paste together identifiers. For identifier manipulation, you need `proc-macro2` / procedural macros. `$name:ident` matches an existing identifier; you can't construct new identifiers in `macro_rules!`.
+**Expecting textual substitution.** `$x:expr` in a macro pattern matches a full expression - you can't use it to paste together identifiers. For identifier manipulation, you need `proc-macro2` / procedural macros. `$name:ident` matches an existing identifier; you can't construct new identifiers in `macro_rules!`.
 
 **Missing semicolons in macro arms.** Each arm of `macro_rules!` ends with `;` (the pattern) and the expansion goes inside `{ ... }`. Forgetting the semicolon between arms is a common syntax error.
 
@@ -423,14 +423,14 @@ The most common mistake: writing a `macro_rules!` macro for something a generic 
 
 In the hexview project, you'll use macros for two things:
 
-1. **`hex_line!` or a helper function** to produce the formatted hex output lines. Whether you write this as a macro or function depends on your design — either works.
+1. **`hex_line!` or a helper function** to produce the formatted hex output lines. Whether you write this as a macro or function depends on your design - either works.
 
 2. **Standard library macros everywhere**: `format!` to build strings, `assert_eq!` in tests to verify your formatting is correct, `include_bytes!` if you want to embed test binary data directly into your test file.
 
 Try building the line formatter as a function first. Once it works, consider: is there anything the macro version gives you that the function doesn't? That question is the right one to ask before introducing any macro.
 
 ```rust
-// A clean function version — often all you need
+// A clean function version - often all you need
 fn format_hex_line(offset: usize, bytes: &[u8], uppercase: bool) -> String {
     let fmt_byte = |b: u8| -> String {
         if uppercase {

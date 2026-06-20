@@ -1,6 +1,6 @@
 # Doc 04: Modules, Crates, and Project Organization
 
-In C, you split code across files using `.h` headers and `.c` source files. You manage visibility manually by choosing what to put in headers. Dependencies come in through your build system — Makefile, CMake, pkg-config.
+In C, you split code across files using `.h` headers and `.c` source files. You manage visibility manually by choosing what to put in headers. Dependencies come in through your build system - Makefile, CMake, pkg-config.
 
 Rust has a cleaner system. Every file is automatically a module. Visibility is explicit. Dependencies are declared in one file and Cargo handles the rest.
 
@@ -20,7 +20,7 @@ mod cpu {
         42.7
     }
 
-    // Private by default — not visible outside this module
+    // Private by default - not visible outside this module
     fn parse_stat_line(line: &str) -> f64 {
         // implementation detail
         0.0
@@ -30,7 +30,7 @@ mod cpu {
 fn main() {
     let usage = cpu::read_usage();
     println!("CPU: {:.1}%", usage);
-    // cpu::parse_stat_line("..."); // Won't compile — it's private
+    // cpu::parse_stat_line("..."); // Won't compile - it's private
 }
 ```
 
@@ -78,20 +78,20 @@ By default, everything in Rust is private to its module. You expose things by ad
 ```rust
 // memory.rs
 
-// Private — only accessible within this file
+// Private - only accessible within this file
 struct RawMemInfo {
     total_bytes: u64,
     free_bytes: u64,
 }
 
-// Public struct — visible outside the module
+// Public struct - visible outside the module
 pub struct MemoryMetrics {
-    pub total_mb: u64,    // pub field — accessible directly
-    pub used_mb: u64,     // pub field — accessible directly
-    cached_mb: u64,       // private field — only accessible via methods
+    pub total_mb: u64,    // pub field - accessible directly
+    pub used_mb: u64,     // pub field - accessible directly
+    cached_mb: u64,       // private field - only accessible via methods
 }
 
-// Public function — accessible from other modules
+// Public function - accessible from other modules
 pub fn read_memory() -> MemoryMetrics {
     MemoryMetrics {
         total_mb: 16384,
@@ -105,7 +105,7 @@ If a struct is `pub` but its fields aren't, callers can use the struct as a type
 
 ---
 
-## use — Importing Names
+## use - Importing Names
 
 You can always refer to things by their full path (`cpu::read_usage()`), or bring them into scope with `use`:
 
@@ -118,9 +118,9 @@ let mut map: HashMap<String, u64> = HashMap::new();
 ```
 
 Path prefixes:
-- `crate::` — from the root of your current crate
-- `super::` — from the parent module
-- `self::` — from the current module (rarely needed)
+- `crate::` - from the root of your current crate
+- `super::` - from the parent module
+- `self::` - from the current module (rarely needed)
 
 ```rust
 // src/display.rs
@@ -160,8 +160,8 @@ Then run `cargo build`. Cargo downloads everything, compiles it, and caches the 
 
 | Specifier | Means |
 |-----------|-------|
-| `"0.30"` | `>= 0.30.0, < 0.31.0` — minor updates OK |
-| `"4"` | `>= 4.0.0, < 5.0.0` — patch and minor OK |
+| `"0.30"` | `>= 0.30.0, < 0.31.0` - minor updates OK |
+| `"4"` | `>= 4.0.0, < 5.0.0` - patch and minor OK |
 | `"=1.2.3"` | Exactly `1.2.3`, nothing else |
 | `"*"` | Latest available |
 
@@ -169,7 +169,7 @@ The `Cargo.lock` file pins exact versions for reproducible builds. Commit it for
 
 ---
 
-## Feature Flags — Conditional Compilation
+## Feature Flags - Conditional Compilation
 
 Some crates have optional features that pull in extra dependencies. You opt into them:
 
@@ -193,7 +193,7 @@ color = ["dep:colored"]     # Optional color support
 // Code that only compiles when the "json" feature is enabled
 #[cfg(feature = "json")]
 pub fn export_json(metrics: &Metrics) -> Result<String, serde_json::Error> {
-    // Return the Result — let the caller decide how to handle failure.
+    // Return the Result - let the caller decide how to handle failure.
     // Never unwrap inside a library function: the caller might not want to panic.
     serde_json::to_string_pretty(metrics)
 }
@@ -207,7 +207,7 @@ Feature flags replace C's `#ifdef` for this use case. The advantage: they're dec
 
 Here's how you'd split Section 1's hex viewer into modules. This is exactly the same pattern you'll use for the system monitor.
 
-**Before — everything in main.rs:**
+**Before - everything in main.rs:**
 
 ```rust
 // main.rs (flat, everything together)
@@ -235,7 +235,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-**After — split into modules:**
+**After - split into modules:**
 
 ```
 src/
@@ -254,7 +254,7 @@ pub fn read_bytes(path: &str) -> Result<Vec<u8>, std::io::Error> {
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
     Ok(bytes)
-    // Why ? not unwrap: this function is used by main — let main decide how
+    // Why ? not unwrap: this function is used by main - let main decide how
     // to report the error to the user. unwrap would crash silently with a panic.
 }
 ```
@@ -281,13 +281,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The split is mechanical: move the implementation into new files, add `pub` to the functions you want visible, declare `mod reader;` and `mod formatter;` in `main.rs`. Each module now has a single responsibility — reading vs. formatting — and can be tested independently.
+The split is mechanical: move the implementation into new files, add `pub` to the functions you want visible, declare `mod reader;` and `mod formatter;` in `main.rs`. Each module now has a single responsibility - reading vs. formatting - and can be tested independently.
 
 ---
 
-## Workspace Projects — A Brief Preview
+## Workspace Projects - A Brief Preview
 
-For this section's project, one crate is enough. But later in the course you'll see workspaces — a way to group multiple related crates in one repo:
+For this section's project, one crate is enough. But later in the course you'll see workspaces - a way to group multiple related crates in one repo:
 
 ```toml
 # workspace Cargo.toml
@@ -327,7 +327,7 @@ This organization keeps each concern separate. If you want to change how CPU dat
 
 **1. Forgetting the mod declaration.** Creating `cpu.rs` doesn't make it part of your project. You must add `mod cpu;` to `main.rs` (or `lib.rs`). The file alone does nothing.
 
-**2. Making the struct pub but forgetting the fields.** `pub struct Foo { bar: u32 }` — Foo is visible but `bar` is private. Outside code can hold a `Foo` but can't read `bar`. Add `pub` to the field or add a getter method.
+**2. Making the struct pub but forgetting the fields.** `pub struct Foo { bar: u32 }` - Foo is visible but `bar` is private. Outside code can hold a `Foo` but can't read `bar`. Add `pub` to the field or add a getter method.
 
 **3. Circular module dependencies.** If `cpu.rs` tries to use something from `display.rs` and `display.rs` tries to use something from `cpu.rs`, you have a cycle. Fix it by extracting shared types to a third module (often called `types.rs` or `metrics.rs`).
 

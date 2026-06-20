@@ -1,4 +1,4 @@
-# Doc 02 — Traits in Depth and Advanced Patterns
+# Doc 02 - Traits in Depth and Advanced Patterns
 
 You know how to define a trait and implement it. That is the easy part.
 The patterns in this document are what separate Rust code that merely compiles
@@ -9,7 +9,7 @@ you will see throughout taskforge's architecture.
 
 ## Object Safety: Why Not Every Trait Becomes `dyn Trait`
 
-A trait is **object safe** if it can be used as `dyn Trait` — stored behind a
+A trait is **object safe** if it can be used as `dyn Trait` - stored behind a
 pointer whose concrete type is unknown at compile time. Not every trait qualifies.
 
 The rules for object safety:
@@ -20,18 +20,18 @@ The rules for object safety:
 - Static methods (no `self` parameter) are excluded from the vtable
 
 ```rust
-// Object safe — can be Box<dyn Drawable>
+// Object safe - can be Box<dyn Drawable>
 trait Drawable {
     fn draw(&self);
     fn bounding_box(&self) -> (f64, f64);
 }
 
-// NOT object safe — returns Self
+// NOT object safe - returns Self
 trait Clone {
     fn clone(&self) -> Self; // Can't be in a vtable
 }
 
-// NOT object safe — generic method
+// NOT object safe - generic method
 trait Converter {
     fn convert<T>(&self) -> T; // Vtable can't hold infinite monomorphizations
 }
@@ -39,7 +39,7 @@ trait Converter {
 
 **Why this matters for taskforge**: The `JobRepository` trait will be used as
 `dyn JobRepository`. This means its methods must not have generic type parameters
-and must not return `Self`. The `async fn` in traits complicates this further —
+and must not return `Self`. The `async fn` in traits complicates this further -
 you will need the `async_trait` crate or careful design to make async trait methods
 work with `dyn`.
 
@@ -69,7 +69,7 @@ struct JobRegistry {
 
 The I/O to Redis dwarfs any cost from the vtable call. `dyn Trait` is fine here.
 
-For the hot path inside a job's `execute()` method — prefer static dispatch.
+For the hot path inside a job's `execute()` method - prefer static dispatch.
 
 ---
 
@@ -88,7 +88,7 @@ impl<T: fmt::Display> ToString for T {
 ```
 
 This is why every type that implements `Display` automatically has `.to_string()`.
-You do not implement `ToString` directly — you implement `Display` and you get it.
+You do not implement `ToString` directly - you implement `Display` and you get it.
 
 You can write your own blanket implementations:
 
@@ -107,7 +107,7 @@ trait JobExt: Job {
     }
 }
 
-// Blanket impl — every Job gets these for free
+// Blanket impl - every Job gets these for free
 impl<T: Job> JobExt for T {}
 ```
 
@@ -152,7 +152,7 @@ Now you own `JobIdList`, so you can implement `Display` for it.
 
 Sometimes you want external code to **use** a trait but not **implement** it.
 Maybe you are designing a versioned API and cannot allow third parties to add
-implementations — adding a method to the trait later would break their code.
+implementations - adding a method to the trait later would break their code.
 
 The sealed trait pattern uses Rust's visibility rules to enforce this:
 
@@ -184,7 +184,7 @@ impl JobState for Running { fn name(&self) -> &'static str { "running" } }
 ```
 
 External users can write `fn process<S: JobState>(job: Job<S>)` and call
-`S::name()` — they can USE the trait. But they cannot implement `Sealed`,
+`S::name()` - they can USE the trait. But they cannot implement `Sealed`,
 so they cannot add new states. This is intentional.
 
 ---
@@ -210,7 +210,7 @@ impl JobIdExt for Uuid {
     }
 }
 
-// Now any Uuid has .short_form() — once you import JobIdExt
+// Now any Uuid has .short_form() - once you import JobIdExt
 ```
 
 The ecosystem naming convention: trait is named `FooExt`. Importers see:
@@ -223,7 +223,7 @@ all work.
 
 ## From/Into: The Conversion Pair 🟢
 
-`From` and `Into` are implemented together — you implement `From<A> for B` and
+`From` and `Into` are implemented together - you implement `From<A> for B` and
 automatically get `Into<B> for A` for free (via a blanket impl in the standard library).
 
 The convention: **implement `From`, never implement `Into` directly.**
@@ -371,9 +371,9 @@ When a trait is NOT object safe, the compiler tells you: "the trait cannot be ma
 
 ```rust
 trait Job {
-    fn execute(&self) -> JobResult; // object safe — goes in vtable
+    fn execute(&self) -> JobResult; // object safe - goes in vtable
     
-    // Excluded from vtable — only callable when the concrete type is known
+    // Excluded from vtable - only callable when the concrete type is known
     fn clone_job(&self) -> Self where Self: Sized;
 }
 ```
@@ -382,7 +382,7 @@ trait Job {
 
 For taskforge's `Job` trait, you need to decide what `Job::Error` should be. The pattern:
 
-**Use `thiserror` for the library's public error type** — it generates `Display`, `Error`, and `From` impls from a derive macro:
+**Use `thiserror` for the library's public error type** - it generates `Display`, `Error`, and `From` impls from a derive macro:
 
 ```rust
 use thiserror::Error;
@@ -413,7 +413,7 @@ fn execute(&self) -> Result<(), JobError> {
 }
 ```
 
-**Use `anyhow` for the worker binary's main function** — it's an opaque error type that works great for top-level application code where you just want errors to propagate with context:
+**Use `anyhow` for the worker binary's main function** - it's an opaque error type that works great for top-level application code where you just want errors to propagate with context:
 
 ```rust
 use anyhow::{Context, Result};
@@ -429,7 +429,7 @@ fn main() -> Result<()> {
 }
 ```
 
-**The rule**: library code (taskforge-core) uses typed errors with `thiserror`. Application code (taskforge-worker binary) uses `anyhow`. Never use `anyhow` in library code — it makes errors opaque to callers who want to match on variants.
+**The rule**: library code (taskforge-core) uses typed errors with `thiserror`. Application code (taskforge-worker binary) uses `anyhow`. Never use `anyhow` in library code - it makes errors opaque to callers who want to match on variants.
 
 ## Error Context Chaining
 

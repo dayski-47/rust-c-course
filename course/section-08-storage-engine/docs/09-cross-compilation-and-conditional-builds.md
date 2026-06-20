@@ -1,4 +1,4 @@
-# Doc 09 — Cross-Compilation and Conditional Builds
+# Doc 09 - Cross-Compilation and Conditional Builds
 
 🟡 A storage engine that only runs on the machine where it was compiled is limited. Cross-compilation lets you build on a fast developer workstation and deploy to a resource-constrained server, an embedded ARM board, or a customer's on-premise Linux distribution.
 
@@ -29,7 +29,7 @@ Two approaches: native cross-compilation (for well-supported targets) and the `c
 
 ### Native cross-compilation to musl
 
-A musl build produces a fully statically linked binary — no glibc dependency. This makes the binary portable across all Linux distributions.
+A musl build produces a fully statically linked binary - no glibc dependency. This makes the binary portable across all Linux distributions.
 
 ```bash
 # Add the musl target
@@ -58,7 +58,7 @@ For targets that need a different C toolchain (e.g., `aarch64-unknown-linux-gnu`
 ```bash
 cargo install cross
 
-# Build for ARM64 Linux — downloads a Docker image with the right toolchain
+# Build for ARM64 Linux - downloads a Docker image with the right toolchain
 cross build --release --target aarch64-unknown-linux-gnu
 
 # Test on the target architecture (runs in QEMU via Docker)
@@ -107,7 +107,7 @@ pub fn set_file_hint(file: &std::fs::File) -> std::io::Result<()> {
 ### Compile-time cfg constants
 
 ```rust
-// Pointer size — relevant for index offsets
+// Pointer size - relevant for index offsets
 const POINTER_BITS: u32 = usize::BITS;
 
 // Architecture check for SIMD optimization
@@ -155,7 +155,7 @@ cfg_if! {
 }
 ```
 
-`compile_error!` is a macro that fails compilation with a custom message — better than a cryptic "type not found" error when a platform isn't supported.
+`compile_error!` is a macro that fails compilation with a custom message - better than a cryptic "type not found" error when a platform isn't supported.
 
 ---
 
@@ -202,7 +202,7 @@ pub mod compress {
     }
 }
 
-// In the storage engine — compress values if the feature is enabled
+// In the storage engine - compress values if the feature is enabled
 pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
     #[cfg(feature = "compression")]
     let value_to_store = compress::compress(value, 3);
@@ -260,7 +260,7 @@ fn preallocate_file(file: &std::fs::File, size: u64) {
 
 ## Cross-Compilation in CI
 
-Test all target platforms in CI — a build that works on Linux but silently fails on ARM is a production incident waiting to happen:
+Test all target platforms in CI - a build that works on Linux but silently fails on ARM is a production incident waiting to happen:
 
 ```yaml
 # .github/workflows/ci.yml
@@ -380,7 +380,7 @@ pub fn open_data_file(path: &std::path::Path) -> std::io::Result<MmapFile> {
 
 #[cfg(target_os = "windows")]
 pub fn open_data_file(path: &std::path::Path) -> std::io::Result<MmapFile> {
-    // Windows doesn't have a direct equivalent — use FILE_FLAG_NO_BUFFERING
+    // Windows doesn't have a direct equivalent - use FILE_FLAG_NO_BUFFERING
     // This requires aligned I/O sizes (sector size multiples)
     use std::os::windows::fs::OpenOptionsExt;
     

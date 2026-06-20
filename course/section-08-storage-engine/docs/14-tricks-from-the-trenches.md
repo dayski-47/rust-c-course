@@ -1,6 +1,6 @@
-# Doc 14 — Tricks from the Trenches
+# Doc 14 - Tricks from the Trenches
 
-🟡 These are the patterns that don't fit neatly into any chapter but come up repeatedly in production Rust codebases. Each one is self-contained — read them in any order.
+🟡 These are the patterns that don't fit neatly into any chapter but come up repeatedly in production Rust codebases. Each one is self-contained - read them in any order.
 
 By section 8, you've built production-grade async services, type-safe APIs, and a storage engine with unsafe internals. The techniques in this doc are the accumulated friction-reduction that experienced Rust engineers apply without thinking. Each one solves a real problem you'll encounter.
 
@@ -35,7 +35,7 @@ unused_variables = "warn"
 all = { level = "warn", priority = -1 }
 ```
 
-`CARGO_ENCODED_RUSTFLAGS` (unlike `RUSTFLAGS`) only applies to the workspace's own code — not to build scripts or proc-macros from third parties. This avoids false failures when a dependency's build script has a new warning.
+`CARGO_ENCODED_RUSTFLAGS` (unlike `RUSTFLAGS`) only applies to the workspace's own code - not to build scripts or proc-macros from third parties. This avoids false failures when a dependency's build script has a new warning.
 
 ---
 
@@ -51,7 +51,7 @@ all = { level = "warn", priority = -1 }
 opt-level = 2  # Optimize all dependencies in dev builds
 ```
 
-First build with this setting takes a few minutes longer. All subsequent builds are fast because dependencies are cached. The runtime performance of debug builds improves dramatically — serde in particular is 10–50× faster optimized than debug. You keep full debugging symbols in your own code.
+First build with this setting takes a few minutes longer. All subsequent builds are fast because dependencies are cached. The runtime performance of debug builds improves dramatically - serde in particular is 10–50× faster optimized than debug. You keep full debugging symbols in your own code.
 
 ---
 
@@ -59,7 +59,7 @@ First build with this setting takes a few minutes longer. All subsequent builds 
 
 | Crate type | Commit `Cargo.lock`? | Why |
 |------------|---------------------|-----|
-| Binary / application | **Yes** | Reproducible builds — every CI run uses identical deps |
+| Binary / application | **Yes** | Reproducible builds - every CI run uses identical deps |
 | Library (published) | **No** | Let downstream projects choose compatible versions |
 | Workspace with both | **Yes** | The binary crates win |
 
@@ -86,7 +86,7 @@ Add a CI check that fails when `Cargo.lock` is out of date:
     save-if: ${{ github.ref == 'refs/heads/main' }}
 ```
 
-PR builds still benefit from the `main` branch cache — they restore from it but don't save their own. The cache stays small and fast.
+PR builds still benefit from the `main` branch cache - they restore from it but don't save their own. The cache stays small and fast.
 
 For workspaces with multiple targets, add a `shared-key` so caches from different target configurations don't interfere:
 
@@ -193,12 +193,12 @@ eprintln!("[DEBUG] {:?} at seq={}", entry, sequence_number);
 
 `eprintln!` writes to stderr, which doesn't interfere with stdout-based output and doesn't buffer like `println!`. For async code where the panic location is hard to track, `eprintln!` statements that fire before the panic often reveal the cause faster than a debugger.
 
-Always remove `eprintln!` debug statements before committing. The workspace lint `unused_must_use = "deny"` doesn't catch them — use a pre-commit hook:
+Always remove `eprintln!` debug statements before committing. The workspace lint `unused_must_use = "deny"` doesn't catch them - use a pre-commit hook:
 
 ```bash
 # .git/hooks/pre-commit
 if grep -r 'eprintln!\|dbg!' src/; then
-    echo "Found debug prints — remove before committing"
+    echo "Found debug prints - remove before committing"
     exit 1
 fi
 ```
@@ -207,19 +207,19 @@ fi
 
 ## 9. `Rc` vs `Arc`: Know When to Upgrade
 
-`Rc<T>` is a single-threaded reference-counted pointer — cheaper than `Arc<T>` because it doesn't use atomic operations. For ironkv's internal index structures (which run on a single thread), `Rc` is appropriate and measurably faster.
+`Rc<T>` is a single-threaded reference-counted pointer - cheaper than `Arc<T>` because it doesn't use atomic operations. For ironkv's internal index structures (which run on a single thread), `Rc` is appropriate and measurably faster.
 
 ```rust
 use std::rc::Rc;
 
-// Single-threaded — Rc is fine and faster
+// Single-threaded - Rc is fine and faster
 struct IndexNode {
     parent: Option<Rc<IndexNode>>,
     // ...
 }
 ```
 
-When you add async or threading and the compiler complains `Rc is not Send`, that's the signal to upgrade to `Arc`. Don't proactively use `Arc` everywhere — it's unnecessary overhead for single-threaded structures.
+When you add async or threading and the compiler complains `Rc is not Send`, that's the signal to upgrade to `Arc`. Don't proactively use `Arc` everywhere - it's unnecessary overhead for single-threaded structures.
 
 The compiler error is explicit:
 ```
@@ -238,7 +238,7 @@ cargo install cargo-audit
 # Check all dependencies for known vulnerabilities
 cargo audit
 
-# In CI — fail the build on any advisory
+# In CI - fail the build on any advisory
 cargo audit --deny warnings
 ```
 
@@ -257,10 +257,10 @@ Add to CI:
 
 When removing a feature or simplifying ironkv, work in this order:
 
-1. **Add a deprecation notice** — mark the old API `#[deprecated]` and compile; everything still works
-2. **Update call sites** — change all callers to the new API; the deprecated items are now unused
-3. **Remove the deprecated items** — the compiler tells you if you missed any callers
-4. **Run tests** — confirm nothing broke
+1. **Add a deprecation notice** - mark the old API `#[deprecated]` and compile; everything still works
+2. **Update call sites** - change all callers to the new API; the deprecated items are now unused
+3. **Remove the deprecated items** - the compiler tells you if you missed any callers
+4. **Run tests** - confirm nothing broke
 
 Never delete code without checking that its callers still exist. The `#[deprecated]` + compiler-found-usages pattern is safer than grep.
 
@@ -283,7 +283,7 @@ license = "MIT OR Apache-2.0"
 authors = ["Your Name"]
 repository = "https://github.com/you/ironkv"
 
-# All deps from one place — no version duplication
+# All deps from one place - no version duplication
 [workspace.dependencies]
 bytes = "1"
 serde = { version = "1", features = ["derive"] }

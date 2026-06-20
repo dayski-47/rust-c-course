@@ -1,13 +1,13 @@
-# 07 — Rust Idioms and Best Practices
+# 07 - Rust Idioms and Best Practices
 
-> **Project:** Chat Server — a multi-threaded TCP server where each connected client gets its own thread, and messages are broadcast to all other clients.
+> **Project:** Chat Server - a multi-threaded TCP server where each connected client gets its own thread, and messages are broadcast to all other clients.
 
 ## In This Section
 
 You are building a TCP chat server. Every client connection spawns a thread. Threads share the list of connected clients behind an `Arc<Mutex<...>>`. Two idioms from this document will hit you as soon as you try to share state across threads:
 
-- **`Send + 'static` in closures** — when you pass a closure to `thread::spawn`, the compiler requires it to be `Send + 'static`. This is the most common confusing moment for students. The fix is always the same: clone your `Arc` before moving it into the closure.
-- **RAII lock guards and explicit `drop`** — `Mutex::lock()` returns a guard that releases the lock when it is dropped. If you hold the guard across a blocking operation (like writing to a socket), you deadlock every other thread. Use `drop(guard)` to release the lock early and explicitly.
+- **`Send + 'static` in closures** - when you pass a closure to `thread::spawn`, the compiler requires it to be `Send + 'static`. This is the most common confusing moment for students. The fix is always the same: clone your `Arc` before moving it into the closure.
+- **RAII lock guards and explicit `drop`** - `Mutex::lock()` returns a guard that releases the lock when it is dropped. If you hold the guard across a blocking operation (like writing to a socket), you deadlock every other thread. Use `drop(guard)` to release the lock early and explicitly.
 
 ---
 
@@ -35,7 +35,7 @@ A C developer's instinct: "use a pointer to avoid copying." In Rust, this leads 
 
 **Rule: Functions should borrow.** Function parameters should be `&str` (not `String`), `&[T]` (not `Vec<T>`), `&T` (not `T`) unless you need to store or transfer ownership.
 
-Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true — you cannot pass a `&str` where a `String` is needed without cloning.
+Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true - you cannot pass a `&str` where a `String` is needed without cloning.
 
 In the chat server, each connected `Client` owns its username and sender handle, but the broadcast function borrows a slice of the client list:
 
@@ -81,7 +81,7 @@ You will use this pattern with `reqwest` clients and Tokio runtimes in the async
 
 ## 4. Error Handling Hierarchy
 
-**Do not use:** `unwrap()` or `expect()` in production paths — anything that can fail due to network errors, client disconnects, or OS limits.
+**Do not use:** `unwrap()` or `expect()` in production paths - anything that can fail due to network errors, client disconnects, or OS limits.
 
 **Early development:** `Box<dyn std::error::Error>` as the error type. Gets you started without designing an error type first.
 
@@ -113,7 +113,7 @@ fn main() {
 
 ---
 
-## 5. Don't Match on Bool — Use the Right Abstraction
+## 5. Don't Match on Bool - Use the Right Abstraction
 
 ```rust
 // Bad: checking is_some() then calling unwrap()
@@ -138,14 +138,14 @@ let n = stream.read(&mut buf)?;
 
 ---
 
-## 6. Closures as First-Class Values — and the `Send + 'static` Requirement
+## 6. Closures as First-Class Values - and the `Send + 'static` Requirement
 
 In C, function pointers do what closures do, but closures also capture their environment. When you pass a closure to `thread::spawn`, the compiler requires it to be `FnOnce + Send + 'static`.
 
 This is the most common confusing moment for students. Here is what the error means and how to fix it:
 
 ```rust
-// WRONG: you cannot move a reference into a thread — the reference might
+// WRONG: you cannot move a reference into a thread - the reference might
 // become invalid when the stack frame that owns the data is popped.
 let clients = Arc::new(Mutex::new(Vec::<Client>::new()));
 
@@ -161,19 +161,19 @@ thread::spawn(move || {
 });
 ```
 
-The `'static` requirement does not mean the data must live forever. It means the closure cannot hold any *borrowed* references — only owned values (including `Arc`, which is owned). Cloning an `Arc` is cheap: it increments an atomic reference count, it does not copy the data.
+The `'static` requirement does not mean the data must live forever. It means the closure cannot hold any *borrowed* references - only owned values (including `Arc`, which is owned). Cloning an `Arc` is cheap: it increments an atomic reference count, it does not copy the data.
 
 Know the three closure traits:
 
-- `Fn` — can be called multiple times, borrows captured variables
-- `FnMut` — can be called multiple times, mutably borrows captured variables
-- `FnOnce` — can only be called once, takes ownership of captured variables
+- `Fn` - can be called multiple times, borrows captured variables
+- `FnMut` - can be called multiple times, mutably borrows captured variables
+- `FnOnce` - can only be called once, takes ownership of captured variables
 
 ---
 
 ## 7. RAII Lock Guards and Explicit `drop`
 
-`Mutex::lock()` returns a `MutexGuard`. The lock is released when the guard is dropped. If you hold the guard across a blocking call — writing to a socket, sleeping, waiting on a channel — every other thread that tries to acquire the lock will block for that entire duration.
+`Mutex::lock()` returns a `MutexGuard`. The lock is released when the guard is dropped. If you hold the guard across a blocking call - writing to a socket, sleeping, waiting on a channel - every other thread that tries to acquire the lock will block for that entire duration.
 
 Release the lock early with `drop(guard)`:
 
@@ -185,14 +185,14 @@ Release the lock early with `drop(guard)`:
     for client in guard.iter() {
         client.sender.send(message.clone()).unwrap();  // may block
     }
-    // guard drops here — but we held it for the entire loop
+    // guard drops here - but we held it for the entire loop
 }
 
 // GOOD: collect what you need, release the lock, then do the blocking work
 let senders: Vec<mpsc::Sender<String>> = {
     let guard = clients.lock().unwrap();
     guard.iter().map(|c| c.sender.clone()).collect()
-    // guard drops here — lock is released before any network I/O
+    // guard drops here - lock is released before any network I/O
 };
 
 for sender in senders {
@@ -200,7 +200,7 @@ for sender in senders {
 }
 ```
 
-You can also call `drop(guard)` explicitly at any point inside a block — you do not have to restructure into an inner scope. The explicit `drop` is idiomatic when the intent to release early is not obvious from the structure alone.
+You can also call `drop(guard)` explicitly at any point inside a block - you do not have to restructure into an inner scope. The explicit `drop` is idiomatic when the intent to release early is not obvious from the structure alone.
 
 ---
 
@@ -209,13 +209,13 @@ You can also call `drop(guard)` explicitly at any point inside a block — you d
 Shared state in concurrent code tends to grow complex types quickly:
 
 ```rust
-// Without alias — repeated in every function that touches shared state
+// Without alias - repeated in every function that touches shared state
 type SharedClients = Arc<Mutex<Vec<Client>>>;
 
 fn handle_client(clients: Arc<Mutex<Vec<Client>>>, stream: TcpStream) { ... }
 fn remove_client(clients: Arc<Mutex<Vec<Client>>>, id: u64) { ... }
 
-// With alias — readable and easy to change in one place
+// With alias - readable and easy to change in one place
 type SharedClients = Arc<Mutex<Vec<Client>>>;
 
 fn handle_client(clients: SharedClients, stream: TcpStream) { ... }
@@ -230,7 +230,7 @@ You will also see this for error types: `type Result<T> = std::result::Result<T,
 
 Rust's `#[cfg(test)]` module lets you put unit tests directly in the same file as the code they test. Do not create a separate test file for unit tests.
 
-For the chat server, the pure logic — message parsing, username validation, formatting — is what you unit test. The networking integration is covered by integration tests or manual testing:
+For the chat server, the pure logic - message parsing, username validation, formatting - is what you unit test. The networking integration is covered by integration tests or manual testing:
 
 ```rust
 pub fn parse_command(input: &str) -> Option<(&str, &str)> {

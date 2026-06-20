@@ -1,4 +1,4 @@
-# Doc 07 — Compile-Time Tools and Macro Debugging
+# Doc 07 - Compile-Time Tools and Macro Debugging
 
 🟡 Rust compiles slower than C. The difference between a painful development loop and a fast one is using the right tools. This doc covers the tools that cut compile times, give you visibility into what the compiler is doing, and make macro errors debuggable.
 
@@ -20,8 +20,8 @@ cargo build --timings
 
 The two biggest levers on compile time:
 
-1. **Fewer dependencies** — every dependency compiles. 200 dependencies means 200 compilation units.
-2. **Link time** — the final linking step is serial and often the bottleneck on incremental builds.
+1. **Fewer dependencies** - every dependency compiles. 200 dependencies means 200 compilation units.
+2. **Link time** - the final linking step is serial and often the bottleneck on incremental builds.
 
 ---
 
@@ -94,7 +94,7 @@ cargo nextest run -- test_name_filter
 ```
 
 Compared to `cargo test`:
-- Runs each test in its own process — prevents test-to-test interference
+- Runs each test in its own process - prevents test-to-test interference
 - Shows a live progress bar with per-test timing
 - Failure output is grouped and readable, not interleaved
 - On a 16-core machine, can be 2–5× faster than `cargo test`
@@ -120,7 +120,7 @@ cargo expand storage
 cargo expand --color always | less -R
 ```
 
-For ironkv, after writing `#[derive(Storable)]`, run `cargo expand` to see exactly what code was generated. A bug in the macro shows up as wrong code in the expanded output — usually obvious to fix once you can see it.
+For ironkv, after writing `#[derive(Storable)]`, run `cargo expand` to see exactly what code was generated. A bug in the macro shows up as wrong code in the expanded output - usually obvious to fix once you can see it.
 
 Example of what you'll see when things go wrong:
 
@@ -147,7 +147,7 @@ If `to_storable_bytes()` is the wrong method name, you see it immediately in the
 
 ## `cargo-watch`: Continuous Compilation
 
-During development, you want the compiler running continuously — catch errors as you type:
+During development, you want the compiler running continuously - catch errors as you type:
 
 ```bash
 cargo install cargo-watch
@@ -208,7 +208,7 @@ workspace = true  # Inherit from workspace
 Individual crates can override specific lints when there's a legitimate reason:
 
 ```rust
-// In ironkv-core/src/unsafe_io.rs — we use unsafe deliberately here
+// In ironkv-core/src/unsafe_io.rs - we use unsafe deliberately here
 #![allow(unsafe_code)]  // Override the workspace "warn" for this file
 
 // Safety comment required per project policy:
@@ -309,7 +309,7 @@ pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self, Error> {
 }
 ```
 
-The `# Errors` section is especially important — it tells users what they need to handle with `?` or `match`.
+The `# Errors` section is especially important - it tells users what they need to handle with `?` or `match`.
 
 ---
 

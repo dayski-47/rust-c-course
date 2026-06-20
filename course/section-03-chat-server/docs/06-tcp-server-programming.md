@@ -1,6 +1,6 @@
-# Doc 05 — TCP Server Programming
+# Doc 05 - TCP Server Programming
 
-Here's where the rubber meets the road. We're going to write a real TCP server — the kind that listens on a port, accepts connections, reads data, and writes responses. If you've done this in C with `socket()`, `bind()`, `listen()`, `accept()`, and `read()`/`write()`, this will feel familiar. Rust's API mirrors the same concepts; it just wraps them in types that prevent you from using a closed socket or forgetting to close one.
+Here's where the rubber meets the road. We're going to write a real TCP server - the kind that listens on a port, accepts connections, reads data, and writes responses. If you've done this in C with `socket()`, `bind()`, `listen()`, `accept()`, and `read()`/`write()`, this will feel familiar. Rust's API mirrors the same concepts; it just wraps them in types that prevent you from using a closed socket or forgetting to close one.
 
 ---
 
@@ -23,7 +23,7 @@ fn main() {
     let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
     println!("Listening on port 8080");
 
-    // accept() loop — blocks until a client connects
+    // accept() loop - blocks until a client connects
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         println!("Client connected: {:?}", stream.peer_addr());
@@ -32,9 +32,9 @@ fn main() {
 }
 ```
 
-`TcpListener::bind` takes any address string Rust can parse — `"0.0.0.0:8080"` (all interfaces), `"127.0.0.1:8080"` (localhost only), or just `":8080"`. It returns `Result<TcpListener>` because the port might be in use or you might not have permission.
+`TcpListener::bind` takes any address string Rust can parse - `"0.0.0.0:8080"` (all interfaces), `"127.0.0.1:8080"` (localhost only), or just `":8080"`. It returns `Result<TcpListener>` because the port might be in use or you might not have permission.
 
-`listener.incoming()` is an iterator that yields `Result<TcpStream>` for each new connection. Each `TcpStream` represents a connected client — equivalent to the file descriptor returned by `accept()` in C.
+`listener.incoming()` is an iterator that yields `Result<TcpStream>` for each new connection. Each `TcpStream` represents a connected client - equivalent to the file descriptor returned by `accept()` in C.
 
 ---
 
@@ -60,7 +60,7 @@ fn handle_client(stream: TcpStream) {
         line.clear();
         match reader.read_line(&mut line) {
             Ok(0) => {
-                // 0 bytes read means EOF — client disconnected
+                // 0 bytes read means EOF - client disconnected
                 println!("{peer} disconnected");
                 break;
             }
@@ -81,18 +81,18 @@ fn main() {
     let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
     for stream in listener.incoming() {
         handle_client(stream.unwrap());
-        // Note: this handles one client at a time — we'll fix this next
+        // Note: this handles one client at a time - we'll fix this next
     }
 }
 ```
 
-`BufReader` wraps the stream and adds buffering. Without it, `read_line` would make a syscall for every byte. With it, the system reads in chunks and delivers them line by line. `BufWriter` does the same for writes — buffering output until you flush or the buffer fills.
+`BufReader` wraps the stream and adds buffering. Without it, `read_line` would make a syscall for every byte. With it, the system reads in chunks and delivers them line by line. `BufWriter` does the same for writes - buffering output until you flush or the buffer fills.
 
 ---
 
 ## try_clone: Splitting Read and Write 🟡
 
-Notice `stream.try_clone()` in the example above. `TcpStream` doesn't implement `Clone` because you can't just bit-copy a socket — it's a kernel resource. But `try_clone()` creates a new `TcpStream` handle that refers to the same underlying socket, similar to `dup()` in C.
+Notice `stream.try_clone()` in the example above. `TcpStream` doesn't implement `Clone` because you can't just bit-copy a socket - it's a kernel resource. But `try_clone()` creates a new `TcpStream` handle that refers to the same underlying socket, similar to `dup()` in C.
 
 This is essential for a pattern we need in the chat server: one thread reads from the socket, another thread writes to it. You can't give the same `TcpStream` to two threads at once (ownership rules), but you can clone it and give one half to each.
 
@@ -159,7 +159,7 @@ fn main() {
 }
 ```
 
-Now every client gets its own OS thread. The main thread does nothing but call `accept()` in a loop. Each handler thread is independent — a slow or misbehaving client doesn't block others.
+Now every client gets its own OS thread. The main thread does nothing but call `accept()` in a loop. Each handler thread is independent - a slow or misbehaving client doesn't block others.
 
 ---
 
@@ -215,7 +215,7 @@ fn handle_client(
         }
     }
 
-    // Client disconnected — remove from map
+    // Client disconnected - remove from map
     clients.lock().unwrap().remove(&username);
     broadcast_all(&clients, format!("{username} left"), &username);
     println!("{peer} ({username}) disconnected");
@@ -253,7 +253,7 @@ When the read loop ends, clean up:
 2. The write thread will notice its channel closed (all senders dropped) and terminate
 3. Announce the departure to remaining clients
 
-This is why we `.remove()` the sender from the map when the read loop ends — that drops the `Sender`, closing the write thread's `rx`, ending the `for msg in rx` loop, and letting the write thread finish naturally.
+This is why we `.remove()` the sender from the map when the read loop ends - that drops the `Sender`, closing the write thread's `rx`, ending the `for msg in rx` loop, and letting the write thread finish naturally.
 
 ---
 
@@ -270,11 +270,11 @@ let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
 // For client streams:
 let stream = listener.accept().unwrap().0;
 
-// Disable Nagle's algorithm — send data immediately, don't buffer
+// Disable Nagle's algorithm - send data immediately, don't buffer
 // Good for interactive protocols like chat; bad for bulk transfers
 stream.set_nodelay(true).unwrap();
 
-// Timeout for read operations — prevents a hung client from blocking forever
+// Timeout for read operations - prevents a hung client from blocking forever
 stream.set_read_timeout(Some(Duration::from_secs(300))).unwrap();
 
 // Timeout for write operations
@@ -323,7 +323,7 @@ nc localhost 8080
 nc localhost 8080
 ```
 
-Type in either terminal and watch the message appear in the other. This is the simplest possible integration test — and it feels great when it works.
+Type in either terminal and watch the message appear in the other. This is the simplest possible integration test - and it feels great when it works.
 
 ---
 
@@ -343,10 +343,10 @@ Type in either terminal and watch the message appear in the other. This is the s
 
 ## How It Breaks
 
-**`TIME_WAIT` and "Address already in use".** After a TCP connection closes, the OS keeps that connection's local port in `TIME_WAIT` state for approximately 2 × MSL (typically 60–120 seconds). During this time the OS refuses to reuse the port. If you stop and restart your server quickly during development, `TcpListener::bind()` fails with "Address already in use." The fix is to set `SO_REUSEADDR` on the socket before binding. In Rust, you can't set this through `TcpListener::bind()` directly — use the `socket2` crate, or on Linux rely on the fact that `TcpListener` sets `SO_REUSEADDR` by default (it does on most Rust versions).
+**`TIME_WAIT` and "Address already in use".** After a TCP connection closes, the OS keeps that connection's local port in `TIME_WAIT` state for approximately 2 × MSL (typically 60–120 seconds). During this time the OS refuses to reuse the port. If you stop and restart your server quickly during development, `TcpListener::bind()` fails with "Address already in use." The fix is to set `SO_REUSEADDR` on the socket before binding. In Rust, you can't set this through `TcpListener::bind()` directly - use the `socket2` crate, or on Linux rely on the fact that `TcpListener` sets `SO_REUSEADDR` by default (it does on most Rust versions).
 
 **`TcpListener` backlog.** When clients connect faster than your `accept()` loop can call `accept()`, the OS queues them in the TCP backlog. The backlog has a system-defined limit (often 128 on Linux). If connections arrive faster than you accept them and the queue is full, the OS drops new connection attempts silently. For a chat server this is unlikely, but for a high-traffic server, you'd want to ensure your `accept()` loop is as tight as possible and your per-connection handling is offloaded to threads immediately.
 
-**Read returning 0 bytes is EOF, not an error.** When `read()` returns `Ok(0)`, the client has closed the connection — it sent a TCP FIN. If you treat this as "try again later" instead of "connection is done," you'll spin in a tight loop calling `read()` repeatedly, each returning 0 immediately, consuming 100% CPU for that thread forever. The `for line in reader.lines()` iterator handles this correctly — the iterator ends on EOF. But if you write your own `read()` loop, always check `Ok(0)` and break.
+**Read returning 0 bytes is EOF, not an error.** When `read()` returns `Ok(0)`, the client has closed the connection - it sent a TCP FIN. If you treat this as "try again later" instead of "connection is done," you'll spin in a tight loop calling `read()` repeatedly, each returning 0 immediately, consuming 100% CPU for that thread forever. The `for line in reader.lines()` iterator handles this correctly - the iterator ends on EOF. But if you write your own `read()` loop, always check `Ok(0)` and break.
 
-**Writing to a disconnected client.** When a client disconnects without your write thread knowing, the next call to `write_all()` on that client's socket returns `Err` with a "Broken pipe" error (or "Connection reset by peer"). If you don't handle this and remove the client from your client map, subsequent broadcasts will hit the same error for that client every time. The map grows stale. The fix: when a write fails, treat it the same as an explicit disconnect — remove the client's sender from the map and let the write thread terminate.
+**Writing to a disconnected client.** When a client disconnects without your write thread knowing, the next call to `write_all()` on that client's socket returns `Err` with a "Broken pipe" error (or "Connection reset by peer"). If you don't handle this and remove the client from your client map, subsequent broadcasts will hit the same error for that client every time. The map grows stale. The fix: when a write fails, treat it the same as an explicit disconnect - remove the client's sender from the map and let the write thread terminate.

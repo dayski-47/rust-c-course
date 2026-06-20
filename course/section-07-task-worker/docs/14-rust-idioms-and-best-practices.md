@@ -1,8 +1,8 @@
-# Doc 14 — Rust Idioms and Best Practices
+# Doc 14 - Rust Idioms and Best Practices
 
 🟢 Section 7 is where Rust's type system stops being a novelty and starts being your most reliable colleague.
 
-taskforge is the most type-sophisticated project in the course: type-state machines for job lifecycles, capability tokens for authorization, const-verified configuration, typed Redis commands, compile-fail tests. This doc names the idioms underneath all of that — the habits that make them work, and the traps that make them fail.
+taskforge is the most type-sophisticated project in the course: type-state machines for job lifecycles, capability tokens for authorization, const-verified configuration, typed Redis commands, compile-fail tests. This doc names the idioms underneath all of that - the habits that make them work, and the traps that make them fail.
 
 ---
 
@@ -13,7 +13,7 @@ The highest-leverage design decision in any Rust codebase: if an invalid state c
 The newtype and type-state patterns both serve this goal. So does choosing `enum` over boolean flags:
 
 ```rust
-// ❌ Three booleans — 8 possible states, most are illegal
+// ❌ Three booleans - 8 possible states, most are illegal
 pub struct Job {
     pending: bool,
     running: bool,
@@ -21,7 +21,7 @@ pub struct Job {
 }
 // What does { pending: true, running: true, complete: true } mean?
 
-// ✅ Enum — exactly 4 valid states, all distinct
+// ✅ Enum - exactly 4 valid states, all distinct
 pub enum JobStatus {
     Pending,
     Running,
@@ -33,10 +33,10 @@ pub enum JobStatus {
 And choosing newtypes over raw types:
 
 ```rust
-// ❌ Job ID and worker ID are both Uuid — easy to swap
+// ❌ Job ID and worker ID are both Uuid - easy to swap
 fn assign_job(job: Uuid, worker: Uuid) {}
 
-// ✅ Distinct types — swap is a compile error
+// ✅ Distinct types - swap is a compile error
 fn assign_job(job: JobId, worker: WorkerId) {}
 ```
 
@@ -72,7 +72,7 @@ pub enum TaskforgeError {
     Unauthorized,
 }
 
-// Usage — ? converts each error to TaskforgeError via the generated From impls
+// Usage - ? converts each error to TaskforgeError via the generated From impls
 async fn process_job(id: JobId, redis: &TypedRedis, db: &sqlx::Pool<sqlx::Sqlite>)
     -> Result<(), TaskforgeError>
 {
@@ -87,7 +87,7 @@ async fn process_job(id: JobId, redis: &TypedRedis, db: &sqlx::Pool<sqlx::Sqlite
 }
 ```
 
-For library crates that are published externally, prefer explicit `impl From<>` over `#[from]` — it makes the API surface clearer and avoids accidentally exposing third-party error types. For applications like taskforge, `thiserror` with `#[from]` is the right default.
+For library crates that are published externally, prefer explicit `impl From<>` over `#[from]` - it makes the API surface clearer and avoids accidentally exposing third-party error types. For applications like taskforge, `thiserror` with `#[from]` is the right default.
 
 One rule: **never use `unwrap()` in production code paths.** In tests and examples, `unwrap()` is fine (it gives a clear panic on failure). In code that runs in production, every `unwrap()` is a latent bug waiting for a rare input.
 
@@ -98,7 +98,7 @@ One rule: **never use `unwrap()` in production code paths.** In tests and exampl
 Iterator chains communicate *what* is being done without noise from mutable state:
 
 ```rust
-// ❌ Mutable loop — intent buried in housekeeping
+// ❌ Mutable loop - intent buried in housekeeping
 fn highest_priority_jobs(jobs: &[Job], limit: usize) -> Vec<&Job> {
     let mut sorted: Vec<&Job> = Vec::new();
     for job in jobs {
@@ -111,7 +111,7 @@ fn highest_priority_jobs(jobs: &[Job], limit: usize) -> Vec<&Job> {
     sorted
 }
 
-// ✅ Iterator chain — reads like the description
+// ✅ Iterator chain - reads like the description
 fn highest_priority_jobs(jobs: &[Job], limit: usize) -> Vec<&Job> {
     let mut results: Vec<&Job> = jobs.iter()
         .filter(|j| j.status == JobStatus::Pending)
@@ -144,13 +144,13 @@ Use a loop when the operation has side effects that need to be sequenced (updati
 A common mistake: adding bounds to struct definitions.
 
 ```rust
-// ❌ Bound on the struct — propagates everywhere
+// ❌ Bound on the struct - propagates everywhere
 struct JobExecutor<F: Fn() -> Job> {
     factory: F,
 }
 // Now every impl block and every type annotation for JobExecutor must repeat F: Fn() -> Job
 
-// ✅ Bound on the impl — each impl only carries what it needs
+// ✅ Bound on the impl - each impl only carries what it needs
 struct JobExecutor<F> {
     factory: F,
 }
@@ -209,7 +209,7 @@ fn spawn_all_workers(
 ## Derive What You Can, Implement Only What's Custom
 
 ```rust
-// Derive standard traits — less code, harder to get wrong
+// Derive standard traits - less code, harder to get wrong
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct JobId(pub uuid::Uuid);
 
@@ -232,7 +232,7 @@ impl std::str::FromStr for JobId {
 
 Always derive: `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`, `Serialize`, `Deserialize` (when applicable), `Default` (when zero/empty is a valid default).
 
-Only implement manually when the derived behavior is semantically wrong — for example, `PartialOrd` on a type where comparison should use a specific field ordering.
+Only implement manually when the derived behavior is semantically wrong - for example, `PartialOrd` on a type where comparison should use a specific field ordering.
 
 ---
 
@@ -306,7 +306,7 @@ When adding a new domain type or function to taskforge, ask:
 - **Does this function require authority?** Add a capability token parameter.
 - **Does this value need to be used exactly once?** Drop `Clone`, add `#[must_use]`.
 - **Can this configuration relationship be verified at compile time?** Use `const fn` + `assert!`.
-- **Does this struct have a phantom type parameter?** Use `PhantomData<T>` — not just a comment.
+- **Does this struct have a phantom type parameter?** Use `PhantomData<T>` - not just a comment.
 
 These questions take 30 seconds to answer and prevent entire classes of bugs.
 
@@ -318,15 +318,15 @@ Before marking the taskforge project complete:
 
 - [ ] `JobHandle<S>` type-state enforces the Pending → Running → Completed/Failed lifecycle
 - [ ] `WorkerAdminToken` capability gates all destructive operations
-- [ ] `WorkerProcessToken` gates job status transitions — workers can't forge each other's completions
+- [ ] `WorkerProcessToken` gates job status transitions - workers can't forge each other's completions
 - [ ] `const fn` assertions verify that `REDIS_POOL_SIZE >= WORKER_CONCURRENCY + 4` at build time
-- [ ] All Redis commands use typed command structs — no raw `Vec<u8>` parsing at call sites
+- [ ] All Redis commands use typed command structs - no raw `Vec<u8>` parsing at call sites
 - [ ] Compile-fail tests verify that the type invariants can't be bypassed
 - [ ] `cargo test --workspace` includes proptest runs for all validated boundaries
 - [ ] `cargo bench` baseline established for deserialization and routing hot paths
-- [ ] `#[must_use]` on `JobReservation` — dropped reservation is almost always a bug
-- [ ] All public types derive `Debug` — no mystery values in panic messages
-- [ ] `thiserror` used for all error types — `?` works throughout the codebase
+- [ ] `#[must_use]` on `JobReservation` - dropped reservation is almost always a bug
+- [ ] All public types derive `Debug` - no mystery values in panic messages
+- [ ] `thiserror` used for all error types - `?` works throughout the codebase
 - [ ] No `unwrap()` in non-test production paths
 - [ ] CI gates on `cargo clippy -- -D warnings` and `cargo fmt --check`
 

@@ -1,6 +1,6 @@
 # Getting Started: Cargo and Project Structure
 
-🟢 Easy — follow along and run each command yourself.
+🟢 Easy - follow along and run each command yourself.
 
 In C, building a project means writing a Makefile, tracking header paths, linking libraries, managing build artifacts. If you want a third-party library, you find the source, build it, install it somewhere, then update your Makefile to point at it. It's tedious at best and a compatibility nightmare at worst.
 
@@ -19,9 +19,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Follow the prompts. When it's done, restart your shell or run `source ~/.cargo/env`.
 
 This installs:
-- `rustc` — the compiler (you rarely call this directly)
-- `cargo` — the build system and package manager (you use this for everything)
-- `rustup` — the toolchain manager (for updating, installing nightly, cross-compiling)
+- `rustc` - the compiler (you rarely call this directly)
+- `cargo` - the build system and package manager (you use this for everything)
+- `rustup` - the toolchain manager (for updating, installing nightly, cross-compiling)
 
 Verify it worked:
 
@@ -59,7 +59,7 @@ fn main() {
 }
 ```
 
-That's a complete Rust program. `fn main()` is the entry point, same as C. `println!` is a macro (the `!` tells you it's a macro, not a function — more on that later).
+That's a complete Rust program. `fn main()` is the entry point, same as C. `println!` is a macro (the `!` tells you it's a macro, not a function - more on that later).
 
 ---
 
@@ -76,7 +76,7 @@ cargo clippy     # Lint (like a smart compiler warning pass)
 
 **`cargo check` is your best friend during development.** It's much faster than a full build because it checks types and errors without generating code. Use it constantly.
 
-**`cargo build --release`** produces an optimized binary in `target/release/`. Debug builds have runtime checks (like overflow detection and bounds checking that panic instead of UBing). Release builds are fast but still safe — unlike C's `-O2` which can make UB disappear into surprises.
+**`cargo build --release`** produces an optimized binary in `target/release/`. Debug builds have runtime checks (like overflow detection and bounds checking that panic instead of UBing). Release builds are fast but still safe - unlike C's `-O2` which can make UB disappear into surprises.
 
 In C you might have:
 ```makefile
@@ -154,7 +154,7 @@ my_project/
 │   ├── main.rs         # Entry point for a binary (fn main())
 │   └── lib.rs          # If you're building a library instead
 ├── tests/              # Integration tests (tests that use your code as a black box)
-├── target/             # Build output — like your build/ or obj/ directory
+├── target/             # Build output - like your build/ or obj/ directory
 │   ├── debug/          # Debug builds go here
 │   └── release/        # Release builds go here
 ```
@@ -167,9 +167,9 @@ my_project/
 
 Two options when you just want to experiment:
 
-**Rust Playground** — paste code at [play.rust-lang.org](https://play.rust-lang.org/), hit Run. Nothing to install. Great for testing a snippet.
+**Rust Playground** - paste code at [play.rust-lang.org](https://play.rust-lang.org/), hit Run. Nothing to install. Great for testing a snippet.
 
-**evcxr REPL** — interactive Rust REPL if you prefer a REPL workflow:
+**evcxr REPL** - interactive Rust REPL if you prefer a REPL workflow:
 ```bash
 cargo install --locked evcxr_repl
 evcxr

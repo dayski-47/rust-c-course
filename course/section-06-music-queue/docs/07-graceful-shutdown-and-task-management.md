@@ -1,8 +1,8 @@
-# Doc 07 — Graceful Shutdown and Task Management
+# Doc 07 - Graceful Shutdown and Task Management
 
 🟡 This is what separates a toy server from a production service.
 
-The music queue runs as a long-lived process: it receives WebSocket connections, streams playback state, fetches metadata from external APIs, and processes queue events. When you stop the process — for a deployment, a crash, or a routine restart — what happens to all of that in-flight work?
+The music queue runs as a long-lived process: it receives WebSocket connections, streams playback state, fetches metadata from external APIs, and processes queue events. When you stop the process - for a deployment, a crash, or a routine restart - what happens to all of that in-flight work?
 
 Without graceful shutdown: WebSocket clients see abrupt disconnects, partially-committed queue operations are lost, and the next version of the service starts with inconsistent state.
 
@@ -16,9 +16,9 @@ This doc teaches the Tokio primitives for structured task management and gracefu
 
 A production service needs shutdown to work at three levels:
 
-1. **Stop accepting new work** — no new WebSocket connections, no new queue entries
-2. **Finish in-flight work** — complete database writes, send close frames to connected clients
-3. **Enforce a deadline** — if in-flight work takes too long, force-exit anyway
+1. **Stop accepting new work** - no new WebSocket connections, no new queue entries
+2. **Finish in-flight work** - complete database writes, send close frames to connected clients
+3. **Enforce a deadline** - if in-flight work takes too long, force-exit anyway
 
 Skipping any layer causes problems. Skipping layer 1 means new work keeps arriving during shutdown. Skipping layer 2 means corrupted state. Skipping layer 3 means the process hangs forever if something doesn't respond.
 
@@ -39,12 +39,12 @@ async fn main() {
     // Wait for either Ctrl+C (SIGINT) or SIGTERM
     tokio::select! {
         _ = signal::ctrl_c() => {
-            println!("Ctrl+C received — shutting down...");
+            println!("Ctrl+C received - shutting down...");
         }
         _ = signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("Failed to register SIGTERM handler")
             .recv() => {
-            println!("SIGTERM received — shutting down...");
+            println!("SIGTERM received - shutting down...");
         }
     }
 
@@ -108,7 +108,7 @@ Each worker checks for shutdown in its event loop:
 async fn run_queue_worker(mut shutdown: watch::Receiver<bool>) {
     loop {
         tokio::select! {
-            // Check for shutdown — highest priority
+            // Check for shutdown - highest priority
             _ = shutdown.changed() => {
                 if *shutdown.borrow() {
                     println!("Queue worker: stopping");
@@ -134,7 +134,7 @@ async fn run_queue_worker(mut shutdown: watch::Receiver<bool>) {
 
 ## `JoinSet`: Managing a Dynamic Set of Tasks
 
-The music queue spawns one task per WebSocket connection. The number of connections is dynamic — connections come and go. `JoinSet` manages a set of tasks and lets you collect results as they complete:
+The music queue spawns one task per WebSocket connection. The number of connections is dynamic - connections come and go. `JoinSet` manages a set of tasks and lets you collect results as they complete:
 
 ```rust
 use tokio::task::JoinSet;
@@ -208,7 +208,7 @@ async fn run_metadata_service(shutdown: watch::Receiver<bool>) {
                     }
                 }
                 _ = shutdown_clone.changed() => {
-                    // Shutdown requested — abandon this fetch
+                    // Shutdown requested - abandon this fetch
                 }
             }
         });
@@ -218,7 +218,7 @@ async fn run_metadata_service(shutdown: watch::Receiver<bool>) {
     let mut shutdown_clone = shutdown.clone();
     shutdown_clone.changed().await.ok();
 
-    // Close the tracker — no new tasks can be spawned
+    // Close the tracker - no new tasks can be spawned
     tracker.close();
 
     // Wait for all in-flight tasks to complete (they'll exit via their shutdown check)
@@ -253,7 +253,7 @@ async fn handle_websocket(
                 match msg? {
                     Message::Text(text) => handle_queue_command(&text).await?,
                     Message::Close(_) => {
-                        // Client initiated close — respond with close frame
+                        // Client initiated close - respond with close frame
                         ws.close(None).await?;
                         break;
                     }
@@ -261,7 +261,7 @@ async fn handle_websocket(
                 }
             }
 
-            // Shutdown signal — send close frame to client
+            // Shutdown signal - send close frame to client
             _ = shutdown.changed() => {
                 if *shutdown.borrow() {
                     // Tell the client we're closing
@@ -290,7 +290,7 @@ The music queue has a task that processes incoming events and a task that handle
 use tokio::sync::mpsc;
 
 async fn queue_event_pipeline() {
-    // Bounded channel — if the broadcaster falls behind, this channel fills up
+    // Bounded channel - if the broadcaster falls behind, this channel fills up
     // and the event producer naturally slows down (send() will await until space)
     let (tx, mut rx) = mpsc::channel::<QueueEvent>(100);
 
@@ -299,9 +299,9 @@ async fn queue_event_pipeline() {
         let mut event_source = connect_to_event_source().await;
         while let Some(event) = event_source.next().await {
             // If channel is full, this await will block until space is available.
-            // This is natural backpressure — the producer slows to match consumer speed.
+            // This is natural backpressure - the producer slows to match consumer speed.
             if tx.send(event).await.is_err() {
-                break;  // receiver dropped — shutdown in progress
+                break;  // receiver dropped - shutdown in progress
             }
         }
     });
@@ -317,7 +317,7 @@ async fn queue_event_pipeline() {
 }
 ```
 
-**Why bounded channels?** Unbounded channels accept messages without any backpressure. If your producer is faster than your consumer, an unbounded channel will grow until you run out of memory. A bounded channel with `capacity = 100` means the producer blocks when the buffer is full — this automatically matches the producer's rate to the consumer's processing rate.
+**Why bounded channels?** Unbounded channels accept messages without any backpressure. If your producer is faster than your consumer, an unbounded channel will grow until you run out of memory. A bounded channel with `capacity = 100` means the producer blocks when the buffer is full - this automatically matches the producer's rate to the consumer's processing rate.
 
 For the music queue, a capacity of 100-1000 events is reasonable. If your queue processes events in 10ms bursts and events arrive at 100/s, a buffer of 1000 gives you a 10-second cushion before backpressure kicks in.
 
@@ -400,11 +400,11 @@ impl MusicQueueServer {
 
         // Wait for shutdown signal
         signal::ctrl_c().await.expect("Signal handler failed");
-        println!("[1/3] Signal received — stopping new connections");
+        println!("[1/3] Signal received - stopping new connections");
 
         // Broadcast shutdown to all tasks
         shutdown_tx.send(true).ok();
-        println!("[2/3] Shutdown broadcast sent — waiting for tasks to finish");
+        println!("[2/3] Shutdown broadcast sent - waiting for tasks to finish");
 
         // Wait up to 30 seconds for tasks to finish
         match timeout(Duration::from_secs(30), async {
@@ -412,7 +412,7 @@ impl MusicQueueServer {
         }).await {
             Ok(_) => println!("[3/3] All tasks finished cleanly"),
             Err(_) => {
-                eprintln!("[3/3] Shutdown timed out — aborting remaining tasks");
+                eprintln!("[3/3] Shutdown timed out - aborting remaining tasks");
                 tasks.abort_all();
             }
         }
@@ -438,7 +438,7 @@ loop {
         _ = shutdown.changed() => break,
     }
     // After the event is processed here, we loop back to select!
-    // This is actually correct — but many beginners put cleanup code INSIDE
+    // This is actually correct - but many beginners put cleanup code INSIDE
     // the event arm that should run AFTER the loop
 }
 // Cleanup goes here, outside the loop
@@ -456,7 +456,7 @@ match handle.await {
         // Decide: continue running, or initiate shutdown?
     }
     Err(e) if e.is_cancelled() => {
-        // Task was explicitly cancelled — expected during shutdown
+        // Task was explicitly cancelled - expected during shutdown
     }
     Err(e) => eprintln!("Task error: {e}"),
 }

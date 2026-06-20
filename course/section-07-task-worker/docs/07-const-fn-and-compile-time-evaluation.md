@@ -1,8 +1,8 @@
-# Doc 07 — Const Fn and Compile-Time Evaluation
+# Doc 07 - Const Fn and Compile-Time Evaluation
 
 🟠 The compiler can run your code before your program exists. Use it to make invariants that can't be violated at runtime, because they're checked before compilation succeeds.
 
-Embedded systems developers and protocol implementors deal with a class of bugs that are entirely preventable: memory maps that overlap, protocol frame sizes that don't fit in the allocated buffer, timeout values that exceed the maximum the hardware supports. In C, these are `#define` constants with no structural relationship — change one, forget to update another, and you get a crash that only happens under production load.
+Embedded systems developers and protocol implementors deal with a class of bugs that are entirely preventable: memory maps that overlap, protocol frame sizes that don't fit in the allocated buffer, timeout values that exceed the maximum the hardware supports. In C, these are `#define` constants with no structural relationship - change one, forget to update another, and you get a crash that only happens under production load.
 
 Rust's `const fn` lets you write functions that the compiler executes at compile time. When a `const fn` panics, the panic becomes a compile error. This turns the compiler into a proof engine: the program cannot build unless your invariants hold.
 
@@ -20,10 +20,10 @@ const fn jobs_per_worker(total: u32, workers: u32) -> u32 {
     total / workers
 }
 
-// Use const fn to compute constants — compiler runs the function:
+// Use const fn to compute constants - compiler runs the function:
 const DEFAULT_WORKER_LOAD: u32 = jobs_per_worker(MAX_JOBS, 4);  // = 250, at compile time
 
-// Can also call at runtime — same function, same behavior:
+// Can also call at runtime - same function, same behavior:
 fn dynamic_load(total: u32, workers: u32) -> u32 {
     jobs_per_worker(total, workers)
 }
@@ -43,7 +43,7 @@ pub const fn checked_add(a: u64, b: u64) -> u64 {
     a + b
 }
 
-// ✅ Fine — 1000 + 500 fits in u64
+// ✅ Fine - 1000 + 500 fits in u64
 const TOTAL_CAPACITY: u64 = checked_add(1000, 500);
 
 // ❌ Compile error: "overflow"
@@ -81,7 +81,7 @@ const fn assert_retry_budget(
     let total_backoff = max_retries as u64 * backoff_secs;
     assert!(
         total_backoff < timeout_secs,
-        "total retry backoff exceeds job timeout — jobs may never retry before expiring",
+        "total retry backoff exceeds job timeout - jobs may never retry before expiring",
     );
 }
 
@@ -92,7 +92,7 @@ const _: () = assert_retry_budget(MAX_RETRY_ATTEMPTS, RETRY_BACKOFF_SECS, JOB_TI
 
 The `const _: () = ...` idiom evaluates a constant expression and discards the result. It's the standard way to run compile-time assertions that don't produce a value.
 
-Try changing `REDIS_POOL_SIZE` to 10 — the crate won't compile, and the error message tells you exactly why:
+Try changing `REDIS_POOL_SIZE` to 10 - the crate won't compile, and the error message tells you exactly why:
 
 ```text
 error[E0080]: evaluation of constant value failed
@@ -111,7 +111,7 @@ error[E0080]: evaluation of constant value failed
 
 ```rust
 /// Maps job priority (0-255) to the Redis queue name index.
-/// Built at compile time — zero runtime cost.
+/// Built at compile time - zero runtime cost.
 const PRIORITY_QUEUE_MAP: [u8; 256] = {
     let mut map = [0u8; 256];
     let mut i = 0usize;
@@ -159,7 +159,7 @@ pub const fn validate_field_name(name: &str) -> &str {
     name
 }
 
-// Protocol constants — validated at compile time
+// Protocol constants - validated at compile time
 pub const FIELD_STATUS:      &str = validate_field_name("status");
 pub const FIELD_JOB_TYPE:    &str = validate_field_name("job_type");
 pub const FIELD_PAYLOAD:     &str = validate_field_name("payload");
@@ -177,13 +177,13 @@ pub const FIELD_WORKER_ID:   &str = validate_field_name("worker_id");
 
 ## Const Generics: Configuration Encoded in Types
 
-Beyond `const fn`, Rust supports *const generics* — type parameters that are constant values rather than types. This enables type-safe capacity enforcement:
+Beyond `const fn`, Rust supports *const generics* - type parameters that are constant values rather than types. This enables type-safe capacity enforcement:
 
 ```rust
 use std::collections::VecDeque;
 
 /// A fixed-capacity job buffer.
-/// The capacity N is part of the type — can't accidentally create a size-1 buffer
+/// The capacity N is part of the type - can't accidentally create a size-1 buffer
 /// where a size-100 buffer is expected.
 pub struct JobBuffer<const N: usize> {
     items: VecDeque<String>,
@@ -211,7 +211,7 @@ impl<const N: usize> JobBuffer<N> {
     pub fn is_full(&self) -> bool { self.items.len() >= N }
 }
 
-// The buffer size is in the type — functions can require specific capacities:
+// The buffer size is in the type - functions can require specific capacities:
 fn process_batch(buf: &mut JobBuffer<100>) {
     // This function requires exactly a 100-slot buffer
     // JobBuffer<50> won't be accepted
@@ -252,7 +252,7 @@ mod tests {
     use super::*;
 
     // These run at compile time even in test builds
-    const _: () = assert_pool_sufficient(50, 16);  // big pool — fine
+    const _: () = assert_pool_sufficient(50, 16);  // big pool - fine
     // const _: () = assert_pool_sufficient(10, 16);  // would fail to compile
 
     #[test]
@@ -320,15 +320,15 @@ Don't use `const fn` when:
 
 - The values are genuinely dynamic (read from env vars, config files, databases)
 - The computation requires heap allocation or I/O
-- You're adding compile-time checks that could just be unit tests — prefer tests when the values aren't truly compile-time constants
+- You're adding compile-time checks that could just be unit tests - prefer tests when the values aren't truly compile-time constants
 
-For taskforge, the worker configuration constants (`WORKER_CONCURRENCY`, `REDIS_POOL_SIZE`, retry parameters) are known at compile time and have relationships that must hold. Verifying them with `const fn` means these relationships can't drift apart during a config change — the developer sees the error immediately, not hours later in a staging environment.
+For taskforge, the worker configuration constants (`WORKER_CONCURRENCY`, `REDIS_POOL_SIZE`, retry parameters) are known at compile time and have relationships that must hold. Verifying them with `const fn` means these relationships can't drift apart during a config change - the developer sees the error immediately, not hours later in a staging environment.
 
 ---
 
 ## Exercises
 
-**Exercise 1 — Compile-Time Pool Validation**
+**Exercise 1 - Compile-Time Pool Validation**
 
 Implement the `assert_pool_sufficient(pool_size: usize, concurrency: usize)` `const fn`
 that panics at compile time if `pool_size < concurrency + 2`. Add a compile-time
@@ -341,18 +341,18 @@ const _: () = assert_pool_sufficient(REDIS_POOL_SIZE, WORKER_CONCURRENCY);
 Then set `REDIS_POOL_SIZE = 3` and `WORKER_CONCURRENCY = 10` and verify the build
 fails with a compile-time panic message (not a runtime error). Restore valid values.
 
-**Exercise 2 — JobBuffer<N> with Const Generics**
+**Exercise 2 - JobBuffer<N> with Const Generics**
 
 Implement `struct JobBuffer<const N: usize>` with a `jobs: [Option<Job>; N]` array.
 Add:
-- `fn push(&mut self, job: Job) -> bool` — returns false if full
+- `fn push(&mut self, job: Job) -> bool` - returns false if full
 - `fn pop(&mut self) -> Option<Job>`
-- `const CAPACITY: usize = N` — a const associated with the capacity
+- `const CAPACITY: usize = N` - a const associated with the capacity
 
 Write unit tests for `JobBuffer<4>` and `JobBuffer<8>`. Verify that creating a
 `JobBuffer<0>` compiles (the type is valid, just immediately full).
 
-**Exercise 3 — Compile-Time Lookup Table**
+**Exercise 3 - Compile-Time Lookup Table**
 
 Create a `const fn priority_weight(priority: u8) -> u32` that maps:
 - Priority 1 → weight 100

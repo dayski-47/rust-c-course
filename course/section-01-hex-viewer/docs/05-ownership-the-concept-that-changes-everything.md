@@ -1,8 +1,8 @@
 # Ownership: The Concept That Changes Everything
 
-🔴 Challenging — but foundational. Everything else in Rust depends on this. Take your time.
+🔴 Challenging - but foundational. Everything else in Rust depends on this. Take your time.
 
-If you learn one thing from this course, it's ownership. Everything else — error handling, threads, even the borrow checker errors you'll fight — traces back to ownership. Get this right and the rest falls into place.
+If you learn one thing from this course, it's ownership. Everything else - error handling, threads, even the borrow checker errors you'll fight - traces back to ownership. Get this right and the rest falls into place.
 
 ---
 
@@ -32,7 +32,7 @@ Every value in Rust follows these rules:
 3. Ownership can be transferred, but there's always exactly one owner at any time.
 ```
 
-That's it. These three rules, enforced by the compiler at compile time, eliminate use-after-free, double-free, and memory leaks — all at once.
+That's it. These three rules, enforced by the compiler at compile time, eliminate use-after-free, double-free, and memory leaks - all at once.
 
 ---
 
@@ -53,7 +53,7 @@ fn main() {
 
 In C, `s2 = s1` would give you two pointers to the same memory. Then `free(s1); free(s2);` would be a double-free. Rust prevents this by making the original variable invalid after the move.
 
-The heap data doesn't move — only the ownership does. The bytes stay where they are; the compiler just stops you from accessing them through the old name.
+The heap data doesn't move - only the ownership does. The bytes stay where they are; the compiler just stops you from accessing them through the old name.
 
 ```
 Before: let s2 = s1;
@@ -83,13 +83,13 @@ fn main() {
 }  // end of main
 ```
 
-This is RAII — the same concept as C++ destructors, but without the Rule of Five complexity. You don't write `drop` implementations unless you have a custom resource to release (file handles, sockets, etc.).
+This is RAII - the same concept as C++ destructors, but without the Rule of Five complexity. You don't write `drop` implementations unless you have a custom resource to release (file handles, sockets, etc.).
 
-For the hex viewer, `File` implements `Drop` to close the file descriptor when it goes out of scope. You never call `fclose()` like you would in C. The OS handle is released when the `File` variable is dropped — at the end of the block, or when the owning struct is dropped.
+For the hex viewer, `File` implements `Drop` to close the file descriptor when it goes out of scope. You never call `fclose()` like you would in C. The OS handle is released when the `File` variable is dropped - at the end of the block, or when the owning struct is dropped.
 
 ---
 
-## Primitive Types Don't Move — They Copy
+## Primitive Types Don't Move - They Copy
 
 For small, stack-only types (`i32`, `u64`, `bool`, `char`, `u16`, etc.), assignment makes a copy rather than a move. This is the `Copy` trait.
 
@@ -102,7 +102,7 @@ fn main() {
 }
 ```
 
-Why? Because copying a 4-byte integer is cheap. Moving it would add complexity for no benefit. `String` doesn't implement `Copy` because copying it would require a heap allocation — that's expensive and should be explicit.
+Why? Because copying a 4-byte integer is cheap. Moving it would add complexity for no benefit. `String` doesn't implement `Copy` because copying it would require a heap allocation - that's expensive and should be explicit.
 
 ---
 
@@ -145,7 +145,7 @@ fn main() {
 }
 ```
 
-`&String` is an immutable reference — you can read through it but not modify the value. This is like `const char *` in C, but the compiler guarantees the pointed-to value is still alive.
+`&String` is an immutable reference - you can read through it but not modify the value. This is like `const char *` in C, but the compiler guarantees the pointed-to value is still alive.
 
 ---
 
@@ -189,11 +189,11 @@ fn main() {
     let mut v = vec![1, 2, 3];
 
     let r1 = &v;      // immutable borrow
-    let r2 = &v;      // another immutable borrow — fine
+    let r2 = &v;      // another immutable borrow - fine
     println!("{r1:?} {r2:?}");
     // r1 and r2 go out of scope here
 
-    let r3 = &mut v;  // mutable borrow — fine because r1/r2 are gone
+    let r3 = &mut v;  // mutable borrow - fine because r1/r2 are gone
     r3.push(4);
 }
 ```
@@ -216,7 +216,7 @@ If you genuinely need two independent copies of a heap value, call `.clone()`:
 ```rust
 fn main() {
     let s1 = String::from("hello");
-    let s2 = s1.clone();   // explicit deep copy — new heap allocation
+    let s2 = s1.clone();   // explicit deep copy - new heap allocation
     
     println!("{s1}");  // both valid
     println!("{s2}");
@@ -231,13 +231,13 @@ Clone is explicit because it allocates memory. If you find yourself cloning a lo
 
 You'll fight the borrow checker. Here's how to read the errors:
 
-**"use of moved value"** — you used a variable after moving it somewhere. Solution: use a reference instead of moving, or clone before moving.
+**"use of moved value"** - you used a variable after moving it somewhere. Solution: use a reference instead of moving, or clone before moving.
 
-**"cannot borrow as mutable because it is also borrowed as immutable"** — you have both a `&T` and a `&mut T` alive at the same time. Solution: let the immutable borrows go out of scope before taking a mutable one.
+**"cannot borrow as mutable because it is also borrowed as immutable"** - you have both a `&T` and a `&mut T` alive at the same time. Solution: let the immutable borrows go out of scope before taking a mutable one.
 
-**"cannot borrow as mutable more than once"** — you have two `&mut T` borrows. You can only have one at a time. Solution: don't overlap them.
+**"cannot borrow as mutable more than once"** - you have two `&mut T` borrows. You can only have one at a time. Solution: don't overlap them.
 
-**"does not live long enough"** — you're returning a reference to something that goes out of scope before the caller can use it. Solution: return owned data instead of a reference, or restructure so the data lives long enough.
+**"does not live long enough"** - you're returning a reference to something that goes out of scope before the caller can use it. Solution: return owned data instead of a reference, or restructure so the data lives long enough.
 
 ---
 
@@ -252,7 +252,7 @@ use std::io::{self, BufReader, Read};
 fn read_chunk(path: &str) -> io::Result<Vec<u8>> {
     let file = File::open(path)?;  // File owns the OS file descriptor
     let mut reader = BufReader::new(file);  // file is MOVED into BufReader
-    // file no longer accessible by name here — BufReader owns it now
+    // file no longer accessible by name here - BufReader owns it now
     let mut buf = vec![0u8; 16];
     let n = reader.read(&mut buf)?;
     buf.truncate(n);
@@ -260,7 +260,7 @@ fn read_chunk(path: &str) -> io::Result<Vec<u8>> {
 }  // reader goes out of scope -> Drop is called -> file descriptor closed
 ```
 
-No `fclose()`. The `File` (inside `BufReader`) closes when `BufReader` goes out of scope. In C, forgetting `fclose` is a resource leak. In Rust, the compiler guarantees it runs — through the same `Drop` trait that closes sockets, releases mutexes, and frees memory. One mechanism for all resources.
+No `fclose()`. The `File` (inside `BufReader`) closes when `BufReader` goes out of scope. In C, forgetting `fclose` is a resource leak. In Rust, the compiler guarantees it runs - through the same `Drop` trait that closes sockets, releases mutexes, and frees memory. One mechanism for all resources.
 
 ---
 
@@ -282,12 +282,12 @@ fn process(scanner: &mut Scanner) {
     println!("{}", h);
 }
 ```
-The compiler sees `&mut scanner` (to push) and `&scanner.host` simultaneously — a mutable and immutable borrow of the same thing. Even though `host` and `results` are different fields, the compiler reasons about the whole struct, not individual fields, in some situations. The fix: drop the first borrow before taking the second, or restructure so you don't hold both at once.
+The compiler sees `&mut scanner` (to push) and `&scanner.host` simultaneously - a mutable and immutable borrow of the same thing. Even though `host` and `results` are different fields, the compiler reasons about the whole struct, not individual fields, in some situations. The fix: drop the first borrow before taking the second, or restructure so you don't hold both at once.
 
 **Non-lexical lifetimes help, but edge cases remain.**
-Rust's borrow checker was improved significantly with "non-lexical lifetimes" — borrows now end at the last point they're used, not the end of the block. This resolves many confusing errors from older Rust. But edge cases with loops and conditionals can still produce errors that look wrong. If the compiler says a borrow lasts longer than you expect, check whether it's used inside a loop or match that keeps it alive.
+Rust's borrow checker was improved significantly with "non-lexical lifetimes" - borrows now end at the last point they're used, not the end of the block. This resolves many confusing errors from older Rust. But edge cases with loops and conditionals can still produce errors that look wrong. If the compiler says a borrow lasts longer than you expect, check whether it's used inside a loop or match that keeps it alive.
 
-**Rc cycles — two values pointing to each other, neither freed.**
+**Rc cycles - two values pointing to each other, neither freed.**
 `Rc<T>` (reference-counted pointer) frees a value when the count reaches zero. If two `Rc` values hold references to each other, neither count ever reaches zero. The values leak for the lifetime of the program. The compiler doesn't catch this. Use `Weak<T>` for back-references in graph or tree structures where cycles are possible.
 
 **When clone is the right answer, not a workaround.**
@@ -311,7 +311,7 @@ The smell: if you clone and then immediately use the clone in the same place the
 
 **Not understanding why `String` moves but `i32` copies.** Small `Copy` types (`i32`, `u16`, `bool`) are copied on assignment. Types with heap data (`String`, `Vec`) are moved. Once you internalize which types implement `Copy`, this becomes intuitive.
 
-**Fighting the borrow checker instead of listening to it.** The borrow checker is often right. If you can't satisfy it, it usually means there's a design problem. Step back and think about ownership — who should own this data?
+**Fighting the borrow checker instead of listening to it.** The borrow checker is often right. If you can't satisfy it, it usually means there's a design problem. Step back and think about ownership - who should own this data?
 
 **Returning references to local variables.** You cannot return `&` to something that lives on the current stack frame. It'll be gone when the function returns. Return owned data instead.
 
@@ -321,9 +321,9 @@ The smell: if you clone and then immediately use the clone in the same place the
 
 ## Coming from C/C++: What Move Actually Means
 
-If you've written `std::move(ptr)` in C++, you already understand the concept of move semantics — the idea that ownership of a resource can be transferred from one variable to another. Rust uses the same model but makes one critical difference: **the compiler refuses to let you use a moved-from variable**.
+If you've written `std::move(ptr)` in C++, you already understand the concept of move semantics - the idea that ownership of a resource can be transferred from one variable to another. Rust uses the same model but makes one critical difference: **the compiler refuses to let you use a moved-from variable**.
 
-In C++, after `auto b = std::move(a)`, you can still write code that reads from `a`. It compiles. At runtime, `a` is in a "valid but unspecified state" — usually empty, but it depends on the type. That's a class of bugs. In Rust, using `a` after it's been moved is a **compile error**, not a runtime issue.
+In C++, after `auto b = std::move(a)`, you can still write code that reads from `a`. It compiles. At runtime, `a` is in a "valid but unspecified state" - usually empty, but it depends on the type. That's a class of bugs. In Rust, using `a` after it's been moved is a **compile error**, not a runtime issue.
 
 ```rust
 let a = String::from("hello");
@@ -333,7 +333,7 @@ let b = a;             // a is moved into b
 println!("{}", b);    // ✅ b owns the string now
 ```
 
-Compare to C: `malloc`/`free` is replaced by Rust's ownership model. When you pass a heap allocation to a function that takes ownership, the allocation is freed when that function returns — no `free()` call needed, no leaks possible.
+Compare to C: `malloc`/`free` is replaced by Rust's ownership model. When you pass a heap allocation to a function that takes ownership, the allocation is freed when that function returns - no `free()` call needed, no leaks possible.
 
 **Smart pointer equivalents** (for C++ developers):
 
@@ -345,23 +345,23 @@ Compare to C: `malloc`/`free` is replaced by Rust's ownership model. When you pa
 | `std::weak_ptr<T>` | `Weak<T>` | Must upgrade to check validity |
 | Raw pointer | `*const T` / `*mut T` | Only allowed in `unsafe` blocks |
 
-For C developers: `Box<T>` replaces `malloc`/`free` pairs. You allocate, you use it, and when `Box` goes out of scope, the memory is freed automatically — no dangling pointer possible.
+For C developers: `Box<T>` replaces `malloc`/`free` pairs. You allocate, you use it, and when `Box` goes out of scope, the memory is freed automatically - no dangling pointer possible.
 
 ## Memory Layout: What's on the Stack vs. Heap
 
 Understanding layout helps you predict when moves are cheap and when they allocate.
 
-**Stack-only types** (`Copy` — these are never moved, just copied):
-- `i32`, `u64`, `f32`, `bool`, `char` — any primitive
-- `(i32, bool)` — tuples of Copy types
-- `[u8; 4]` — fixed-size arrays of Copy types
+**Stack-only types** (`Copy` - these are never moved, just copied):
+- `i32`, `u64`, `f32`, `bool`, `char` - any primitive
+- `(i32, bool)` - tuples of Copy types
+- `[u8; 4]` - fixed-size arrays of Copy types
 
 **Types with heap data** (these are moved, not copied):
 - `String` is 3 words on the stack: a heap pointer, a length, and a capacity. The actual characters are on the heap. Moving a `String` copies those 3 words and transfers ownership of the heap allocation.
 - `Vec<T>` is the same: pointer + len + cap. Moving it copies the 3 words.
 - `Box<T>` is 1 word: just the heap pointer.
 
-This is why moving a `String` or `Vec` is cheap — you're copying 24 bytes of metadata, not the contents. The heap allocation doesn't move, just the pointer does.
+This is why moving a `String` or `Vec` is cheap - you're copying 24 bytes of metadata, not the contents. The heap allocation doesn't move, just the pointer does.
 
 ## When Lifetimes Show Up in Function Signatures
 
@@ -375,7 +375,7 @@ error[E0106]: missing lifetime specifier
   |               ----  ----     ^ expected named lifetime parameter
 ```
 
-This happens when a function takes multiple references and returns a reference — the compiler needs to know which input lifetime the output is tied to. The fix:
+This happens when a function takes multiple references and returns a reference - the compiler needs to know which input lifetime the output is tied to. The fix:
 
 ```rust
 // Tell the compiler: the returned reference lives at least as long as BOTH inputs
@@ -384,11 +384,11 @@ fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
 }
 ```
 
-The `'a` is a lifetime parameter — it's not a name you invent, it's a constraint you state. This one says: "the output reference is valid as long as both inputs are valid." The compiler uses this to prevent you from returning the reference after either input has been dropped.
+The `'a` is a lifetime parameter - it's not a name you invent, it's a constraint you state. This one says: "the output reference is valid as long as both inputs are valid." The compiler uses this to prevent you from returning the reference after either input has been dropped.
 
 You'll encounter this most often in:
 1. Functions that return references (need to tie output to an input)
 2. Structs that hold references (the struct can't outlive the data it references)
 3. Trait implementations where the trait expects a reference return
 
-For the hex viewer, you won't need explicit lifetime annotations — `&str` in function parameters gets elided automatically (the compiler infers them). Lifetimes become explicit when the compiler can't figure out which input the output borrows from.
+For the hex viewer, you won't need explicit lifetime annotations - `&str` in function parameters gets elided automatically (the compiler infers them). Lifetimes become explicit when the compiler can't figure out which input the output borrows from.

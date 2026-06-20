@@ -1,6 +1,6 @@
-# Doc 07 — Memory Layout, repr(C), and the Wire
+# Doc 07 - Memory Layout, repr(C), and the Wire
 
-🔴 This is where low-level meets Rust — the C dev's home territory.
+🔴 This is where low-level meets Rust - the C dev's home territory.
 
 When you build a TCP protocol, you're working with bytes on the wire. The question is: how do those bytes map to Rust structs? And how does Rust lay out structs in memory compared to C? This doc answers both questions, because getting this wrong means either corrupted messages, undefined behavior, or both.
 
@@ -13,18 +13,18 @@ In C, struct layout is mostly predictable: fields in declaration order, with pad
 ```rust
 struct DefaultLayout {
     a: u8,   // 1 byte
-    b: u64,  // 8 bytes — needs 8-byte alignment
+    b: u64,  // 8 bytes - needs 8-byte alignment
     c: u8,   // 1 byte
 }
 
 // In C, this would be: a(1) + padding(7) + b(8) + c(1) + padding(7) = 24 bytes
 // In Rust default layout: may be reordered to b(8) + a(1) + c(1) + padding(6) = 16 bytes
-// Or some other ordering — it's up to the compiler.
+// Or some other ordering - it's up to the compiler.
 
 fn main() {
     use std::mem;
     println!("Size of DefaultLayout: {}", mem::size_of::<DefaultLayout>());
-    // Might print 16, 24, or something else — unspecified
+    // Might print 16, 24, or something else - unspecified
 }
 ```
 
@@ -34,13 +34,13 @@ This reordering is the compiler's optimization: it tries to minimize wasted padd
 
 ## `#[repr(C)]`: The Predictable Layout
 
-`#[repr(C)]` tells the compiler: "lay this out exactly as C would — fields in declaration order, standard C alignment and padding rules."
+`#[repr(C)]` tells the compiler: "lay this out exactly as C would - fields in declaration order, standard C alignment and padding rules."
 
 ```rust
 #[repr(C)]
 struct CLayout {
     a: u8,   // 1 byte
-    b: u64,  // 8 bytes — needs 8-byte alignment
+    b: u64,  // 8 bytes - needs 8-byte alignment
     c: u8,   // 1 byte
 }
 
@@ -66,7 +66,7 @@ use std::mem;
 #[repr(C)]
 struct MessageHeader {
     msg_type: u8,   // 1 byte
-    _pad: u8,       // 1 byte padding (explicit — see below)
+    _pad: u8,       // 1 byte padding (explicit - see below)
     length: u16,    // 2 bytes, needs 2-byte alignment
     sequence: u32,  // 4 bytes, needs 4-byte alignment
 }
@@ -80,7 +80,7 @@ fn main() {
 }
 ```
 
-**Alignment rule**: a type with alignment N must be stored at an address divisible by N. `u16` at offset 1 (odd byte) is misaligned — undefined behavior on many platforms, slow on others.
+**Alignment rule**: a type with alignment N must be stored at an address divisible by N. `u16` at offset 1 (odd byte) is misaligned - undefined behavior on many platforms, slow on others.
 
 **Padding rule**: the compiler inserts padding bytes between fields to ensure each field is properly aligned. In `#[repr(C)]`, padding follows the same rules as C:
 - After each field, pad until the next field's alignment requirement is met
@@ -89,7 +89,7 @@ fn main() {
 ### Explicit vs. Implicit Padding
 
 ```rust
-// Bad: implicit padding — struct layout is surprising
+// Bad: implicit padding - struct layout is surprising
 #[repr(C)]
 struct ImplicitPad {
     flag: u8,       // 1 byte
@@ -98,11 +98,11 @@ struct ImplicitPad {
 }
 // size = 8 bytes, but only 5 bytes of actual data
 
-// Good: explicit padding — reader knows exactly what's in the struct
+// Good: explicit padding - reader knows exactly what's in the struct
 #[repr(C)]
 struct ExplicitPad {
     flag: u8,       // 1 byte
-    _pad: [u8; 3],  // 3 bytes explicit padding — self-documenting
+    _pad: [u8; 3],  // 3 bytes explicit padding - self-documenting
     value: u32,     // 4 bytes
 }
 // Same size, same layout, but intent is visible
@@ -132,7 +132,7 @@ use std::mem;
 #[derive(Debug, Clone, Copy)]
 pub struct ChatHeader {
     pub msg_type: u8,       // 0x01 = chat message, 0x02 = join, 0x03 = leave
-    pub _pad: u8,           // Reserved, always 0 — ensures u16 is aligned
+    pub _pad: u8,           // Reserved, always 0 - ensures u16 is aligned
     pub payload_length: u16, // Length of the UTF-8 payload in bytes (little-endian)
 }
 
@@ -179,7 +179,7 @@ impl ChatHeader {
 }
 ```
 
-Notice: we parse endianness **explicitly** using `u16::from_le_bytes`. Never transmute raw bytes to a `u16` — the endianness of the bytes might not match the CPU's native endianness.
+Notice: we parse endianness **explicitly** using `u16::from_le_bytes`. Never transmute raw bytes to a `u16` - the endianness of the bytes might not match the CPU's native endianness.
 
 ---
 
@@ -193,7 +193,7 @@ let value: u32 = 0xDEADBEEF;
 // Write as little-endian (most x86/x64 systems are LE native)
 let le_bytes: [u8; 4] = value.to_le_bytes();  // [EF, BE, AD, DE]
 let be_bytes: [u8; 4] = value.to_be_bytes();  // [DE, AD, BE, EF]
-let ne_bytes: [u8; 4] = value.to_ne_bytes();  // Native endian — depends on CPU
+let ne_bytes: [u8; 4] = value.to_ne_bytes();  // Native endian - depends on CPU
 
 // Read back
 let from_le = u32::from_le_bytes([0xEF, 0xBE, 0xAD, 0xDE]);  // 0xDEADBEEF
@@ -209,10 +209,10 @@ let from_be = u32::from_be_bytes([0xDE, 0xAD, 0xBE, 0xEF]);  // 0xDEADBEEF
 
 ## Safe Byte Parsing vs. Unsafe Transmutation
 
-You might be tempted to do this — it looks clean and it's exactly what C code does:
+You might be tempted to do this - it looks clean and it's exactly what C code does:
 
 ```rust
-// WRONG — undefined behavior
+// WRONG - undefined behavior
 let bytes: [u8; 4] = [0x01, 0x00, 0x05, 0x00];
 let header: ChatHeader = unsafe { std::mem::transmute(bytes) };
 ```
@@ -225,7 +225,7 @@ This is UB for several reasons:
 The safe approach is to parse field-by-field:
 
 ```rust
-// CORRECT — explicit parsing, handles alignment and endianness correctly
+// CORRECT - explicit parsing, handles alignment and endianness correctly
 pub fn from_bytes(bytes: &[u8]) -> Option<ChatHeader> {
     if bytes.len() < 4 { return None; }
 
@@ -237,7 +237,7 @@ pub fn from_bytes(bytes: &[u8]) -> Option<ChatHeader> {
 }
 ```
 
-For high-performance code that needs zero-copy parsing of many structs, use the `zerocopy` or `bytemuck` crates — they verify alignment and layout safety at compile time:
+For high-performance code that needs zero-copy parsing of many structs, use the `zerocopy` or `bytemuck` crates - they verify alignment and layout safety at compile time:
 
 ```rust
 // With bytemuck (for types where ALL bit patterns are valid):
@@ -252,7 +252,7 @@ pub struct SensorReading {
     pub value:     u32,
 }
 
-// Now you can cast a byte slice directly — no copies, compile-time verified:
+// Now you can cast a byte slice directly - no copies, compile-time verified:
 let bytes: &[u8] = &[...];
 let readings: &[SensorReading] = bytemuck::cast_slice(bytes);
 ```
@@ -263,7 +263,7 @@ let readings: &[SensorReading] = bytemuck::cast_slice(bytes);
 
 ## `#[repr(C, packed)]`: Removing Padding
 
-Sometimes you need to match a wire format where there is no padding — bytes are packed tightly regardless of alignment:
+Sometimes you need to match a wire format where there is no padding - bytes are packed tightly regardless of alignment:
 
 ```rust
 #[repr(C, packed)]
@@ -276,7 +276,7 @@ pub struct PackedHeader {
 }
 ```
 
-**Critical warning**: in a `packed` struct, fields may not be aligned. Taking a reference to a field (`&header.length`) creates an unaligned reference — this is undefined behavior on architectures that require alignment (ARM, RISC-V, most embedded targets), and causes a bus error.
+**Critical warning**: in a `packed` struct, fields may not be aligned. Taking a reference to a field (`&header.length`) creates an unaligned reference - this is undefined behavior on architectures that require alignment (ARM, RISC-V, most embedded targets), and causes a bus error.
 
 ```rust
 // WRONG with packed structs:
@@ -346,7 +346,7 @@ fn main() {
 }
 ```
 
-For the chat server's receive loop, knowing that `payload_length` is at bytes 2-3 of the header lets you read the 4-byte header, parse the length, then read exactly `length` more bytes for the payload — no guessing, no overreading.
+For the chat server's receive loop, knowing that `payload_length` is at bytes 2-3 of the header lets you read the 4-byte header, parse the length, then read exactly `length` more bytes for the payload - no guessing, no overreading.
 
 ---
 
@@ -356,7 +356,7 @@ For the chat server's receive loop, knowing that `payload_length` is at bytes 2-
 Without `#[repr(C)]`, the compiler can reorder fields. A struct that happens to work correctly on one compiler version or architecture may produce corrupt data on another. Always use `#[repr(C)]` for anything that touches the wire.
 
 **Assuming padding bytes are zero.**
-When you create a `#[repr(C)]` struct with `Default`, the padding bytes have undefined values — they're whatever was in memory before. If you're sending the struct as raw bytes, those padding bytes are part of the message. Receivers should not interpret padding, but for security, zero it out explicitly:
+When you create a `#[repr(C)]` struct with `Default`, the padding bytes have undefined values - they're whatever was in memory before. If you're sending the struct as raw bytes, those padding bytes are part of the message. Receivers should not interpret padding, but for security, zero it out explicitly:
 
 ```rust
 // Safe: zero-initialize before filling in fields
@@ -369,7 +369,7 @@ header.payload_length = payload.len() as u16;
 If the client writes `u16::to_le_bytes()` and the server reads `u16::from_be_bytes()`, the length field is corrupted. Document the byte order in the protocol definition and enforce it in both directions. Big-endian is traditional for network protocols (RFC 791 specifies network byte order as big-endian). Little-endian is common in modern binary protocols (Protocol Buffers, FlatBuffers, and many others).
 
 **Taking references to fields of packed structs.**
-As described above — unaligned references in packed structs are UB. Compiler warning `-W unaligned_references` catches most of these, but make it a rule: never take `&field` in a packed struct. Always copy fields with `let val = packed_struct.field;`.
+As described above - unaligned references in packed structs are UB. Compiler warning `-W unaligned_references` catches most of these, but make it a rule: never take `&field` in a packed struct. Always copy fields with `let val = packed_struct.field;`.
 
 **`size_of` returning 0 for zero-sized types.**
 If you have an empty struct or a struct containing only `PhantomData`, `size_of` returns 0. Multiplying buffer sizes by 0 gives you a 0-length buffer. Check for ZSTs explicitly if your code handles arbitrary types.

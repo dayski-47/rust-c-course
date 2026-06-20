@@ -1,8 +1,8 @@
-# Doc 04 — Functional vs. Imperative: When to Chain
+# Doc 04 - Functional vs. Imperative: When to Chain
 
-🟡 Think about it — you just learned closures and iterators. Now: when do you actually use them?
+🟡 Think about it - you just learned closures and iterators. Now: when do you actually use them?
 
-Rust gives you a genuine choice: you can write C-style for-loops or you can chain functional combinators. Both compile to the same machine code. The question is which communicates intent more clearly for a given situation. This doc builds that judgment — using the system monitor project as a concrete lens.
+Rust gives you a genuine choice: you can write C-style for-loops or you can chain functional combinators. Both compile to the same machine code. The question is which communicates intent more clearly for a given situation. This doc builds that judgment - using the system monitor project as a concrete lens.
 
 ---
 
@@ -10,7 +10,7 @@ Rust gives you a genuine choice: you can write C-style for-loops or you can chai
 
 **Functional style** (iterator chains, combinators) wins when you are *transforming data through a pipeline*. Each step takes input, produces output, no mutation.
 
-**Imperative style** (for loops, mutable variables) wins when you are *managing state transitions with side effects* — especially when you're building multiple outputs simultaneously or when branches do fundamentally different things.
+**Imperative style** (for loops, mutable variables) wins when you are *managing state transitions with side effects* - especially when you're building multiple outputs simultaneously or when branches do fundamentally different things.
 
 Most real code has both, and the skill is recognizing which pattern you're in.
 
@@ -18,7 +18,7 @@ Most real code has both, and the skill is recognizing which pattern you're in.
 
 ## Iterator Chains: When They Win
 
-### Data pipelines — filtering and transforming collections
+### Data pipelines - filtering and transforming collections
 
 This is the strongest use case. Compare processing CPU samples:
 
@@ -42,11 +42,11 @@ let high_cpu_ids: Vec<String> = samples.iter()
 
 The functional version is better here because:
 - Each step is independently readable: filter hot processes, then extract their names
-- No mutation — data flows in one direction from left to right
+- No mutation - data flows in one direction from left to right
 - You can add/remove/reorder stages without restructuring the whole function
 - LLVM inlines these adapter calls to the same assembly as the loop
 
-### Aggregation — computing one value from a collection
+### Aggregation - computing one value from a collection
 
 ```rust
 // Imperative: mutable accumulators, manual loop
@@ -76,7 +76,7 @@ let all_ok  = samples.iter().all(|s| s.mem_bytes < MAX_MEM);
 let first   = samples.iter().find(|s| s.process_name.as_deref() == Some("nginx"));
 ```
 
-Every loop that computes one of these values should be replaced by the corresponding method. `any`, `all`, `find`, `count`, `sum`, `min`, `max` — these have a single, clear name that says what you're doing. A for-loop with a boolean accumulator requires reading the whole body to understand it.
+Every loop that computes one of these values should be replaced by the corresponding method. `any`, `all`, `find`, `count`, `sum`, `min`, `max` - these have a single, clear name that says what you're doing. A for-loop with a boolean accumulator requires reading the whole body to understand it.
 
 ---
 
@@ -89,23 +89,23 @@ Every loop that computes one of these values should be replaced by the correspon
 ```rust
 // Each of these replaces a match expression:
 
-// opt.map(f) — transform the inside value if present
+// opt.map(f) - transform the inside value if present
 let display_name: Option<String> = sample.process_name
     .map(|name| name.to_uppercase());
 
-// opt.unwrap_or(default) — use a fallback if None
+// opt.unwrap_or(default) - use a fallback if None
 let name: String = sample.process_name
     .unwrap_or_else(|| String::from("[kernel]"));
 
-// opt.filter(pred) — keep it only if it passes a test
+// opt.filter(pred) - keep it only if it passes a test
 let hot_name: Option<&str> = sample.process_name.as_deref()
     .filter(|_| sample.cpu_percent > 80.0);
 
-// opt.and_then(f) — chain operations that might also return None
+// opt.and_then(f) - chain operations that might also return None
 let port: Option<u16> = config.get("port")
     .and_then(|v| v.parse::<u16>().ok());
 
-// bool.then_some(v) — condition to Option
+// bool.then_some(v) - condition to Option
 let alert: Option<&str> = (sample.cpu_percent > 95.0).then_some("CRITICAL");
 ```
 
@@ -114,7 +114,7 @@ let alert: Option<&str> = (sample.cpu_percent > 95.0).then_some("CRITICAL");
 **When `if let` is better**: when the `Some` branch contains multiple statements, or when the `None` branch does something fundamentally different (not just "use a default"):
 
 ```rust
-// if let is clearer here — these branches are different code paths
+// if let is clearer here - these branches are different code paths
 if let Some(conn) = pool.try_acquire() {
     let result = conn.query(sql)?;
     conn.release();
@@ -157,7 +157,7 @@ The `?` version lets you add logging (`log::debug!("{toml:?}")`), extra validati
 This is the case where functional style genuinely loses:
 
 ```rust
-// Multiple outputs — the loop is clearly better
+// Multiple outputs - the loop is clearly better
 let mut warnings: Vec<String> = Vec::new();
 let mut errors: Vec<String> = Vec::new();
 let mut stats = SampleStats::default();
@@ -179,7 +179,7 @@ for sample in &samples {
 }
 
 // Functional version would require three separate filter passes,
-// or a fold with three mutable accumulators inside a tuple — worse in every way.
+// or a fold with three mutable accumulators inside a tuple - worse in every way.
 ```
 
 Use the loop when:
@@ -190,7 +190,7 @@ Use the loop when:
 ### State machines
 
 ```rust
-// A parser reading tokens — the loop IS the algorithm
+// A parser reading tokens - the loop IS the algorithm
 let mut state = ParseState::Start;
 for token in tokens {
     state = match (state, token) {
@@ -214,7 +214,7 @@ No functional equivalent is better. The loop with state is the natural model her
 
 A critical point for engineers coming from C: **Rust iterator chains compile to the same machine code as hand-written loops.**
 
-LLVM inlines the closure calls, eliminates the adapter structs, and produces identical assembly. This is not aspirational — it is the design principle, and it is measured.
+LLVM inlines the closure calls, eliminates the adapter structs, and produces identical assembly. This is not aspirational - it is the design principle, and it is measured.
 
 ```rust
 // These two compile to IDENTICAL assembly in release mode:
@@ -306,7 +306,7 @@ The statistics (pure transformations with one output) use the functional style. 
 
 **`.collect()` on an intermediate result when you don't need it.**
 ```rust
-// Allocates a Vec just to immediately iterate it again — wasteful
+// Allocates a Vec just to immediately iterate it again - wasteful
 let filtered: Vec<&Sample> = samples.iter().filter(pred).collect();
 let result: Vec<_> = filtered.iter().map(transform).collect();
 
@@ -342,10 +342,10 @@ let high_severity_ids: HashSet<u64> = active_events.map(|e| e.id).collect();
 **Using `.for_each()` when a loop is clearer.**
 `for_each` is a method that runs a closure for its side effects. It almost never improves readability over a regular loop, and it hides the side effects:
 ```rust
-// Opaque — what does this do? What does it produce?
+// Opaque - what does this do? What does it produce?
 samples.iter().for_each(|s| process_and_log(s));
 
-// Clearer — it's obviously a loop with side effects
+// Clearer - it's obviously a loop with side effects
 for s in &samples {
     process_and_log(s);
 }

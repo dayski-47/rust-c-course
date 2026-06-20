@@ -1,8 +1,8 @@
-# Doc 05 — Zero-Copy Serialization Patterns
+# Doc 05 - Zero-Copy Serialization Patterns
 
 🟡 Every storage engine is fundamentally a serialization problem: bytes on disk become structured data in memory, and structured data becomes bytes again. The difference between a fast storage engine and a slow one is often how much copying happens during that transformation.
 
-ironkv stores key-value pairs where both keys and values are raw byte slices. The wire format — the on-disk binary layout — needs to be designed for two things: correctness and speed. This doc covers the tools that make parsing fast: zero-copy deserialization with serde, binary representations with `repr(C)`, and the `bytes::Bytes` type for shared ownership of byte buffers.
+ironkv stores key-value pairs where both keys and values are raw byte slices. The wire format - the on-disk binary layout - needs to be designed for two things: correctness and speed. This doc covers the tools that make parsing fast: zero-copy deserialization with serde, binary representations with `repr(C)`, and the `bytes::Bytes` type for shared ownership of byte buffers.
 
 ---
 
@@ -42,7 +42,7 @@ This single derive works with JSON (for debugging), `bincode` (for fast binary e
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]  // Reject extra data — strict mode for protocols
+#[serde(deny_unknown_fields)]  // Reject extra data - strict mode for protocols
 pub struct WalEntry {
     pub sequence: u64,
 
@@ -73,7 +73,7 @@ Different enum representations produce different binary shapes:
 ```rust
 use serde::{Serialize, Deserialize};
 
-// Internally tagged — best for human-readable debug formats
+// Internally tagged - best for human-readable debug formats
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum IndexEvent {
@@ -83,7 +83,7 @@ pub enum IndexEvent {
 }
 // JSON: {"type": "Insert", "key_hash": 12345, "offset": 4096, "len": 64}
 
-// Untagged — for formats where shape alone disambiguates
+// Untagged - for formats where shape alone disambiguates
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum KeyOrHash {
@@ -103,27 +103,27 @@ The key: use borrowed types (`&'de str`, `&'de [u8]`) instead of owned types (`S
 ```rust
 use serde::Deserialize;
 
-// Owned — allocates on every parse
+// Owned - allocates on every parse
 #[derive(Deserialize)]
 struct OwnedRecord {
     key: String,    // allocates a new String
     value: Vec<u8>, // allocates a new Vec
 }
 
-// Zero-copy — borrows from the input buffer
+// Zero-copy - borrows from the input buffer
 #[derive(Deserialize)]
 struct BorrowedRecord<'de> {
-    key: &'de str,    // borrows from the input — no allocation
-    value: &'de [u8], // borrows from the input — no allocation
+    key: &'de str,    // borrows from the input - no allocation
+    value: &'de [u8], // borrows from the input - no allocation
 }
 ```
 
-The `'de` lifetime says "this struct can only live as long as the input buffer it was parsed from." When parsing from mmap'd memory — which is exactly what ironkv does — the input buffer lives for the lifetime of the mmap region, so borrowed records can live for as long as you need them.
+The `'de` lifetime says "this struct can only live as long as the input buffer it was parsed from." When parsing from mmap'd memory - which is exactly what ironkv does - the input buffer lives for the lifetime of the mmap region, so borrowed records can live for as long as you need them.
 
 ```rust
 // Parsing WAL entries from mmap'd memory
 fn parse_wal_entries<'mmap>(mmap: &'mmap [u8]) -> Vec<BorrowedRecord<'mmap>> {
-    // Each record borrows from mmap — no copies, no allocations
+    // Each record borrows from mmap - no copies, no allocations
     // Records are valid as long as mmap is valid
     let mut records = Vec::new();
     let mut pos = 0;
@@ -162,7 +162,7 @@ pub struct EntryHeader {
     pub value_len: u32,  // bytes 4-7
     pub checksum: u32,   // bytes 8-11
     pub flags: u8,       // byte 12
-    pub _padding: [u8; 3], // bytes 13-15 — explicit, not compiler-chosen
+    pub _padding: [u8; 3], // bytes 13-15 - explicit, not compiler-chosen
 }
 
 const HEADER_SIZE: usize = std::mem::size_of::<EntryHeader>();  // = 16
@@ -202,7 +202,7 @@ impl EntryHeader {
 
 ## The `bytes::Bytes` Type for Shared Ownership
 
-When multiple parts of ironkv need to hold onto the same data — the LRU cache, the in-flight write buffer, the response being assembled — you don't want to copy the bytes for each holder. The `bytes::Bytes` type provides shared ownership of a byte buffer:
+When multiple parts of ironkv need to hold onto the same data - the LRU cache, the in-flight write buffer, the response being assembled - you don't want to copy the bytes for each holder. The `bytes::Bytes` type provides shared ownership of a byte buffer:
 
 ```toml
 [dependencies]
@@ -213,7 +213,7 @@ bytes = "1"
 use bytes::Bytes;
 
 /// A value stored in ironkv.
-/// Bytes is Arc<Vec<u8>> with range slicing — shared ownership, zero-copy slicing.
+/// Bytes is Arc<Vec<u8>> with range slicing - shared ownership, zero-copy slicing.
 #[derive(Clone, Debug)]
 pub struct StoredValue {
     raw: Bytes,
@@ -224,7 +224,7 @@ impl StoredValue {
         StoredValue { raw: data.into() }
     }
 
-    /// Zero-copy slice — returns a Bytes that shares ownership of the same allocation.
+    /// Zero-copy slice - returns a Bytes that shares ownership of the same allocation.
     pub fn slice(&self, range: impl std::ops::RangeBounds<usize>) -> Bytes {
         self.raw.slice(range)
     }
@@ -241,7 +241,7 @@ struct LruCache {
 impl LruCache {
     pub fn get(&self, key: &[u8]) -> Option<Bytes> {
         // Returns a Bytes that shares ownership with the cache entry.
-        // No copy — just an Arc reference count increment.
+        // No copy - just an Arc reference count increment.
         self.entries.get(key).map(|v| v.raw.clone())
     }
 
@@ -251,7 +251,7 @@ impl LruCache {
 }
 ```
 
-`Bytes::clone()` is O(1) — it increments a reference count, not the data. Multiple components can hold `Bytes` references to the same underlying allocation. When the last holder drops it, the allocation is freed.
+`Bytes::clone()` is O(1) - it increments a reference count, not the data. Multiple components can hold `Bytes` references to the same underlying allocation. When the last holder drops it, the allocation is freed.
 
 ---
 
@@ -310,7 +310,7 @@ fn read_wal_entry(reader: &mut impl std::io::Read) -> std::io::Result<WalEntry> 
 **bincode vs custom binary format:**
 - bincode is simple to add and handles arbitrary serde-compatible types
 - Custom formats give you full control over layout and can be zero-copy
-- For the WAL (write path), bincode is fine — writes are sequential and rare
+- For the WAL (write path), bincode is fine - writes are sequential and rare
 - For the data file (read path), custom `repr(C)` headers with mmap are faster
 
 ---
@@ -354,7 +354,7 @@ WAL File (.wal):
 └─────────────────────────────────────────────┘
 ```
 
-The data file is read via mmap with `repr(C)` headers — O(1) field access, no parsing. The WAL is written sequentially with bincode — simple, correct, easy to recover. The two formats match the two access patterns: random reads (data file) and sequential writes (WAL).
+The data file is read via mmap with `repr(C)` headers - O(1) field access, no parsing. The WAL is written sequentially with bincode - simple, correct, easy to recover. The two formats match the two access patterns: random reads (data file) and sequential writes (WAL).
 
 ---
 
@@ -380,7 +380,7 @@ pub fn read_entry<'mmap>(mmap: &'mmap [u8], offset: usize) -> Option<(&'mmap [u8
     let key = &mmap[key_start..val_start];
     let value = &mmap[val_start..val_end];
     
-    // Verify checksum — both key and value
+    // Verify checksum - both key and value
     let expected = crc32(&[key, value].concat());
     if expected != header.checksum {
         return None;  // Corrupt entry
@@ -396,19 +396,19 @@ The checksum is the last line of defense against on-disk corruption. It costs a 
 
 ## Exercises
 
-**Exercise 1 — Zero-Copy Deserialization**
+**Exercise 1 - Zero-Copy Deserialization**
 
 Implement `BorrowedRecord<'de>` with `#[derive(Deserialize)]` using `&'de str` and
 `&'de [u8]` fields. Write a test that:
 1. Creates a JSON string `{"key": "hello", "value": [72,101,108,108,111]}`
 2. Deserializes it into a `BorrowedRecord<'_>` using `serde_json::from_str`
-3. Asserts that `record.key == "hello"` **without** calling `.to_owned()` — the key
+3. Asserts that `record.key == "hello"` **without** calling `.to_owned()` - the key
    should borrow directly from the input string
 4. Verifies with `std::ptr::eq` that the key field's pointer is within the original string
 
 This confirms zero-copy: no allocation happened for the key.
 
-**Exercise 2 — repr(C) Size Assertion**
+**Exercise 2 - repr(C) Size Assertion**
 
 Define this struct and add a compile-time size assertion:
 
@@ -427,7 +427,7 @@ Add `const _: () = assert!(std::mem::size_of::<WalEntry>() == 16, "WalEntry must
 Then add a `timestamp: u64` field and observe the compile error that tells you the
 size changed. Fix the struct by removing the field, and verify the assertion passes.
 
-**Exercise 3 — Bytes Roundtrip**
+**Exercise 3 - Bytes Roundtrip**
 
 Implement a `WalEntryWriter` that serializes ironkv WAL entries using `bincode`:
 1. Write `WalEntry` header with `bincode::serialize`

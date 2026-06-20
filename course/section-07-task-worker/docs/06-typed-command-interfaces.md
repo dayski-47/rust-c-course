@@ -1,10 +1,10 @@
-# Doc 06 — Typed Command Interfaces
+# Doc 06 - Typed Command Interfaces
 
-🟡 Associated types on a trait create a compile-time contract between a command and its response. This eliminates an entire class of parsing bugs — the kind that survive testing and explode in production at 3 AM.
+🟡 Associated types on a trait create a compile-time contract between a command and its response. This eliminates an entire class of parsing bugs - the kind that survive testing and explode in production at 3 AM.
 
 The taskforge system talks to Redis using a command/response protocol. Every command produces a specific response type: `LLEN` returns a count, `BRPOP` returns a list entry, `HGETALL` returns a hash. In a naively typed system, they all return `Vec<u8>` and the caller parses whatever bytes arrive. The compiler has no idea whether the caller parsed the right thing.
 
-Typed command interfaces bind each command to its response type — at the trait level, not just in a comment.
+Typed command interfaces bind each command to its response type - at the trait level, not just in a comment.
 
 ---
 
@@ -13,7 +13,7 @@ Typed command interfaces bind each command to its response type — at the trait
 Before: every Redis interaction looks the same to the compiler.
 
 ```rust
-// Naively typed — everything is Vec<u8>
+// Naively typed - everything is Vec<u8>
 struct Redis {
     conn: redis::Connection,
 }
@@ -26,13 +26,13 @@ impl Redis {
 }
 
 fn run_queue_operations(redis: &mut Redis) -> Result<(), Box<dyn std::error::Error>> {
-    // LLEN returns a single integer — but we get Vec<u8>
+    // LLEN returns a single integer - but we get Vec<u8>
     let raw = redis.command(&["LLEN", "queue:high"])?;
     let count = String::from_utf8(raw)?.parse::<u64>()?;  // 🤞 is this right?
 
-    // BRPOP returns a two-element list [key, value] — but we parse it wrong:
+    // BRPOP returns a two-element list [key, value] - but we parse it wrong:
     let raw = redis.command(&["BRPOP", "queue:high", "1"])?;
-    let job_id = String::from_utf8(raw)?;  // 🐛 raw is [key_bytes, value_bytes] — not a string
+    let job_id = String::from_utf8(raw)?;  // 🐛 raw is [key_bytes, value_bytes] - not a string
 
     // HGETALL returns alternating key/value pairs
     let raw = redis.command(&["HGETALL", &format!("job:{job_id}")])?;
@@ -54,7 +54,7 @@ Four bugs, all compile and "work" until they hit production data. The type syste
 
 The fix: an associated type on a trait that binds each command to exactly one response type.
 
-### Step 1 — Domain types for Redis values
+### Step 1 - Domain types for Redis values
 
 ```rust
 #[derive(Debug, Clone, PartialEq)]
@@ -77,12 +77,12 @@ pub struct JobRecord {
 pub struct JobStatus(pub String);
 ```
 
-### Step 2 — The command trait
+### Step 2 - The command trait
 
 ```rust
 use std::io;
 
-/// A typed Redis command. `Response` is the associated type — it binds
+/// A typed Redis command. `Response` is the associated type - it binds
 /// each command implementation to exactly one return type.
 pub trait RedisCmd {
     type Response;
@@ -91,12 +91,12 @@ pub trait RedisCmd {
     fn args(&self) -> Vec<String>;
 
     /// Parse the raw Redis response bytes into `Self::Response`.
-    /// Parsing logic lives here — never scattered across call sites.
+    /// Parsing logic lives here - never scattered across call sites.
     fn parse(&self, raw: redis::Value) -> io::Result<Self::Response>;
 }
 ```
 
-### Step 3 — One struct per command
+### Step 3 - One struct per command
 
 ```rust
 use redis::Value;
@@ -140,7 +140,7 @@ impl RedisCmd for BrPop {
 
     fn parse(&self, raw: Value) -> io::Result<Option<JobId>> {
         match raw {
-            Value::Nil => Ok(None),  // timeout — no item
+            Value::Nil => Ok(None),  // timeout - no item
             Value::Bulk(items) if items.len() == 2 => {
                 // BRPOP returns [queue_key, value]
                 match &items[1] {
@@ -246,7 +246,7 @@ impl RedisCmd for HGet {
 }
 ```
 
-### Step 4 — A generic executor
+### Step 4 - A generic executor
 
 ```rust
 pub struct TypedRedis {
@@ -279,7 +279,7 @@ impl TypedRedis {
 }
 ```
 
-### Step 5 — The original bugs become compile errors
+### Step 5 - The original bugs become compile errors
 
 ```rust
 fn run_queue_operations_typed(redis: &TypedRedis) -> io::Result<()> {
@@ -288,10 +288,10 @@ fn run_queue_operations_typed(redis: &TypedRedis) -> io::Result<()> {
     let record: Option<JobRecord> = redis.execute(&HGetAll { job_id: "abc123".into() })?;
     let status: Option<JobStatus> = redis.execute(&HGet { job_id: "abc123".into(), field: "status" })?;
 
-    // Bug #1 (wrong parse) — IMPOSSIBLE: parsing lives in each struct's parse()
-    // Bug #2 (BRPOP returned as string) — IMPOSSIBLE: BrPop::parse handles the 2-element bulk
-    // Bug #3 (HGETALL treated as one string) — IMPOSSIBLE: HGetAll::parse handles key/value pairs
-    // Bug #4 (comparing count and status) — COMPILE ERROR:
+    // Bug #1 (wrong parse) - IMPOSSIBLE: parsing lives in each struct's parse()
+    // Bug #2 (BRPOP returned as string) - IMPOSSIBLE: BrPop::parse handles the 2-element bulk
+    // Bug #3 (HGETALL treated as one string) - IMPOSSIBLE: HGetAll::parse handles key/value pairs
+    // Bug #4 (comparing count and status) - COMPILE ERROR:
     // if count == status { }  ← QueueDepth vs Option<JobStatus>: mismatched types
 
     if let Some(job_id) = item {
@@ -330,7 +330,7 @@ impl RedisCmd for LPush {
 }
 ```
 
-Every caller that uses `redis.execute(&LPush { ... })` automatically gets `QueueDepth` back — no parsing code anywhere else.
+Every caller that uses `redis.execute(&LPush { ... })` automatically gets `QueueDepth` back - no parsing code anywhere else.
 
 ---
 
@@ -372,13 +372,13 @@ impl AsyncTypedRedis {
 }
 ```
 
-The trait definition is identical — the executor changes, but every `RedisCmd` implementation works unchanged.
+The trait definition is identical - the executor changes, but every `RedisCmd` implementation works unchanged.
 
 ---
 
 ## Why This Beats the Alternative
 
-The alternative is what most code does: a giant `enum RedisResponse { Int(i64), Bulk(Vec<Vec<u8>>), Nil }` that the caller has to match on. This has the same problem as the original — the caller is responsible for knowing which variant to expect and which fields to read. The command and its parsing are separated.
+The alternative is what most code does: a giant `enum RedisResponse { Int(i64), Bulk(Vec<Vec<u8>>), Nil }` that the caller has to match on. This has the same problem as the original - the caller is responsible for knowing which variant to expect and which fields to read. The command and its parsing are separated.
 
 The typed command pattern keeps them together:
 

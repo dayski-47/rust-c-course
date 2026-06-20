@@ -1,8 +1,8 @@
 # Error Handling: Result and Option
 
-🟡 Think about it — the mechanics are simple, knowing when to use each takes practice.
+🟡 Think about it - the mechanics are simple, knowing when to use each takes practice.
 
-In C, errors come back as return codes (`-1`, `NULL`, `errno`). It's easy to ignore a return code. The compiler won't stop you. In Rust, errors are types — and the type system forces you to deal with them.
+In C, errors come back as return codes (`-1`, `NULL`, `errno`). It's easy to ignore a return code. The compiler won't stop you. In Rust, errors are types - and the type system forces you to deal with them.
 
 ---
 
@@ -44,7 +44,7 @@ fn main() {
 }
 ```
 
-**Rule of thumb for `Option`:** Use it when absence is normal — when "no value" is a valid, expected outcome. Looking something up in a table. Finding a substring. Reading an optional config value.
+**Rule of thumb for `Option`:** Use it when absence is normal - when "no value" is a valid, expected outcome. Looking something up in a table. Finding a substring. Reading an optional config value.
 
 ---
 
@@ -54,12 +54,12 @@ fn main() {
 
 ```rust
 enum Result<T, E> {
-    Ok(T),    // success — contains the value
-    Err(E),   // failure — contains the error
+    Ok(T),    // success - contains the value
+    Err(E),   // failure - contains the error
 }
 ```
 
-Most I/O in Rust returns `Result`. File opens, reads, seeks — all of them.
+Most I/O in Rust returns `Result`. File opens, reads, seeks - all of them.
 
 ```rust
 use std::fs::File;
@@ -80,7 +80,7 @@ In C, `fopen()` returns `NULL` on failure and you check `errno`. You can forget 
 
 ## Pattern Matching With `match`
 
-`match` is the primary tool for handling `Option` and `Result`. It's exhaustive — you must handle all variants:
+`match` is the primary tool for handling `Option` and `Result`. It's exhaustive - you must handle all variants:
 
 ```rust
 fn parse_offset(s: &str) -> Option<u64> {
@@ -90,7 +90,7 @@ fn parse_offset(s: &str) -> Option<u64> {
 fn main() {
     match parse_offset("256") {
         Some(offset) => println!("Starting at byte offset {offset}"),
-        None => println!("Invalid offset — must be a non-negative integer"),
+        None => println!("Invalid offset - must be a non-negative integer"),
     }
 
     match parse_offset("abc") {
@@ -107,7 +107,7 @@ fn main() {
     if let Some(offset) = parse_offset("1024") {
         println!("Skipping first {offset} bytes");
     }
-    // If None, nothing happens — we'd want to print an error in real code
+    // If None, nothing happens - we'd want to print an error in real code
 }
 ```
 
@@ -165,7 +165,7 @@ fn main() {
     // unwrap(): panics with a generic message if Err or None
     let port: u16 = "443".parse().unwrap();
 
-    // expect(): panics with your custom message — better for debugging
+    // expect(): panics with your custom message - better for debugging
     let offset: u64 = "256".parse().expect("offset must be a valid u64");
 }
 ```
@@ -185,7 +185,7 @@ For hexview: it's fine to `unwrap()` during milestones 1-2. Replace with proper 
 
 ## How This Connects to the Hex Viewer
 
-File I/O is exactly the thing `Result` was designed for. Opening a file, reading bytes, parsing arguments — all of them can fail in distinct ways, and `Result` captures all of them:
+File I/O is exactly the thing `Result` was designed for. Opening a file, reading bytes, parsing arguments - all of them can fail in distinct ways, and `Result` captures all of them:
 
 ```rust
 use std::fs::File;
@@ -206,7 +206,7 @@ fn read_bytes(path: &str, offset: u64, limit: usize) -> io::Result<Vec<u8>> {
 }
 ```
 
-`File::open` failing (`ENOENT`, `EACCES` in C) comes back as `Err`. Seeking past the end comes back as `Err`. Reading succeeds but returns 0 bytes at EOF — that's `Ok(0)`, not an error. No `errno`. No null file handles. The type system forces you to think about failure at every step.
+`File::open` failing (`ENOENT`, `EACCES` in C) comes back as `Err`. Seeking past the end comes back as `Err`. Reading succeeds but returns 0 bytes at EOF - that's `Ok(0)`, not an error. No `errno`. No null file handles. The type system forces you to think about failure at every step.
 
 ---
 
@@ -236,7 +236,7 @@ Result<T, E>
 ## How It Breaks
 
 **`unwrap()` panicking in production.**
-`unwrap()` panics if the value is `Err` or `None`. In development, a panic with a line number is useful. In production, it's a crash that exposes internals to users and produces no useful error message for them. Never call `unwrap()` on anything that can be caused by user input, network conditions, or file system state. That covers: argument parsing, hostname resolution, port parsing, file reads, and JSON parsing. Reserve `unwrap()` for things you can *prove* at the call site are always `Ok` — and add a comment explaining why.
+`unwrap()` panics if the value is `Err` or `None`. In development, a panic with a line number is useful. In production, it's a crash that exposes internals to users and produces no useful error message for them. Never call `unwrap()` on anything that can be caused by user input, network conditions, or file system state. That covers: argument parsing, hostname resolution, port parsing, file reads, and JSON parsing. Reserve `unwrap()` for things you can *prove* at the call site are always `Ok` - and add a comment explaining why.
 
 **The `?` operator silently converting error types.**
 `?` works by calling `From` to convert the error into the function's return type. If your function returns `Result<T, io::Error>` and you use `?` on something that returns `Result<T, ParseIntError>`, the compiler needs `ParseIntError: From<io::Error>` to exist. It doesn't. You'll get a type mismatch error that points at the `?` but the real problem is that your error types are incompatible. Solutions: use `Box<dyn Error>` as your error type for flexibility, use the `anyhow` crate (common in applications), or define your own error enum with variants for each error type and implement `From` for each.
@@ -254,7 +254,7 @@ hostname.parse::<SocketAddr>()
 Good error messages include the value that was invalid, the operation that failed, and the underlying cause.
 
 **Forgetting that `Ok(0)` from `read()` means EOF, not an error.**
-When you loop reading a file, the loop ends when `read()` returns `Ok(0)`. If you treat `Ok(0)` like a real read, you'll spin forever doing nothing. The correct loop check is `let n = reader.read(&mut buf)?; if n == 0 { break; }`. This is the same as `read()` returning 0 in C — it means end of file, not failure.
+When you loop reading a file, the loop ends when `read()` returns `Ok(0)`. If you treat `Ok(0)` like a real read, you'll spin forever doing nothing. The correct loop check is `let n = reader.read(&mut buf)?; if n == 0 { break; }`. This is the same as `read()` returning 0 in C - it means end of file, not failure.
 
 ---
 

@@ -1,14 +1,14 @@
-# 06 — Rust Idioms and Best Practices
+# 06 - Rust Idioms and Best Practices
 
-> **Project:** System Monitor — polling CPU, memory, and disk metrics at intervals and displaying them in the terminal.
+> **Project:** System Monitor - polling CPU, memory, and disk metrics at intervals and displaying them in the terminal.
 
 ## In This Section
 
 You are building a system monitor that queries OS metrics via the `sysinfo` crate, stores results in structs, and formats them into a live-updating terminal display. Three idioms from this document apply directly:
 
-- **Builder pattern** — `MonitorConfig` will grow optional fields quickly (poll interval, display mode, metric filters). Use a builder instead of a positional constructor.
-- **Type aliases** — iterator chains over `sysinfo` data produce complex intermediate types. A `type CpuSnapshot = Vec<(String, f32)>` is clearer than the raw type in every function signature.
-- **Owned types in structs, references in functions** — your metric structs own `String` names and `Vec` histories; your formatting functions borrow slices of that data.
+- **Builder pattern** - `MonitorConfig` will grow optional fields quickly (poll interval, display mode, metric filters). Use a builder instead of a positional constructor.
+- **Type aliases** - iterator chains over `sysinfo` data produce complex intermediate types. A `type CpuSnapshot = Vec<(String, f32)>` is clearer than the raw type in every function signature.
+- **Owned types in structs, references in functions** - your metric structs own `String` names and `Vec` histories; your formatting functions borrow slices of that data.
 
 ---
 
@@ -36,14 +36,14 @@ A C developer's instinct: "use a pointer to avoid copying." In Rust, this leads 
 
 **Rule: Functions should borrow.** Function parameters should be `&str` (not `String`), `&[T]` (not `Vec<T>`), `&T` (not `T`) unless you need to store or transfer ownership.
 
-Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true — you cannot pass a `&str` where a `String` is needed without cloning.
+Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true - you cannot pass a `&str` where a `String` is needed without cloning.
 
 In the system monitor, a `CpuMetric` struct owns its name and history buffer, but the rendering function borrows a slice:
 
 ```rust
 struct CpuMetric {
-    name: String,         // owned — this struct is the source of truth
-    history: Vec<f32>,    // owned — we accumulate data here
+    name: String,         // owned - this struct is the source of truth
+    history: Vec<f32>,    // owned - we accumulate data here
 }
 
 // Good: borrow a slice of the history, return owned display string
@@ -51,7 +51,7 @@ fn render_sparkline(history: &[f32]) -> String {
     // ...
 }
 
-// Bad: takes Vec — forces the caller to clone or give up the buffer
+// Bad: takes Vec - forces the caller to clone or give up the buffer
 fn render_sparkline(history: Vec<f32>) -> String {
     // ...
 }
@@ -82,7 +82,7 @@ let cfg = MonitorConfig::builder()
 
 ## 4. Error Handling Hierarchy
 
-**Do not use:** `unwrap()` or `expect()` in production paths — anything that can fail due to OS permissions, missing hardware, or bad configuration.
+**Do not use:** `unwrap()` or `expect()` in production paths - anything that can fail due to OS permissions, missing hardware, or bad configuration.
 
 **Early development:** `Box<dyn std::error::Error>` as the error type. Gets you started without designing an error type first.
 
@@ -117,7 +117,7 @@ fn main() {
 
 ---
 
-## 5. Don't Match on Bool — Use the Right Abstraction
+## 5. Don't Match on Bool - Use the Right Abstraction
 
 ```rust
 // Bad: checking is_some() then calling unwrap()
@@ -155,11 +155,11 @@ let usage_above_threshold: Vec<&CpuMetric> = metrics
 
 Know the three closure traits:
 
-- `Fn` — can be called multiple times, borrows captured variables
-- `FnMut` — can be called multiple times, mutably borrows captured variables
-- `FnOnce` — can only be called once, takes ownership of captured variables
+- `Fn` - can be called multiple times, borrows captured variables
+- `FnMut` - can be called multiple times, mutably borrows captured variables
+- `FnOnce` - can only be called once, takes ownership of captured variables
 
-When you pass a closure to `thread::spawn` or `tokio::spawn` (in later sections), it must be `FnOnce + Send + 'static`. That `'static` requirement is what forces you to use `Arc::clone` instead of passing a raw reference — the spawned thread may outlive the stack frame where the reference lives.
+When you pass a closure to `thread::spawn` or `tokio::spawn` (in later sections), it must be `FnOnce + Send + 'static`. That `'static` requirement is what forces you to use `Arc::clone` instead of passing a raw reference - the spawned thread may outlive the stack frame where the reference lives.
 
 ---
 
@@ -168,11 +168,11 @@ When you pass a closure to `thread::spawn` or `tokio::spawn` (in later sections)
 System monitoring code tends to accumulate complex types fast. If you see a type written out more than once, alias it:
 
 ```rust
-// Without alias — appears in every function signature and struct field
+// Without alias - appears in every function signature and struct field
 fn render(metrics: &HashMap<String, Vec<f32>>) { ... }
 fn aggregate(metrics: &HashMap<String, Vec<f32>>) -> HashMap<String, f32> { ... }
 
-// With alias — reads as intent
+// With alias - reads as intent
 type MetricHistory = HashMap<String, Vec<f32>>;
 
 fn render(metrics: &MetricHistory) { ... }
@@ -199,11 +199,11 @@ for i in 0..cpu_usages.len() {
 }
 let avg = total / cpu_usages.len() as f32;
 
-// Prefer: iterator — same performance, clearer intent
+// Prefer: iterator - same performance, clearer intent
 let avg = cpu_usages.iter().sum::<f32>() / cpu_usages.len() as f32;
 ```
 
-Use generics over `Box<dyn Trait>` when the concrete metric type is known at compile time. Use `Box<dyn Trait>` when you need a heterogeneous list of metric collectors chosen at runtime — for example, a plugin system where disk, network, and CPU collectors share a common `Collector` trait.
+Use generics over `Box<dyn Trait>` when the concrete metric type is known at compile time. Use `Box<dyn Trait>` when you need a heterogeneous list of metric collectors chosen at runtime - for example, a plugin system where disk, network, and CPU collectors share a common `Collector` trait.
 
 ---
 
@@ -211,7 +211,7 @@ Use generics over `Box<dyn Trait>` when the concrete metric type is known at com
 
 Rust's `#[cfg(test)]` module lets you put unit tests directly in the same file as the code they test. Do not create a separate test file for unit tests.
 
-For the system monitor, pure transformation functions — not the OS polling itself — are what you unit test. Isolate the logic:
+For the system monitor, pure transformation functions - not the OS polling itself - are what you unit test. Isolate the logic:
 
 ```rust
 pub fn average(samples: &[f32]) -> Option<f32> {

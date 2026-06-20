@@ -1,6 +1,6 @@
-# Doc 02 — Routing, Handlers, and State 🟡
+# Doc 02 - Routing, Handlers, and State 🟡
 
-Real APIs are not just "return this fixed string." They take parameters from the URL, parse query strings, accept JSON bodies, and share a database connection across every request. This doc covers all of that — the mechanics you'll use in literally every handler you write.
+Real APIs are not just "return this fixed string." They take parameters from the URL, parse query strings, accept JSON bodies, and share a database connection across every request. This doc covers all of that - the mechanics you'll use in literally every handler you write.
 
 ## Path Parameters
 
@@ -17,7 +17,7 @@ let app = Router::new()
     .route("/songs/:id", get(get_song));
 ```
 
-For multiple parameters — say `/artists/:artist_id/albums/:album_id` — extract a tuple:
+For multiple parameters - say `/artists/:artist_id/albums/:album_id` - extract a tuple:
 
 ```rust
 async fn get_album(
@@ -124,7 +124,7 @@ struct AppState {
 }
 ```
 
-It must implement `Clone`. Connection pools are designed to be cloned cheaply — they share the underlying pool under the hood.
+It must implement `Clone`. Connection pools are designed to be cloned cheaply - they share the underlying pool under the hood.
 
 Attach state to the router:
 
@@ -153,7 +153,7 @@ async fn list_songs(
 }
 ```
 
-If you have both path parameters and state, both go in the function signature. Order matters — `State` must come before `Json` (body extractors must be last, because the HTTP request body can only be read once — after `Json` consumes it, no other extractor can access it):
+If you have both path parameters and state, both go in the function signature. Order matters - `State` must come before `Json` (body extractors must be last, because the HTTP request body can only be read once - after `Json` consumes it, no other extractor can access it):
 
 ```rust
 async fn get_song(
@@ -253,7 +253,7 @@ The common status codes you'll use:
 
 ## Standard Error Response Structure
 
-Don't return raw error strings — clients can't reliably parse an unstructured string to decide what to show users or how to retry. A consistent JSON shape means every error, from every endpoint, is parseable the same way. Use a consistent shape:
+Don't return raw error strings - clients can't reliably parse an unstructured string to decide what to show users or how to retry. A consistent JSON shape means every error, from every endpoint, is parseable the same way. Use a consistent shape:
 
 ```rust
 use serde::Serialize;
@@ -290,16 +290,16 @@ This is exactly the error shape you'll implement with `AppError` in Doc 04.
 - Path parameter type mismatch: the URL has `:id` as a string but you're extracting it as `u64`. "abc" would fail to parse at runtime, returning 422 Unprocessable Entity. Handle this gracefully.
 - Missing state extraction: if your handler function takes `State(pool): State<SqlitePool>` but you didn't add the pool to the router with `.with_state()`, the server compiles but panics on the first request.
 - Extractor ordering matters in Axum: the `Json` extractor must be last in the function parameters (it consumes the request body). Getting this wrong is a compile error.
-- Route conflicts: having both `/users/:id` and `/users/me` — Axum matches in order, so `/users/me` might be caught by `/users/:id` first. Define specific routes before wildcard routes.
+- Route conflicts: having both `/users/:id` and `/users/me` - Axum matches in order, so `/users/me` might be caught by `/users/:id` first. Define specific routes before wildcard routes.
 
 ## Common Mistakes
 
-**Putting the body extractor (`Json`) before other extractors**: Axum has a rule — the `Json` body extractor must be the last argument in your handler. If you put `State` after `Json`, you get a compile error. Keep `State`, `Path`, and `Query` first; `Json` last.
+**Putting the body extractor (`Json`) before other extractors**: Axum has a rule - the `Json` body extractor must be the last argument in your handler. If you put `State` after `Json`, you get a compile error. Keep `State`, `Path`, and `Query` first; `Json` last.
 
 **Not cloning state**: `AppState` must implement `Clone`. If you store something in it that isn't `Clone` (like a raw mutex guard), you'll hit a confusing error. Use `Arc` to wrap non-cloneable items: `Arc<Mutex<NonCloneableThing>>`.
 
 **Returning `Json` when the value isn't `Serialize`**: Axum will fail to compile with a hard-to-read error about trait bounds. The fix is adding `#[derive(Serialize)]` to the struct.
 
-**Using `.unwrap()` in handlers for database errors**: This panics the handler task on DB errors. The right approach is to propagate errors — which is exactly what Doc 04 covers with `AppError`. Don't use `.unwrap()` in production handlers.
+**Using `.unwrap()` in handlers for database errors**: This panics the handler task on DB errors. The right approach is to propagate errors - which is exactly what Doc 04 covers with `AppError`. Don't use `.unwrap()` in production handlers.
 
 **Forgetting that `nest()` strips the prefix**: If you nest a router under `/artists` and the inner router has a route `/artists/:id`, the actual path becomes `/artists/artists/:id`. Put only the suffix in the nested router (`:id`, not `/artists/:id`).

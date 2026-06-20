@@ -1,12 +1,12 @@
-# Doc 06 — Docker and Deployment 🟡
+# Doc 06 - Docker and Deployment 🟡
 
-You have a working API. Now let's talk about getting it to run anywhere — your teammate's machine, a staging server, a cloud provider. Docker is the standard answer. It packages your binary and everything it needs into a single image that runs identically everywhere.
+You have a working API. Now let's talk about getting it to run anywhere - your teammate's machine, a staging server, a cloud provider. Docker is the standard answer. It packages your binary and everything it needs into a single image that runs identically everywhere.
 
 Rust has a specific trick that makes Docker images very small: you can cross-compile to a statically linked binary, which means the runtime image needs almost nothing.
 
 ## Multi-Stage Builds
 
-Compiling Rust requires the full Rust toolchain — rustc, cargo, build dependencies. That's hundreds of megabytes. The final binary doesn't need any of that. A multi-stage Dockerfile uses one stage to compile and a second minimal stage to run:
+Compiling Rust requires the full Rust toolchain - rustc, cargo, build dependencies. That's hundreds of megabytes. The final binary doesn't need any of that. A multi-stage Dockerfile uses one stage to compile and a second minimal stage to run:
 
 ```dockerfile
 # Stage 1: Build
@@ -14,7 +14,7 @@ FROM rust:1.78-slim AS builder
 
 WORKDIR /app
 
-# Copy manifest files first (cache layer trick — explained below)
+# Copy manifest files first (cache layer trick - explained below)
 COPY Cargo.toml Cargo.lock ./
 
 # Copy source
@@ -67,7 +67,7 @@ RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release
 RUN rm src/main.rs
 
-# Now copy real source — only recompiles your crate, not dependencies
+# Now copy real source - only recompiles your crate, not dependencies
 COPY src ./src
 COPY migrations ./migrations
 
@@ -142,7 +142,7 @@ async fn main() {
 }
 ```
 
-`dotenvy::dotenv().ok()` — the `.ok()` ignores the error if `.env` doesn't exist. In production containers you won't have a `.env` file; you'll set variables directly. In development, the `.env` file saves you from exporting them manually.
+`dotenvy::dotenv().ok()` - the `.ok()` ignores the error if `.env` doesn't exist. In production containers you won't have a `.env` file; you'll set variables directly. In development, the `.env` file saves you from exporting them manually.
 
 ## Docker Compose for Development
 
@@ -208,7 +208,7 @@ RUST_LOG=info
 
 ## Graceful Shutdown 🔴
 
-When Docker stops a container, it sends SIGTERM to your process. If you don't handle it, Docker waits 10 seconds and then sends SIGKILL — potentially killing requests mid-flight. Handle SIGTERM properly:
+When Docker stops a container, it sends SIGTERM to your process. If you don't handle it, Docker waits 10 seconds and then sends SIGKILL - potentially killing requests mid-flight. Handle SIGTERM properly:
 
 ```rust
 use tokio::signal;
@@ -256,7 +256,7 @@ async fn shutdown_signal() {
 }
 ```
 
-`axum::serve().with_graceful_shutdown(signal)` tells Axum to stop accepting new connections when the signal fires, but finish processing all in-flight requests before exiting. Kubernetes and Docker both respect this — they send SIGTERM and wait for the process to exit cleanly.
+`axum::serve().with_graceful_shutdown(signal)` tells Axum to stop accepting new connections when the signal fires, but finish processing all in-flight requests before exiting. Kubernetes and Docker both respect this - they send SIGTERM and wait for the process to exit cleanly.
 
 ## Build and Run Commands
 
@@ -293,7 +293,7 @@ This tells Docker to check `GET /health` every 30 seconds. If it fails 3 times i
 
 **Forgetting `COPY migrations ./migrations`**: The `sqlx::migrate!` macro embeds migration file paths at compile time, but it still reads the files at runtime. If the `migrations/` directory isn't in the container, startup crashes. Copy it in the Dockerfile.
 
-**Using `127.0.0.1` as the bind address**: Inside a Docker container, `127.0.0.1` only accepts connections from within the container. Docker routes external traffic to `0.0.0.0`. If you bind to `127.0.0.1`, `docker run -p 3000:3000` will not work — no connections will reach your API.
+**Using `127.0.0.1` as the bind address**: Inside a Docker container, `127.0.0.1` only accepts connections from within the container. Docker routes external traffic to `0.0.0.0`. If you bind to `127.0.0.1`, `docker run -p 3000:3000` will not work - no connections will reach your API.
 
 **Not setting `RUST_LOG` in production**: Without it, `TraceLayer` produces no log output. Set at minimum `RUST_LOG=info` in your container environment.
 

@@ -1,4 +1,4 @@
-# Doc 15 — Rust Idioms and Best Practices
+# Doc 15 - Rust Idioms and Best Practices
 
 🟢 Section 8 is the technical peak of the course. ironkv uses unsafe code with careful invariants, FFI bindings to a C library, `repr(C)` structs for zero-copy binary parsing, memory-mapped files, and custom binary formats. This doc collects the idioms that make that complexity manageable.
 
@@ -9,7 +9,7 @@
 This is the highest-impact practice for unsafe Rust. Without a comment, every `unsafe` block is a mystery that requires re-deriving the proof from scratch. With a comment, future maintainers know what invariants were assumed and why they hold:
 
 ```rust
-// ❌ No comment — what invariants are we assuming?
+// ❌ No comment - what invariants are we assuming?
 let header = unsafe { &*(ptr as *const EntryHeader) };
 
 // ✅ Comment documents the proof
@@ -35,15 +35,15 @@ Keep `unsafe` isolated in dedicated modules. The rest of the codebase should be 
 
 ```
 ironkv-core/src/
-├── lib.rs           — safe public API
+├── lib.rs           - safe public API
 ├── storage/
-│   ├── mod.rs       — safe
-│   ├── index.rs     — safe
-│   ├── wal.rs       — safe
-│   └── mmap.rs      — unsafe internals here; safe public interface
+│   ├── mod.rs       - safe
+│   ├── index.rs     - safe
+│   ├── wal.rs       - safe
+│   └── mmap.rs      - unsafe internals here; safe public interface
 └── ffi/
-    ├── mod.rs       — safe wrappers
-    └── zstd_raw.rs  — raw extern "C" declarations; nothing else
+    ├── mod.rs       - safe wrappers
+    └── zstd_raw.rs  - raw extern "C" declarations; nothing else
 ```
 
 The pattern: unsafe code in `mmap.rs` and `zstd_raw.rs`. Everything else calls safe wrapper functions. When you need to audit unsafe code, you know exactly where to look.
@@ -55,14 +55,14 @@ The pattern: unsafe code in `mmap.rs` and `zstd_raw.rs`. Everything else calls s
 Never let the compiler choose padding for on-disk structs:
 
 ```rust
-// ❌ Compiler-chosen padding — layout may change between Rust versions
+// ❌ Compiler-chosen padding - layout may change between Rust versions
 #[repr(C)]
 struct Header {
     version: u8,    // 1 byte + 3 bytes padding (assumed)
     size: u32,      // 4 bytes
 }
 
-// ✅ Explicit padding — layout is documented and stable
+// ✅ Explicit padding - layout is documented and stable
 #[repr(C)]
 struct Header {
     version: u8,
@@ -83,7 +83,7 @@ The compile-time `assert!` catches any future change to the struct (added field,
 
 ## Write Invariant Documentation for Data Structures
 
-Complex data structures have invariants — relationships that must always hold. Document them at the type level:
+Complex data structures have invariants - relationships that must always hold. Document them at the type level:
 
 ```rust
 /// In-memory index mapping keys to their on-disk location.
@@ -98,7 +98,7 @@ pub struct Index {
 }
 ```
 
-These comments are not just documentation — they're the specification that `unsafe` code depends on. When someone adds a method, they can check whether their implementation maintains the invariants.
+These comments are not just documentation - they're the specification that `unsafe` code depends on. When someone adds a method, they can check whether their implementation maintains the invariants.
 
 ---
 
@@ -107,11 +107,11 @@ These comments are not just documentation — they're the specification that `un
 File offsets and lengths are both integers, but mixing them is a bug:
 
 ```rust
-// ❌ Raw u64 — easy to pass offset where length is expected
+// ❌ Raw u64 - easy to pass offset where length is expected
 fn read_entry(file: &File, offset: u64, length: u64) {}
-read_entry(&file, entry.length, entry.offset);  // Swapped — compiles fine
+read_entry(&file, entry.length, entry.offset);  // Swapped - compiles fine
 
-// ✅ Newtypes — swap is a type error
+// ✅ Newtypes - swap is a type error
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileOffset(pub u64);
 
@@ -131,13 +131,13 @@ The newtype pattern pays off especially in storage engine code, where offsets, l
 Code that takes `impl std::io::Write` can be tested with an in-memory buffer instead of a real file:
 
 ```rust
-// ❌ Hard to test — must create real files
+// ❌ Hard to test - must create real files
 pub fn write_wal_entry(path: &Path, entry: &WalEntry) -> std::io::Result<()> {
     let mut file = std::fs::OpenOptions::new().append(true).open(path)?;
     write_entry_to(&mut file, entry)
 }
 
-// ✅ Testable — inject any writer
+// ✅ Testable - inject any writer
 pub fn write_entry_to(writer: &mut impl std::io::Write, entry: &WalEntry) -> std::io::Result<()> {
     let encoded = bincode::serialize(entry).unwrap();
     let len = encoded.len() as u32;
@@ -146,7 +146,7 @@ pub fn write_entry_to(writer: &mut impl std::io::Write, entry: &WalEntry) -> std
     Ok(())
 }
 
-// In tests — no file system needed
+// In tests - no file system needed
 #[test]
 fn test_entry_serialization() {
     let entry = WalEntry { sequence: 1, key: b"k".to_vec(), value: Some(b"v".to_vec()), op: EntryOp::Put };
@@ -160,13 +160,13 @@ fn test_entry_serialization() {
 
 ## Avoid `Box<dyn Error>` in Library Code
 
-In application code, `Box<dyn Error>` is convenient — it accepts any error type. In library code, it's problematic: callers can't match on the error type, can't get structured error information, and the API is less useful.
+In application code, `Box<dyn Error>` is convenient - it accepts any error type. In library code, it's problematic: callers can't match on the error type, can't get structured error information, and the API is less useful.
 
 ```rust
-// ❌ Application convenience — bad for libraries
+// ❌ Application convenience - bad for libraries
 pub fn open(path: &Path) -> Result<IronKV, Box<dyn std::error::Error>> {}
 
-// ✅ Typed error — callers can match and inspect
+// ✅ Typed error - callers can match and inspect
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -210,13 +210,13 @@ Before calling ironkv production-ready:
 - [ ] Invariants are documented on all data structures that have them
 - [ ] `repr(C)` struct sizes are verified with `const _: () = assert!(size_of::<T>() == N);`
 - [ ] Checksums are verified on every entry read, not just on startup
-- [ ] WAL replay is tested — write entries, crash-simulate (drop the IronKV), reopen, verify data
+- [ ] WAL replay is tested - write entries, crash-simulate (drop the IronKV), reopen, verify data
 - [ ] Concurrent write tests: two writers, verify no corruption (if applicable to your API)
 - [ ] Miri clean: `cargo +nightly miri test` passes with no UB reports
-- [ ] `cargo audit` passes — no known vulnerabilities in dependencies
+- [ ] `cargo audit` passes - no known vulnerabilities in dependencies
 - [ ] musl build succeeds: `cargo build --release --target x86_64-unknown-linux-musl`
 - [ ] `cargo bench` baseline established and results are in the expected range
-- [ ] Public API is fully documented — all `pub` items have doc comments
+- [ ] Public API is fully documented - all `pub` items have doc comments
 
 ---
 
@@ -224,12 +224,12 @@ Before calling ironkv production-ready:
 
 By this section, you've built tools that most developers never touch: a custom binary file format, zero-copy parsing from mmap'd memory, FFI bindings, and a write-ahead log. The mindset shift that makes this work:
 
-**Trust the type system first.** If the type system makes it impossible to call a function in the wrong state, you don't need a runtime check. `FileOffset` and `EntryLength` as newtypes are not overhead — they're documentation that the compiler enforces.
+**Trust the type system first.** If the type system makes it impossible to call a function in the wrong state, you don't need a runtime check. `FileOffset` and `EntryLength` as newtypes are not overhead - they're documentation that the compiler enforces.
 
 **Minimize the unsafe surface.** Every line of `unsafe` code is code you personally take responsibility for. Make that surface as small as possible, document it rigorously, and test it with Miri.
 
-**Measure before optimizing.** The mmap zero-copy read path is fast — but how fast? Is it actually the bottleneck? `cargo bench` with Criterion answers this. Don't optimize what isn't slow.
+**Measure before optimizing.** The mmap zero-copy read path is fast - but how fast? Is it actually the bottleneck? `cargo bench` with Criterion answers this. Don't optimize what isn't slow.
 
-**The invariants are load-bearing.** The comment "// entries contains no duplicate keys" isn't decorative — it's the reason the caller doesn't need to check for duplicates. When an invariant breaks, the bugs downstream are hard to trace. Enforce them in constructors and document them where they're assumed.
+**The invariants are load-bearing.** The comment "// entries contains no duplicate keys" isn't decorative - it's the reason the caller doesn't need to check for duplicates. When an invariant breaks, the bugs downstream are hard to trace. Enforce them in constructors and document them where they're assumed.
 
 These are the instincts that distinguish a systems programmer from an application programmer. By section 8, you have them.

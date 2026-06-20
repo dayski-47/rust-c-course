@@ -1,8 +1,8 @@
-# Project: queuemaster — Real-Time Music Queue Service
+# Project: queuemaster - Real-Time Music Queue Service
 
 ## What You're Building
 
-`queuemaster` is a microservice that manages shared music play queues. Multiple users connect via WebSocket to a shared "room." When any user adds a song, skips the current track, or reorders the queue, every other connected client sees the change in real time — no polling, no page refresh.
+`queuemaster` is a microservice that manages shared music play queues. Multiple users connect via WebSocket to a shared "room." When any user adds a song, skips the current track, or reorders the queue, every other connected client sees the change in real time - no polling, no page refresh.
 
 This plugs into `melody-api` from Section 5. Where melody-api owns song metadata and user accounts, queuemaster owns the concept of "what's playing right now in this room." They communicate over HTTP: queuemaster calls melody-api to validate song IDs and fetch song details.
 
@@ -313,7 +313,7 @@ All messages are JSON text frames.
 
 ## Data in Redis
 
-All queue state lives in Redis. The service is stateless — kill it and restart it, and clients reconnect to the same queue.
+All queue state lives in Redis. The service is stateless - kill it and restart it, and clients reconnect to the same queue.
 
 | Key Pattern | Type | Contents |
 |---|---|---|
@@ -397,7 +397,7 @@ futures = "0.3"
 deadpool-redis = "0.14"
 redis = { version = "0.25", features = ["tokio-comp"] }
 
-# Database (for user accounts — reuse melody-api's DB or run a second one)
+# Database (for user accounts - reuse melody-api's DB or run a second one)
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
 
 # Auth
@@ -479,7 +479,7 @@ async fn handle_socket(mut socket: WebSocket, state: AppState, room_id: String) 
 }
 ```
 
-### 3. JWT — Create and Validate
+### 3. JWT - Create and Validate
 
 ```toml
 jsonwebtoken = "9"
@@ -541,7 +541,7 @@ async fn handle_socket(
                         socket.send(Message::Text(msg)).await.ok();
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
-                        // we missed n messages — subscriber was too slow
+                        // we missed n messages - subscriber was too slow
                         eprintln!("subscriber lagged by {n} messages");
                     }
                     Err(_) => break,
@@ -656,13 +656,13 @@ This map is your implementation guide. Each transition becomes a function. Each 
 ## What You Bring From Sections 1-5
 
 - **S3 chat server architecture → WebSocket client management**: the two-task-per-client pattern (one reads, one writes) from the chat server is exactly what you use for WebSocket clients. The channel-based broadcast is the same design.
-- **S4 Tokio tasks and channels**: `tokio::spawn`, `mpsc`, `broadcast` — all used here. The difference is the message types are now structured JSON events instead of strings.
-- **S4 `select!`**: the main event loop uses `tokio::select!` to handle incoming WebSocket messages AND outgoing broadcast events simultaneously — a pattern from S4.
+- **S4 Tokio tasks and channels**: `tokio::spawn`, `mpsc`, `broadcast` - all used here. The difference is the message types are now structured JSON events instead of strings.
+- **S4 `select!`**: the main event loop uses `tokio::select!` to handle incoming WebSocket messages AND outgoing broadcast events simultaneously - a pattern from S4.
 - **S5 JWT**: same JWT auth from S5's middleware, now used to authenticate WebSocket connections on upgrade.
 - **S5 Redis basics**: you learned GET/SET/EXPIRE in S5. Now you use Redis Lists for the queue and Redis pub/sub for broadcasting. Same connection pool.
 - **S5 AppError + IntoResponse**: HTTP errors for the REST endpoints use the same pattern as S5.
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 The queue service runs two layers simultaneously:
 
@@ -745,7 +745,7 @@ If the upgrade succeeds, curl doesn't close immediately (it hangs waiting for fr
 - Queue now persists across server restarts
 - Test: add songs, restart the server, GET /queue/room1 still shows them
 
-Expected — server starts with Redis connected:
+Expected - server starts with Redis connected:
 ```
 $ docker run -d -p 6379:6379 redis:7
 $ cargo run
@@ -800,7 +800,7 @@ pub async fn ws_handler(
 }
 ```
 
-**Always split the socket early** — a single `WebSocket` handle requires exclusive mutable access, so only one task could use it at a time. Splitting gives you independent `sender` and `receiver` halves that can move into separate tasks concurrently:
+**Always split the socket early** - a single `WebSocket` handle requires exclusive mutable access, so only one task could use it at a time. Splitting gives you independent `sender` and `receiver` halves that can move into separate tasks concurrently:
 
 ```rust
 let (mut sender, mut receiver) = socket.split();
@@ -902,22 +902,22 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8081/queue/room1
 
 These are not required but push you into genuinely interesting territory:
 
-**Vote to Skip** — The skip action only succeeds if at least 50% of connected listeners agree. Each listener can vote, and when the threshold is reached, the song skips automatically. Requires tracking votes per-song-per-room in the actor state.
+**Vote to Skip** - The skip action only succeeds if at least 50% of connected listeners agree. Each listener can vote, and when the threshold is reached, the song skips automatically. Requires tracking votes per-song-per-room in the actor state.
 
-**DJ Mode** — One user (the DJ) controls the queue. Others can only suggest songs. The DJ accepts or rejects suggestions. Implement as a new `role` field in the room state and permission checks in the actor.
+**DJ Mode** - One user (the DJ) controls the queue. Others can only suggest songs. The DJ accepts or rejects suggestions. Implement as a new `role` field in the room state and permission checks in the actor.
 
-**Song Suggestions with Auto-Queue** — Connect to an external API (Last.fm, Spotify recommendations) to suggest what to play next when the queue is empty. The actor watches queue length and triggers a suggestion fetch when it drops to zero.
+**Song Suggestions with Auto-Queue** - Connect to an external API (Last.fm, Spotify recommendations) to suggest what to play next when the queue is empty. The actor watches queue length and triggers a suggestion fetch when it drops to zero.
 
-**Crossfade Metadata** — Extend the `add` message to accept `{"action":"add","song_id":42,"crossfade_ms":3000}`. Store the crossfade duration with the queue entry. Clients use this to start loading the next song before the current one ends.
+**Crossfade Metadata** - Extend the `add` message to accept `{"action":"add","song_id":42,"crossfade_ms":3000}`. Store the crossfade duration with the queue entry. Clients use this to start loading the next song before the current one ends.
 
-**Reconnection with State Recovery** — When a client disconnects and reconnects within 60 seconds, send them a `room_state` event with `{"reconnected": true}` so their UI can smoothly pick up where it left off rather than showing a "disconnected" flash.
+**Reconnection with State Recovery** - When a client disconnects and reconnects within 60 seconds, send them a `room_state` event with `{"reconnected": true}` so their UI can smoothly pick up where it left off rather than showing a "disconnected" flash.
 
-**Presence Expiry** — Track last-seen timestamps for listeners in Redis. A background task sweeps every 60 seconds and marks inactive listeners as offline, even if their TCP connection is still alive. This handles clients that are online but not sending any messages.
+**Presence Expiry** - Track last-seen timestamps for listeners in Redis. A background task sweeps every 60 seconds and marks inactive listeners as offline, even if their TCP connection is still alive. This handles clients that are online but not sending any messages.
 
 ## Common Problems
 
 **`No such host: redis` or connection refused**
-Redis isn't running. Start it: `docker run -d -p 6379:6379 redis:7` or `redis-server`. Verify with `redis-cli ping` — it should return `PONG`.
+Redis isn't running. Start it: `docker run -d -p 6379:6379 redis:7` or `redis-server`. Verify with `redis-cli ping` - it should return `PONG`.
 
 **WebSocket upgrade returns 400**
 Missing required WebSocket headers. Use a proper WebSocket client (websocat, browser, or correctly formed curl). Also confirm `axum = { version = "0.7", features = ["ws"] }` is in Cargo.toml.
@@ -932,7 +932,7 @@ Your subscriber is processing messages slower than they're being sent. The broad
 You held a Mutex lock and then called `.await`. This will either fail to compile or deadlock at runtime. Use `tokio::sync::Mutex` instead of `std::sync::Mutex` for async code, OR drop the lock before the await point by limiting the lock scope with a block:
 ```rust
 let value = {
-    // .unwrap() is correct for Mutex::lock() — the only failure is Mutex poisoning
+    // .unwrap() is correct for Mutex::lock() - the only failure is Mutex poisoning
     // (another thread panicked while holding the lock), which is a programming error.
     let guard = state.map.lock().unwrap();
     guard.get("key").cloned()
@@ -942,7 +942,7 @@ some_async_fn(value).await;
 ```
 
 **`deadpool-redis` version mismatch with `redis` crate**
-`deadpool-redis` re-exports `redis` — use the version it bundles rather than adding a separate `redis` dependency with a conflicting version. Check `cargo tree | grep redis` to see what version is pulled in.
+`deadpool-redis` re-exports `redis` - use the version it bundles rather than adding a separate `redis` dependency with a conflicting version. Check `cargo tree | grep redis` to see what version is pulled in.
 
 **Pub/sub connection gets stuck after subscribing**
-A connection that calls `SUBSCRIBE` enters pub/sub mode and can only receive pub/sub messages — you cannot reuse it for `GET`/`SET` commands. Keep a dedicated `redis::Client` for subscriptions, separate from the `deadpool` pool used for normal commands.
+A connection that calls `SUBSCRIBE` enters pub/sub mode and can only receive pub/sub messages - you cannot reuse it for `GET`/`SET` commands. Keep a dedicated `redis::Client` for subscriptions, separate from the `deadpool` pool used for normal commands.

@@ -1,10 +1,10 @@
-# Section 05 Project — melody-api
+# Section 05 Project - melody-api
 
 ## What You're Building
 
 A production-quality REST API for a music library. Songs, artists, albums, full CRUD operations, proper error handling, middleware, and Docker packaging. This is the first project in the course that looks like something you'd actually deploy at work.
 
-The four previous projects got you to know Rust: you understand ownership, async, error handling, networking, and JSON serialization. This project is where you apply all of that to build a real backend service — one with the structure, patterns, and practices you'd see in a professional codebase.
+The four previous projects got you to know Rust: you understand ownership, async, error handling, networking, and JSON serialization. This project is where you apply all of that to build a real backend service - one with the structure, patterns, and practices you'd see in a professional codebase.
 
 By the end, you'll have:
 - A working REST API with 15+ endpoints
@@ -201,7 +201,7 @@ pub async fn create_artist(
 }
 ```
 
-Note: `Json` body extractor must be the LAST parameter in the function signature. Axum reads extractors left to right, and reading the HTTP request body consumes it — you can't read it twice. Any extractor that needs the body (`Json`, `Form`, `Bytes`) must come after all other extractors (`State`, `Path`, `Query`, `Extension`) that read from headers or URL segments.
+Note: `Json` body extractor must be the LAST parameter in the function signature. Axum reads extractors left to right, and reading the HTTP request body consumes it - you can't read it twice. Any extractor that needs the body (`Json`, `Form`, `Bytes`) must come after all other extractors (`State`, `Path`, `Query`, `Extension`) that read from headers or URL segments.
 
 ### 3. The AppError Pattern
 
@@ -241,7 +241,7 @@ impl From<sqlx::Error> for AppError {
 }
 ```
 
-### 4. SQLx Setup — DATABASE_URL Required
+### 4. SQLx Setup - DATABASE_URL Required
 
 SQLx's `sqlx::query!` macro checks SQL at compile time. This requires a connected database during compilation:
 
@@ -258,7 +258,7 @@ sqlx migrate run
 cargo build
 ```
 
-If you don't want to run the macro version yet, use `sqlx::query()` (no `!`) during development — it works without DATABASE_URL but doesn't check SQL at compile time.
+If you don't want to run the macro version yet, use `sqlx::query()` (no `!`) during development - it works without DATABASE_URL but doesn't check SQL at compile time.
 
 ### 5. Running a Query and Mapping Results
 
@@ -298,13 +298,13 @@ These constraints become the WHERE clauses in your SQL and the validation logic 
 - **S4 async**: every Axum handler is an async function. Every database call uses `.await`. You're using the same `tokio::main` runtime you learned in S4.
 - **S4 serde**: `GithubRepo` used `#[derive(Deserialize)]` in S4. Now you use `#[derive(Serialize, Deserialize)]` on `CreateArtistRequest`, `ArtistResponse`, etc. Same tool.
 - **S2 structs + data modeling**: the domain modeling you practiced in S2 (defining `SystemSnapshot`) is exactly what you're doing with `Artist`, `Album`, `Song`.
-- **S3 Arc for shared state**: `AppState` uses `Arc<SqlitePool>` — same `Arc` you used in S3 for the client list, now shared across async handlers instead of threads.
+- **S3 Arc for shared state**: `AppState` uses `Arc<SqlitePool>` - same `Arc` you used in S3 for the client list, now shared across async handlers instead of threads.
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 Axum works by matching incoming HTTP requests to handler functions. When a request arrives for `GET /artists/42`, Axum extracts `42` from the URL path (`Path(id): Path<i64>`), extracts the database pool from shared state (`State(pool): State<SqlitePool>`), runs your async handler function, and serializes the return value to JSON.
 
-Your handler queries SQLite through SQLx, which returns typed Rust structs. You convert those into response structs (possibly different from the database structs — separation of concerns) and return them as `Json(response)`. Axum calls serde to serialize the struct to JSON and writes the HTTP response.
+Your handler queries SQLite through SQLx, which returns typed Rust structs. You convert those into response structs (possibly different from the database structs - separation of concerns) and return them as `Json(response)`. Axum calls serde to serialize the struct to JSON and writes the HTTP response.
 
 Errors flow through `AppError`: if the database returns "not found", your handler returns `Err(AppError::NotFound)`. Axum's `IntoResponse` implementation for `AppError` converts this to a 404 response with a JSON error body. One error type, consistent responses everywhere.
 
@@ -312,9 +312,9 @@ The pool is the key to async database access. SQLx manages a pool of SQLite conn
 
 ## Milestones
 
-Work through these in order. Each milestone is a working, testable state — don't move on until the current one works.
+Work through these in order. Each milestone is a working, testable state - don't move on until the current one works.
 
-**Milestone 1 — Working server**
+**Milestone 1 - Working server**
 Create the Cargo project with `cargo new melody-api`. Add dependencies. Write a `main.rs` with a single `GET /health` endpoint that returns `{"status": "ok"}`. Run it and curl the endpoint.
 
 Expected:
@@ -325,7 +325,7 @@ Starting melody-api on 0.0.0.0:3000
 
 Test: `curl http://localhost:3000/health` should return `{"status":"ok"}`.
 
-**Milestone 2 — Database connection**
+**Milestone 2 - Database connection**
 Set `DATABASE_URL=sqlite:music.db` in your `.env`. Write `src/db.rs` with a `create_pool()` function using `SqlitePool::connect`. Write `src/config.rs` to load the URL from the environment. Create the migration file and wire `sqlx::migrate!()` into startup. Verify the database file is created and the tables exist (`sqlite3 music.db .tables`).
 
 Expected:
@@ -338,10 +338,10 @@ Migrations: applied successfully
 
 Test: `sqlite3 music.db .tables` should print `albums  artists  songs`.
 
-**Milestone 3 — Artists CRUD**
-Define `Artist`, `CreateArtistRequest`, and `UpdateArtistRequest` in `src/models/artist.rs`. Implement all five artist handlers (`list`, `create`, `get_one`, `update`, `delete`). Add them to the router. Test all five with curl. At this stage it's okay to use `.unwrap()` — you'll fix that in Milestone 6.
+**Milestone 3 - Artists CRUD**
+Define `Artist`, `CreateArtistRequest`, and `UpdateArtistRequest` in `src/models/artist.rs`. Implement all five artist handlers (`list`, `create`, `get_one`, `update`, `delete`). Add them to the router. Test all five with curl. At this stage it's okay to use `.unwrap()` - you'll fix that in Milestone 6.
 
-Expected — POST /artists:
+Expected - POST /artists:
 ```bash
 $ curl -X POST http://localhost:3000/artists \
   -H "Content-Type: application/json" \
@@ -356,7 +356,7 @@ $ curl -X POST http://localhost:3000/artists \
 }
 ```
 
-Expected — GET /artists:
+Expected - GET /artists:
 ```bash
 $ curl http://localhost:3000/artists
 
@@ -366,18 +366,18 @@ $ curl http://localhost:3000/artists
 ]
 ```
 
-Empty list `[]` if no artists exist yet — that's correct, not an error.
+Empty list `[]` if no artists exist yet - that's correct, not an error.
 
-**Milestone 4 — Albums CRUD**
+**Milestone 4 - Albums CRUD**
 Same pattern as artists but albums belong to artists. The `CREATE` endpoint should reject an `artist_id` that doesn't exist (check foreign key errors from SQLx). The `GET /albums/:id` endpoint should return the album plus all its songs in the response body.
 
-**Milestone 5 — Songs CRUD**
+**Milestone 5 - Songs CRUD**
 Same pattern. Songs belong to albums. `GET /songs` should support filtering by `?album_id=` and `?artist_id=`. The `GET /artists/:id` endpoint should also return the artist's albums in the response.
 
-**Milestone 6 — Error handling**
+**Milestone 6 - Error handling**
 Write `src/error.rs` with the `AppError` enum and its `IntoResponse` implementation. Change every `.unwrap()` in your handlers to `?` (which converts `sqlx::Error` to `AppError::Database` via `#[from]`). Change every `None` response to `Err(AppError::NotFound)`. Change every handler return type to `Result<..., AppError>`. Add validation to all create/update request structs and return `AppError::Validation` with all field errors.
 
-Expected — 404 response:
+Expected - 404 response:
 ```bash
 $ curl -i http://localhost:3000/artists/999
 
@@ -387,18 +387,18 @@ Content-Type: application/json
 {"error":"Artist not found"}
 ```
 
-If you're getting 500 instead of 404, check your `From<sqlx::Error>` implementation — `sqlx::Error::RowNotFound` should map to `AppError::NotFound`.
+If you're getting 500 instead of 404, check your `From<sqlx::Error>` implementation - `sqlx::Error::RowNotFound` should map to `AppError::NotFound`.
 
-**Milestone 7 — Search**
+**Milestone 7 - Search**
 Implement `GET /search?q=query`. It should query artists, albums, and songs using SQL `LIKE '%' || ? || '%'` and return all matches in a single JSON response. Shape the response as `{ "artists": [...], "albums": [...], "songs": [...] }`.
 
-**Milestone 8 — Middleware**
+**Milestone 8 - Middleware**
 Add `TraceLayer`, `CorsLayer`, `CompressionLayer`, and `TimeoutLayer` to your router using `ServiceBuilder`. Test that request logging appears in the console. Test CORS by checking that the response includes the right headers.
 
-**Milestone 9 — Docker**
+**Milestone 9 - Docker**
 Write the `Dockerfile` (multi-stage build). Write `.dockerignore`. Write `docker-compose.yml` with a named volume for the database. Run `docker compose up --build` and verify the API works from inside the container. Check the health endpoint: `curl http://localhost:3000/health`.
 
-**Milestone 10 — Integration tests**
+**Milestone 10 - Integration tests**
 Write integration tests in `src/routes/artists.rs` (or a separate `tests/` directory) using `SqlitePool::connect("sqlite::memory:")` and Axum's `TestClient` or `axum::test`. Each test should create a fresh in-memory database, run migrations, create the router with test state, and make HTTP requests against it. Cover at minimum: create, get (found), get (not found → 404), update, delete, and list with pagination.
 
 ## The AppError Pattern
@@ -511,7 +511,7 @@ curl -X POST http://localhost:3000/artists \
   -d '{"name": ""}'
 ```
 
-For integration tests using Axum's test utilities, look at the `axum::test` module and `tower::ServiceExt`. You create the app in a test, call it with a mock request, and assert on the response status and body — all without starting a real TCP server.
+For integration tests using Axum's test utilities, look at the `axum::test` module and `tower::ServiceExt`. You create the app in a test, call it with a mock request, and assert on the response status and body - all without starting a real TCP server.
 
 ## Stretch Goals
 
@@ -527,7 +527,7 @@ These are genuinely challenging additions. Attempt them after all 10 milestones 
 
 **Full-text search with SQLite FTS5**: SQLite has a built-in full-text search engine. Create a virtual FTS5 table and keep it in sync with songs/albums/artists. Switch the `/search` endpoint to use FTS5 for much better search quality.
 
-**Rate limiting**: Use `tower::limit::RateLimitLayer` to limit each IP to N requests per second. This requires adding a per-IP request count, which means per-request state — a meaningful architectural challenge.
+**Rate limiting**: Use `tower::limit::RateLimitLayer` to limit each IP to N requests per second. This requires adding a per-IP request count, which means per-request state - a meaningful architectural challenge.
 
 ## Common Problems
 

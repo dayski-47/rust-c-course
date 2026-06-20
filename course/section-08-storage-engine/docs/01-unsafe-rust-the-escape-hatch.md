@@ -1,4 +1,4 @@
-# 01 — Unsafe Rust: The Escape Hatch
+# 01 - Unsafe Rust: The Escape Hatch
 
 > **Difficulty:** 🟡 think about it / 🔴 challenging for the ring buffer  
 > **You'll learn:** The five specific capabilities `unsafe` unlocks, raw pointer mechanics,
@@ -14,7 +14,7 @@ The discipline is: correctness first, performance second, `unsafe` only when nec
 
 Correctness means: all written data can be read back. The system doesn't corrupt data on crash. The API cannot be misused to produce undefined behavior.
 
-You prove correctness before optimizing. Once you have a safe, correct implementation, you measure whether it's fast enough. Usually it is. When it isn't, you profile to find the bottleneck, and you reach for `unsafe` only at that specific bottleneck — wrapped in a safe API so the caller never touches the danger.
+You prove correctness before optimizing. Once you have a safe, correct implementation, you measure whether it's fast enough. Usually it is. When it isn't, you profile to find the bottleneck, and you reach for `unsafe` only at that specific bottleneck - wrapped in a safe API so the caller never touches the danger.
 
 For the storage engine, the invariants you must define before writing any unsafe code:
 - The file is always in a valid state that can be parsed. (Never leave it half-written.)
@@ -29,7 +29,7 @@ Document each safety invariant in a comment where the `unsafe` code lives. The c
 ## First: What `unsafe` Does NOT Do
 
 Before anything else, clear this up. Unsafe Rust does **not** turn off the borrow checker.
-It does **not** disable the type system. Lifetimes, ownership, `Result`, pattern exhaustion —
+It does **not** disable the type system. Lifetimes, ownership, `Result`, pattern exhaustion -
 all of that still applies. The borrow checker is watching.
 
 What `unsafe` does is unlock **five specific capabilities** that the compiler cannot prove
@@ -83,17 +83,17 @@ perspective of "everything is just a number."
 fn create_pointers() {
     let mut value: i32 = 10;
 
-    // Create from a reference — safe
+    // Create from a reference - safe
     let const_ptr: *const i32 = &value;
     let mut_ptr: *mut i32 = &mut value;
 
-    // Create from a heap allocation — you now own the raw pointer
+    // Create from a heap allocation - you now own the raw pointer
     let boxed: Box<i32> = Box::new(42);
     let heap_ptr: *mut i32 = Box::into_raw(boxed);
     // boxed is gone. The heap allocation is YOURS now.
     // If you never call Box::from_raw(heap_ptr), you leak memory.
 
-    // Dereference — requires unsafe
+    // Dereference - requires unsafe
     // SAFETY: const_ptr came from a valid &i32, which is still in scope
     let v = unsafe { *const_ptr };
     assert_eq!(v, 10);
@@ -103,7 +103,7 @@ fn create_pointers() {
     unsafe { *mut_ptr = 20; }
     assert_eq!(value, 20);
 
-    // Clean up the heap pointer — construct Box back, let it drop
+    // Clean up the heap pointer - construct Box back, let it drop
     // SAFETY: heap_ptr was produced by Box::into_raw above; called exactly once
     let _recovered = unsafe { Box::from_raw(heap_ptr) };
     // _recovered drops here → memory freed
@@ -129,15 +129,15 @@ fn pointer_arithmetic() {
     }
 
     // What you MUST NOT do:
-    // *ptr.add(5)  — one past the end of the array is UB
-    // *ptr.add(100) — obviously UB
-    // *ptr.sub(1)   — before the start is UB
+    // *ptr.add(5)  - one past the end of the array is UB
+    // *ptr.add(100) - obviously UB
+    // *ptr.sub(1)   - before the start is UB
 }
 ```
 
 The C equivalent `ptr[5]` is UB there too, but at least in C there's no way to
 express "this pointer is valid for exactly these offsets." In Rust you can, and you
-should — in your `SAFETY:` comments.
+should - in your `SAFETY:` comments.
 
 ---
 
@@ -189,10 +189,10 @@ fn first_byte(data: &[u8]) -> Option<u8> {
 }
 
 fn caller() {
-    // first_byte is safe — no unsafe block required here
+    // first_byte is safe - no unsafe block required here
     let b = first_byte(&[1, 2, 3]);
 
-    // read_at is unsafe — must use unsafe block
+    // read_at is unsafe - must use unsafe block
     let arr = [10u8, 20, 30];
     // SAFETY: arr has 3 elements; offset=1 is in bounds
     let v = unsafe { read_at(arr.as_ptr(), 1) };
@@ -215,7 +215,7 @@ inside.
 for every push, pop, and grow. Its public API is entirely safe. You cannot cause
 UB by using `Vec` correctly.
 
-Here is a simple example — a ring buffer:
+Here is a simple example - a ring buffer:
 
 ```rust
 use std::mem::MaybeUninit;
@@ -242,7 +242,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub fn push(&mut self, value: T) {
         if self.len == N {
             // Drop the element we're about to overwrite
-            // SAFETY: slot at head has been initialized — we're full
+            // SAFETY: slot at head has been initialized - we're full
             unsafe { self.data[self.head].assume_init_drop(); }
             self.tail = (self.tail + 1) % N;
         } else {
@@ -278,9 +278,9 @@ impl<T, const N: usize> Drop for RingBuffer<T, N> {
 ```
 
 Three rules of sound unsafe code:
-1. **Document invariants** — every `SAFETY:` comment explains why the operation is valid
-2. **Encapsulate** — the unsafe is inside a safe API; users can't trigger UB
-3. **Minimize** — only the smallest possible block is `unsafe`
+1. **Document invariants** - every `SAFETY:` comment explains why the operation is valid
+2. **Encapsulate** - the unsafe is inside a safe API; users can't trigger UB
+3. **Minimize** - only the smallest possible block is `unsafe`
 
 ---
 
@@ -295,7 +295,7 @@ fn increment() {
 }
 ```
 
-Mutable statics are unsafe because two threads could access them simultaneously —
+Mutable statics are unsafe because two threads could access them simultaneously -
 that is a data race, and data races are UB. The compiler cannot verify that
 you have taken appropriate precautions. That is why every access requires `unsafe`.
 
@@ -382,7 +382,7 @@ When writing unsafe code in this section's storage engine, you must uphold:
 
 ## Exercises
 
-**Exercise 1 — Your First Raw Pointer**
+**Exercise 1 - Your First Raw Pointer**
 
 Write a function `fn double_in_place(ptr: *mut u32)` that reads from the pointer,
 doubles the value, and writes it back. Write it with the full `// Safety:` comment.
@@ -395,7 +395,7 @@ Write a unit test that:
 Then run the test under Miri: `cargo +nightly miri test test_double_in_place`. Miri
 should report no issues.
 
-**Exercise 2 — Write a // Safety: Comment**
+**Exercise 2 - Write a // Safety: Comment**
 
 Take this function (which has an unsafe block without a safety comment) and add one:
 
@@ -412,9 +412,9 @@ Your comment must explain: (1) why `bytes.as_ptr().add(offset)` is valid, (2) wh
 `read_unaligned` is needed, and (3) what precondition the caller must satisfy. Then
 write a test that passes the precondition, and a Miri test that passes.
 
-**Exercise 3 — Spot the Unsound Code**
+**Exercise 3 - Spot the Unsound Code**
 
-This function has a subtle safety bug — find it, explain it, and fix it:
+This function has a subtle safety bug - find it, explain it, and fix it:
 
 ```rust
 fn get_first_element(v: Vec<i32>) -> *const i32 {
@@ -434,7 +434,7 @@ under Miri to observe the use-after-free error.
 
 All interior mutability in Rust (`Mutex`, `RefCell`, `Cell`, `RwLock`, `AtomicU64`) is built on `UnsafeCell<T>`. It's the only way to legally create a mutable reference from a shared reference.
 
-The reason: Rust's aliasing rules say you can NEVER have `&T` and `&mut T` to the same data simultaneously. `UnsafeCell<T>` is the explicit opt-out from that rule — it's how you tell the compiler "the aliasing analysis doesn't apply here, I'm managing this myself."
+The reason: Rust's aliasing rules say you can NEVER have `&T` and `&mut T` to the same data simultaneously. `UnsafeCell<T>` is the explicit opt-out from that rule - it's how you tell the compiler "the aliasing analysis doesn't apply here, I'm managing this myself."
 
 ```rust
 use std::cell::UnsafeCell;
@@ -463,7 +463,7 @@ impl<T: Copy> MyCell<T> {
 }
 ```
 
-**You will not use `UnsafeCell` directly** in the storage engine — `Mutex` and `AtomicU64` wrap it for you. But understanding it explains WHY interior mutability requires `unsafe`: you're making a promise about aliasing that the compiler can't verify.
+**You will not use `UnsafeCell` directly** in the storage engine - `Mutex` and `AtomicU64` wrap it for you. But understanding it explains WHY interior mutability requires `unsafe`: you're making a promise about aliasing that the compiler can't verify.
 
 ## Running Your Unsafe Code Under Miri
 
@@ -473,7 +473,7 @@ Miri is an interpreter that executes your code and checks for undefined behavior
 # Install Miri (nightly only)
 rustup +nightly component add miri
 
-# Run all tests under Miri (slower than native — ~100x)
+# Run all tests under Miri (slower than native - ~100x)
 cargo +nightly miri test
 
 # Run just the ring buffer tests
@@ -499,7 +499,7 @@ cargo +nightly miri test -- test_write_read_wraparound
 - Performance issues (Miri runs 10-100× slower than native)
 - FFI code beyond the Rust boundary (can't interpret C)
 
-Run Miri on every `unsafe` block in the storage engine. If a test passes normally but fails under Miri, that's real undefined behavior — fix it before it corrupts production data.
+Run Miri on every `unsafe` block in the storage engine. If a test passes normally but fails under Miri, that's real undefined behavior - fix it before it corrupts production data.
 
 ## AddressSanitizer vs Miri
 

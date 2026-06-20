@@ -1,17 +1,17 @@
-# Doc 06 — Procedural Macros and Custom Derive
+# Doc 06 - Procedural Macros and Custom Derive
 
 🟡 When you write `#[derive(Serialize)]`, a program runs at compile time that reads your struct's type definition and generates an implementation. That program is a procedural macro. This doc teaches you how to write one.
 
-Most Rust developers use proc macros every day (serde, thiserror, tokio::main) but treat them as black boxes. For ironkv, you'll write a `#[derive(Storable)]` macro that generates binary serialization code for any struct that implements it — the same pattern used by serde, but for your custom binary format.
+Most Rust developers use proc macros every day (serde, thiserror, tokio::main) but treat them as black boxes. For ironkv, you'll write a `#[derive(Storable)]` macro that generates binary serialization code for any struct that implements it - the same pattern used by serde, but for your custom binary format.
 
 ---
 
 ## The Three Types of Macros
 
-**Declarative macros (`macro_rules!`)** — pattern-match on syntax, expand to code. Good for reducing repetitive call-site boilerplate:
+**Declarative macros (`macro_rules!`)** - pattern-match on syntax, expand to code. Good for reducing repetitive call-site boilerplate:
 
 ```rust
-// Declarative macro — matches a pattern and expands
+// Declarative macro - matches a pattern and expands
 macro_rules! assert_entry_eq {
     ($engine:expr, $key:expr, $expected:expr) => {
         assert_eq!(
@@ -28,7 +28,7 @@ assert_entry_eq!(db, b"user:1", b"alice");
 assert_entry_eq!(db, b"user:2", b"bob");
 ```
 
-**Procedural macros** — a Rust program that takes a `TokenStream` (the parsed source code) as input and returns a `TokenStream` (the generated code). Three subtypes:
+**Procedural macros** - a Rust program that takes a `TokenStream` (the parsed source code) as input and returns a `TokenStream` (the generated code). Three subtypes:
 
 | Type | Syntax | Use Case |
 |------|--------|----------|
@@ -82,20 +82,20 @@ macro_rules! example {
     ($i:ident)   => { /* an identifier: my_var, Config */ };
     ($b:block)   => { /* a block: { let x = 1; x } */ };
     ($l:literal) => { /* a literal: 42, "hello", true */ };
-    ($tt:tt)     => { /* any token tree — most flexible */ };
+    ($tt:tt)     => { /* any token tree - most flexible */ };
 }
 
 // Repetition patterns:
-// $( ... ),*   — zero or more, comma-separated
-// $( ... );+   — one or more, semicolon-separated
-// $( ... )?    — zero or one (optional)
+// $( ... ),*   - zero or more, comma-separated
+// $( ... );+   - one or more, semicolon-separated
+// $( ... )?    - zero or one (optional)
 ```
 
 ---
 
 ## Writing a Custom Derive Macro
 
-A custom derive macro lives in its own crate with `proc-macro = true`. This is a hard requirement — proc macros use a special ABI that can only appear in proc-macro crates.
+A custom derive macro lives in its own crate with `proc-macro = true`. This is a hard requirement - proc macros use a special ABI that can only appear in proc-macro crates.
 
 ### Crate setup
 
@@ -249,7 +249,7 @@ fn example() {
 
 ## Debugging Proc Macros with `cargo-expand`
 
-The hardest thing about proc macros is that errors can be cryptic — a bug in the generated code appears as an error in code you didn't write. `cargo-expand` shows you the generated code:
+The hardest thing about proc macros is that errors can be cryptic - a bug in the generated code appears as an error in code you didn't write. `cargo-expand` shows you the generated code:
 
 ```bash
 cargo install cargo-expand
@@ -267,7 +267,7 @@ When `#[derive(Storable)]` generates broken code, `cargo expand` lets you see ex
 
 ## Attribute Macros for Test Setup
 
-Function-like attribute macros can transform async functions — the same pattern used by `#[tokio::test]`:
+Function-like attribute macros can transform async functions - the same pattern used by `#[tokio::test]`:
 
 ```rust
 // Usage (what you'd write):
@@ -306,8 +306,8 @@ This eliminates the setup/teardown boilerplate from every test. The macro inject
 
 **Don't reach for macros when:**
 
-- Generics and traits can express the same thing — they're clearer and produce better error messages
-- The repetition is in call sites, not in definitions — use functions
-- The "boilerplate" is actually clarifying — making something implicit is not always an improvement
+- Generics and traits can express the same thing - they're clearer and produce better error messages
+- The repetition is in call sites, not in definitions - use functions
+- The "boilerplate" is actually clarifying - making something implicit is not always an improvement
 
-The test table pattern (`test_roundtrip!`) is a good use: it removes 10+ lines of identical setup per test case while keeping the table readable. The `#[derive(Storable)]` macro is a good use: there's no other way to inspect a struct's fields at compile time. But adding a macro to avoid writing three related functions is almost always wrong — a trait with a default implementation is simpler.
+The test table pattern (`test_roundtrip!`) is a good use: it removes 10+ lines of identical setup per test case while keeping the table readable. The `#[derive(Storable)]` macro is a good use: there's no other way to inspect a struct's fields at compile time. But adding a macro to avoid writing three related functions is almost always wrong - a trait with a default implementation is simpler.

@@ -1,8 +1,8 @@
-# Doc 06 — Writing Your Own Future
+# Doc 06 - Writing Your Own Future
 
 🟡 Most async Rust developers never write a custom Future. After this doc, you'll understand exactly what the runtime is doing every time you `.await` something.
 
-You've been using `async fn` and `.await` since section 4. Under the hood, the compiler turns every `async fn` into a struct that implements `Future`. This doc lifts the hood, shows you what that struct looks like, and teaches you to write custom futures from scratch. The music queue project specifically needs a `ThrottledFuture` for rate limiting — understanding how to build it from first principles is the goal.
+You've been using `async fn` and `.await` since section 4. Under the hood, the compiler turns every `async fn` into a struct that implements `Future`. This doc lifts the hood, shows you what that struct looks like, and teaches you to write custom futures from scratch. The music queue project specifically needs a `ThrottledFuture` for rate limiting - understanding how to build it from first principles is the goal.
 
 ---
 
@@ -95,7 +95,7 @@ impl Future for TimerFuture {
 }
 ```
 
-**The waker is the key.** When you return `Poll::Pending`, you're making a promise: "I will call `waker.wake()` when the situation changes." If you don't keep that promise, your future sits in `Pending` forever — the executor never polls it again.
+**The waker is the key.** When you return `Poll::Pending`, you're making a promise: "I will call `waker.wake()` when the situation changes." If you don't keep that promise, your future sits in `Pending` forever - the executor never polls it again.
 
 ```rust
 // Using TimerFuture in async code
@@ -106,7 +106,7 @@ async fn delayed_play(queue: &MusicQueue) {
 }
 ```
 
-> **Note**: This implementation spawns one OS thread per timer. In production, use `tokio::time::sleep` — it's backed by a shared timer wheel and costs essentially zero. The hand-rolled `TimerFuture` is for understanding, not for production queues.
+> **Note**: This implementation spawns one OS thread per timer. In production, use `tokio::time::sleep` - it's backed by a shared timer wheel and costs essentially zero. The hand-rolled `TimerFuture` is for understanding, not for production queues.
 
 ---
 
@@ -140,7 +140,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// A future that completes when BOTH A and B complete.
-/// Polls A and B on each poll — they run concurrently on the same thread.
+/// Polls A and B on each poll - they run concurrently on the same thread.
 pub struct JoinTwo<A, B>
 where
     A: Future,
@@ -238,7 +238,7 @@ use std::task::{Context, Poll, Waker};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
-/// Shared state for the rate limiter — allows the background timer
+/// Shared state for the rate limiter - allows the background timer
 /// to wake parked futures when a new slot becomes available.
 pub struct RateLimiterState {
     tokens: u32,              // available request slots
@@ -265,7 +265,7 @@ impl RateLimiterState {
         if now.duration_since(self.last_refill) >= self.refill_period {
             self.tokens = (self.tokens + self.refill_per_period).min(self.max_tokens);
             self.last_refill = now;
-            // Wake all waiting futures — there might be tokens available now
+            // Wake all waiting futures - there might be tokens available now
             while let Some(waker) = self.waiting.pop_front() {
                 waker.wake();
             }
@@ -312,7 +312,7 @@ impl Future for AcquireFuture {
         if state.try_acquire() {
             Poll::Ready(())
         } else {
-            // No token available — register our waker so we'll be notified
+            // No token available - register our waker so we'll be notified
             // when tokens refill
             state.waiting.push_back(cx.waker().clone());
             Poll::Pending
@@ -367,7 +367,7 @@ fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
     if self.ready {
         Poll::Ready(())
     } else {
-        Poll::Pending  // executor will NEVER poll us again — future hangs
+        Poll::Pending  // executor will NEVER poll us again - future hangs
     }
 }
 ```
@@ -408,7 +408,7 @@ let waker = {
 };
 // Lock is released here (state drops)
 if let Some(waker) = waker {
-    waker.wake();  // safe — no lock held
+    waker.wake();  // safe - no lock held
 }
 ```
 

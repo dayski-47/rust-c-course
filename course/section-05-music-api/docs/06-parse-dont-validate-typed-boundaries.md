@@ -1,6 +1,6 @@
-# Doc 06 — Parse, Don't Validate: Typed Boundaries
+# Doc 06 - Parse, Don't Validate: Typed Boundaries
 
-🟡 This is a mindset shift — validation scattered everywhere vs. validation concentrated at the edge.
+🟡 This is a mindset shift - validation scattered everywhere vs. validation concentrated at the edge.
 
 You've probably written code like this: a function that accepts a `String` or `&str`, checks whether it's valid, returns an error if not, and then proceeds to use it. Then later, another function does the same check. Then another. The same validation logic appears three, five, eight times across the codebase, each slightly different.
 
@@ -15,7 +15,7 @@ Parse, Don't Validate is the fix. **Validate exactly once at the boundary. Turn 
 In C, this pattern is pervasive:
 
 ```c
-// C — the same validation in five different functions
+// C - the same validation in five different functions
 int create_track(const char *title, int duration_ms, const char *artist) {
     if (title == NULL || strlen(title) == 0) return -1;
     if (duration_ms <= 0) return -1;
@@ -32,7 +32,7 @@ int update_track(int id, const char *title, int duration_ms) {
 
 // Forgotten in one place:
 void export_track(Track *track) {
-    // FORGOT to check title is non-null — UB if track was created wrong
+    // FORGOT to check title is non-null - UB if track was created wrong
     printf("Track: %s", track->title);
 }
 ```
@@ -46,7 +46,7 @@ This is shotgun validation: scattered, redundant, and missing in at least one pl
 Turn valid data into a type that **can only exist if the data is valid**:
 
 ```rust
-// Raw input — not yet validated
+// Raw input - not yet validated
 pub struct RawTrackRequest {
     pub title: String,
     pub duration_ms: i64,
@@ -54,7 +54,7 @@ pub struct RawTrackRequest {
     pub genre: Option<String>,
 }
 
-// Validated — can only be constructed through TryFrom, which enforces invariants
+// Validated - can only be constructed through TryFrom, which enforces invariants
 #[derive(Debug, Clone)]
 pub struct ValidatedTrack {
     pub title: TrackTitle,        // non-empty, <= 500 chars
@@ -63,7 +63,7 @@ pub struct ValidatedTrack {
     pub genre: Option<Genre>,     // one of the known genres or None
 }
 
-// The boundary — validate exactly once here
+// The boundary - validate exactly once here
 impl TryFrom<RawTrackRequest> for ValidatedTrack {
     type Error = ValidationError;
 
@@ -124,7 +124,7 @@ impl TryFrom<String> for TrackTitle {
 }
 
 impl TrackTitle {
-    // Expose a &str view — caller cannot bypass the validation
+    // Expose a &str view - caller cannot bypass the validation
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -134,7 +134,7 @@ impl TrackTitle {
 
 #[derive(Debug, Clone, Copy)]
 pub struct TrackDuration {
-    milliseconds: u32,  // private — callers can't set invalid values
+    milliseconds: u32,  // private - callers can't set invalid values
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -205,19 +205,19 @@ impl TryFrom<String> for Genre {
 }
 ```
 
-Notice: the fields of `TrackTitle` and `TrackDuration` are private. You can't construct them without going through the validation. The type system enforces this — there's no escape hatch that lets you create a `TrackTitle("")`.
+Notice: the fields of `TrackTitle` and `TrackDuration` are private. You can't construct them without going through the validation. The type system enforces this - there's no escape hatch that lets you create a `TrackTitle("")`.
 
 ---
 
 ## The Axum Integration: Validate at the HTTP Boundary
 
-In the music API, the boundary is the HTTP request handler. Validation happens at the very edge — before any business logic sees the data:
+In the music API, the boundary is the HTTP request handler. Validation happens at the very edge - before any business logic sees the data:
 
 ```rust
 use axum::{extract::State, response::Json, http::StatusCode};
 use serde::{Deserialize, Serialize};
 
-// The raw JSON shape — what the client sends
+// The raw JSON shape - what the client sends
 #[derive(Deserialize)]
 pub struct CreateTrackBody {
     pub title: String,
@@ -252,7 +252,7 @@ pub async fn create_track(
         .map_err(AppError::Validation)?;
     // ─── From here, track is guaranteed valid ───
     
-    // Business logic works with typed data — no validation needed
+    // Business logic works with typed data - no validation needed
     let id = db_insert_track(&db, &track).await?;
     
     Ok((StatusCode::CREATED, Json(TrackResponse {
@@ -264,7 +264,7 @@ pub async fn create_track(
     })))
 }
 
-// The business logic function — never validates, just operates on proven-valid data
+// The business logic function - never validates, just operates on proven-valid data
 async fn db_insert_track(db: &SqlitePool, track: &ValidatedTrack) -> Result<i64, sqlx::Error> {
     let id = sqlx::query!(
         "INSERT INTO tracks (title, duration_ms, artist, genre) VALUES (?, ?, ?, ?)",
@@ -281,7 +281,7 @@ async fn db_insert_track(db: &SqlitePool, track: &ValidatedTrack) -> Result<i64,
 }
 ```
 
-The validation layer and the business logic layer are cleanly separated. A new developer looking at `db_insert_track` doesn't need to wonder "is this data validated?" — the type signature answers it.
+The validation layer and the business logic layer are cleanly separated. A new developer looking at `db_insert_track` doesn't need to wonder "is this data validated?" - the type signature answers it.
 
 ---
 
@@ -290,7 +290,7 @@ The validation layer and the business logic layer are cleanly separated. A new d
 Validated types compose naturally. A struct that requires multiple validated fields is itself a proof that all fields are valid:
 
 ```rust
-// A search query — multiple optional validated constraints
+// A search query - multiple optional validated constraints
 #[derive(Debug)]
 pub struct TrackSearchQuery {
     pub title_contains: Option<String>,    // non-empty when present
@@ -320,9 +320,9 @@ impl TryFrom<u32> for PageLimit {
 
 // When you receive a TrackSearchQuery, every constraint is independently valid:
 async fn search_tracks(db: &SqlitePool, query: &TrackSearchQuery) -> Vec<Track> {
-    // No range checks needed — PageLimit guarantees 1-100
-    // No null checks needed — all Options are explicitly typed
-    // No bounds checks on duration — TrackDuration guarantees valid range
+    // No range checks needed - PageLimit guarantees 1-100
+    // No null checks needed - all Options are explicitly typed
+    // No bounds checks on duration - TrackDuration guarantees valid range
     build_search_query(db, query).await
 }
 ```
@@ -331,7 +331,7 @@ async fn search_tracks(db: &SqlitePool, query: &TrackSearchQuery) -> Vec<Track> 
 
 ## The `?` Operator and Validation Errors
 
-For validation to compose cleanly, all your validation error types need to implement `From<specific_error> for AppError`. This is the same pattern from section 2 — type conversions enabling `?`:
+For validation to compose cleanly, all your validation error types need to implement `From<specific_error> for AppError`. This is the same pattern from section 2 - type conversions enabling `?`:
 
 ```rust
 #[derive(Debug, thiserror::Error)]
@@ -384,7 +384,7 @@ This chain of `?` makes the validation code linear and readable. Any failure pro
 | Passing data between internal functions | ❌ Usually not |
 | Results of pure computations in your code | ❌ Not needed |
 
-The key criterion: **was this data touched by something outside your control?** User input, HTTP requests, files, environment variables — all need validated boundaries. Internal function calls within your own code can trust the types already in play.
+The key criterion: **was this data touched by something outside your control?** User input, HTTP requests, files, environment variables - all need validated boundaries. Internal function calls within your own code can trust the types already in play.
 
 ---
 
@@ -394,14 +394,14 @@ The key criterion: **was this data touched by something outside your control?** 
 ```rust
 // This temptation kills the pattern:
 let track = ValidatedTrack {
-    title: TrackTitle("".to_string()),  // COMPILE ERROR — title is private
+    title: TrackTitle("".to_string()),  // COMPILE ERROR - title is private
     // ...
 };
 ```
-Good news: because the inner fields are private, the compiler prevents this. Tests must go through `TryFrom`. This is intentional — if your test can bypass validation, so can a bug.
+Good news: because the inner fields are private, the compiler prevents this. Tests must go through `TryFrom`. This is intentional - if your test can bypass validation, so can a bug.
 
 **Using `String::new()` or `Default::derive` on validated types.**
-If you `#[derive(Default)]` on `TrackTitle`, the default is `TrackTitle("")` — an empty title that bypasses validation. Never derive `Default` on validated types. If you need a "blank" state, use `Option<TrackTitle>` instead.
+If you `#[derive(Default)]` on `TrackTitle`, the default is `TrackTitle("")` - an empty title that bypasses validation. Never derive `Default` on validated types. If you need a "blank" state, use `Option<TrackTitle>` instead.
 
 **Accepting `&str` and re-validating inside business logic.**
 ```rust
@@ -415,7 +415,7 @@ The fix: accept `&ValidatedTrack` (or the specific `&TrackTitle`). Let the type 
 
 **Forgetting the `transpose()` for `Option<TryFrom<...>>`.**
 ```rust
-// This doesn't compile — Option<Result<T, E>> is not Result<Option<T>, E>
+// This doesn't compile - Option<Result<T, E>> is not Result<Option<T>, E>
 let genre = raw.genre.map(Genre::try_from)?;  // WRONG
 
 // This works:

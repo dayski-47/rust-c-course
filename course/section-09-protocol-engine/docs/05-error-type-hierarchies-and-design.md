@@ -1,4 +1,4 @@
-# Doc 05 — Error Type Hierarchies and Design
+# Doc 05 - Error Type Hierarchies and Design
 
 🟢 nexus has four distinct error domains: protocol errors (bad frames), auth errors
 (bad tokens), store errors (failed persistence), and transport errors (TCP problems).
@@ -38,7 +38,7 @@ match conn.publish(&engine, "alerts", payload).await {
         send_error_frame(ErrorCode::TopicDoesNotExist).await
     }
     Err(NexusError::Transport(_)) => {
-        // Can't send an error — the connection is broken
+        // Can't send an error - the connection is broken
         break;
     }
     Ok(seq) => send_puback(seq).await,
@@ -58,7 +58,7 @@ the right action. This is impossible with `errno` or `Box<dyn Error>`.
 
 The return type `Result<T, E>` is not just "success or failure". The `E` type tells
 the *caller* what decisions they can make. If `E` is `Box<dyn Error>`, the caller
-can only log and give up — they cannot pattern-match and recover differently for a
+can only log and give up - they cannot pattern-match and recover differently for a
 "topic not found" vs a "network error". If `E` is a concrete enum, the caller can
 handle each case.
 
@@ -77,17 +77,17 @@ at the top:
 
 ```
 NexusError
-├── Auth(AuthError)           — authentication failures
+├── Auth(AuthError)           - authentication failures
 │   ├── InvalidToken
 │   └── NotAuthenticated
-├── Protocol(ProtocolError)   — wire-level protocol violations
+├── Protocol(ProtocolError)   - wire-level protocol violations
 │   ├── UnsupportedVersion
 │   ├── UnknownCommand
 │   └── PayloadTooLarge
-├── Store(StoreError)         — persistence failures
+├── Store(StoreError)         - persistence failures
 │   ├── TopicNotFound
 │   └── Io(io::Error)
-└── Transport(io::Error)      — TCP / network failures
+└── Transport(io::Error)      - TCP / network failures
 ```
 
 Each domain has its own error type. The top-level type wraps them all.
@@ -209,12 +209,12 @@ async fn send_frame(framed: &mut Framed<TcpStream, NexusCodec>, frame: Frame)
 }
 ```
 
-Now consider `StoreError::Io(#[from] std::io::Error)` — this lets `io::Error`
+Now consider `StoreError::Io(#[from] std::io::Error)` - this lets `io::Error`
 convert to `StoreError` too. When you `?` in a function that returns `NexusError`,
 you need the conversion path to be unambiguous:
 
 ```rust
-// ❌ Ambiguous — does io::Error become StoreError::Io or NexusError::Transport?
+// ❌ Ambiguous - does io::Error become StoreError::Io or NexusError::Transport?
 async fn broken(engine: &NexusEngine) -> Result<(), NexusError> {
     let file = std::fs::File::open("data")?;  // io::Error → which NexusError variant?
     Ok(())
@@ -244,12 +244,12 @@ your code so the io::Error only appears in one domain's function.
 
 | Context | Use |
 |---------|-----|
-| `nexus-core` (library) | `thiserror` — callers need to match errors |
-| `nexus-proto` (library) | `thiserror` — protocol errors must be inspectable |
-| `nexus-server` (application) | `anyhow` — startup errors are logged, not matched |
+| `nexus-core` (library) | `thiserror` - callers need to match errors |
+| `nexus-proto` (library) | `thiserror` - protocol errors must be inspectable |
+| `nexus-server` (application) | `anyhow` - startup errors are logged, not matched |
 
 ```rust
-// nexus-server/src/main.rs — application code
+// nexus-server/src/main.rs - application code
 use anyhow::{Context, Result};
 
 #[tokio::main]
@@ -292,7 +292,7 @@ The `anyhow` chain shows what the application was trying to do at each level. Th
 
 ## Error Logging vs Error Propagation
 
-Not every error should propagate up to the caller. Some errors are "local" —
+Not every error should propagate up to the caller. Some errors are "local" -
 the caller can't do anything useful with them, and the right action is to log
 and continue:
 
@@ -312,7 +312,7 @@ async fn run_active_loop(
                     Ok(response) => {
                         if framed.send(response).await.is_err() {
                             // ⬆️ Transport error: can't send, connection is broken
-                            // Don't log an error here — this is a normal disconnection
+                            // Don't log an error here - this is a normal disconnection
                             break;
                         }
                     }
@@ -321,7 +321,7 @@ async fn run_active_loop(
                         // Log a warning (client bug, not server bug), send an error frame
                         tracing::warn!(conn_id = conn.id, error = ?e, "Protocol error");
                         let _ = framed.send(Frame::error(frame.sequence_id, e.into())).await;
-                        // Continue — one bad frame doesn't kill the connection
+                        // Continue - one bad frame doesn't kill the connection
                     }
                     Err(NexusError::Store(e)) => {
                         // ⬇️ Store error: server-side problem
@@ -397,7 +397,7 @@ The guideline: use `Result` for expected failure modes, `panic!` for programming
 errors that should never happen:
 
 ```rust
-// ✅ Expected failure — return an error
+// ✅ Expected failure - return an error
 pub async fn authenticate(self, token: &str) -> Result<Connection<Active>, AuthError> {
     if token != self.expected_token {
         return Err(AuthError::InvalidToken);  // Expected: clients can have wrong tokens
@@ -405,9 +405,9 @@ pub async fn authenticate(self, token: &str) -> Result<Connection<Active>, AuthE
     Ok(Connection { /* ... */ })
 }
 
-// ✅ Programming error — panic
+// ✅ Programming error - panic
 fn allocate_slot(&mut self) -> usize {
-    assert!(self.slots.len() < self.max_slots, "BUG: slot pool exhausted — capacity was validated at construction");
+    assert!(self.slots.len() < self.max_slots, "BUG: slot pool exhausted - capacity was validated at construction");
     let slot = self.next_slot;
     self.next_slot += 1;
     slot
@@ -422,7 +422,7 @@ pub fn publish(&self, topic: &str) {
 // ❌ Wrong: using Result for programming errors
 pub fn allocate_slot(&mut self) -> Result<usize, SlotError> {
     if self.slots.len() >= self.max_slots {
-        return Err(SlotError::PoolExhausted);  // Callers won't handle this — they'll panic anyway
+        return Err(SlotError::PoolExhausted);  // Callers won't handle this - they'll panic anyway
     }
     // ...
 }
@@ -471,7 +471,7 @@ published libraries. For internal error types in a binary-only project, it's opt
 
 ## Exercises
 
-**Exercise 1 — Implement the Error Hierarchy**
+**Exercise 1 - Implement the Error Hierarchy**
 
 Create `nexus-core/src/error.rs` with all four error types (`AuthError`, `ProtocolError`,
 `StoreError`, `NexusError`). Verify that the `?` operator works correctly:
@@ -486,7 +486,7 @@ fn parse_command(byte: u8) -> Result<Command, NexusError> {
 Write a test that calls `parse_command(0xFF)` and matches the result against
 `Err(NexusError::Protocol(ProtocolError::UnknownCommand { code: 0xFF }))`.
 
-**Exercise 2 — Error Context with anyhow**
+**Exercise 2 - Error Context with anyhow**
 
 In `nexus-server/src/main.rs`, use `anyhow` for startup errors. Add `.with_context()`
 to each fallible call so that a startup failure produces an error message like:
@@ -502,7 +502,7 @@ Caused by:
 Test this by trying to bind the server twice on the same port. The second bind should
 fail with the full context chain.
 
-**Exercise 3 — Error Handling Policy**
+**Exercise 3 - Error Handling Policy**
 
 In `run_active_loop()`, implement the four-way error dispatch:
 - `NexusError::Protocol` → log WARN, send ERROR frame, continue
@@ -521,7 +521,7 @@ Write a test that injects a `ProtocolError::PayloadTooLarge` via a mock and veri
 
 - [ ] One `thiserror` enum per domain (`AuthError`, `ProtocolError`, `StoreError`)
 - [ ] One top-level `NexusError` that wraps domain errors with `#[from]`
-- [ ] No `Box<dyn Error>` in library code — use concrete error enums
+- [ ] No `Box<dyn Error>` in library code - use concrete error enums
 - [ ] `anyhow` only in binaries (`nexus-server/src/main.rs`) not in libraries
 - [ ] Protocol errors → log at WARN, send error frame, continue connection
 - [ ] Transport errors → log at DEBUG, close connection

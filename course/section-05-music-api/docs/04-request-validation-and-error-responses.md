@@ -1,6 +1,6 @@
-# Doc 04 — Request Validation and Error Responses 🟡
+# Doc 04 - Request Validation and Error Responses 🟡
 
-Users send bad data. Networks fail. Databases return errors. If your handler code is sprinkled with `.unwrap()` and raw panics, one bad request will crash a task and leave the user with a confusing 500 error — if they're lucky. The production approach is a single `AppError` type that your entire API uses to turn failures into meaningful HTTP responses.
+Users send bad data. Networks fail. Databases return errors. If your handler code is sprinkled with `.unwrap()` and raw panics, one bad request will crash a task and leave the user with a confusing 500 error - if they're lucky. The production approach is a single `AppError` type that your entire API uses to turn failures into meaningful HTTP responses.
 
 ## The Problem Without a Central Error Type
 
@@ -53,7 +53,7 @@ pub enum AppError {
 }
 ```
 
-The `#[from]` on the `Database` variant means any `sqlx::Error` will automatically convert to `AppError::Database` via the `?` operator. This is the same `#[from]` you used in the error handling chapter — it generates a `From<sqlx::Error> for AppError` impl automatically.
+The `#[from]` on the `Database` variant means any `sqlx::Error` will automatically convert to `AppError::Database` via the `?` operator. This is the same `#[from]` you used in the error handling chapter - it generates a `From<sqlx::Error> for AppError` impl automatically.
 
 ## Implementing IntoResponse for AppError 🔴
 
@@ -111,7 +111,7 @@ impl IntoResponse for AppError {
 }
 ```
 
-Notice the `Database` variant: you log the real error with `tracing::error!` but tell the client something generic. Leaking raw SQL errors to users is a security risk — they reveal your schema.
+Notice the `Database` variant: you log the real error with `tracing::error!` but tell the client something generic. Leaking raw SQL errors to users is a security risk - they reveal your schema.
 
 ## Using AppError in Handlers
 
@@ -136,7 +136,7 @@ async fn get_song(
 
 Two lines of query code instead of twelve lines of match arms. The `?` operators handle conversion automatically. This is what `#[from]` buys you.
 
-## Validation — Parse, Don't Validate 🟡
+## Validation - Parse, Don't Validate 🟡
 
 The principle: don't take raw data, run checks on it, and then use the unchecked data. Instead, parse raw data into a type that can only exist if the data is valid. After the parse, there's nothing more to check.
 
@@ -145,7 +145,7 @@ Applied to a request struct:
 ```rust
 use serde::Deserialize;
 
-// Raw request — could contain anything
+// Raw request - could contain anything
 #[derive(Deserialize)]
 pub struct CreateSongRequest {
     pub title: String,
@@ -192,7 +192,7 @@ impl CreateSongRequest {
     }
 }
 
-// This type can only be constructed by validate() — it is proof of validity
+// This type can only be constructed by validate() - it is proof of validity
 pub struct ValidatedCreateSong {
     pub title: String,
     pub album_id: i64,
@@ -314,7 +314,7 @@ async fn create_song(
 
 **Logging errors in IntoResponse AND in the handler**: Pick one place. Log in `IntoResponse` so the log always happens, regardless of which handler produced the error. Don't log twice.
 
-**Exposing raw sqlx errors to clients**: A `sqlx::Error` message often contains table names, column names, and SQL snippets — all useful to an attacker. Always map database errors to a generic message in `IntoResponse`.
+**Exposing raw sqlx errors to clients**: A `sqlx::Error` message often contains table names, column names, and SQL snippets - all useful to an attacker. Always map database errors to a generic message in `IntoResponse`.
 
 **Using a single generic "bad request" error for everything**: Return `AppError::Validation(vec![...])` with a list of specific field errors instead of a single vague "invalid input." Users and API clients need to know what specifically is wrong.
 

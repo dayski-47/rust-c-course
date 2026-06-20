@@ -1,8 +1,8 @@
-# Section 4 Project: ghanalyze — GitHub Repository Analyzer
+# Section 4 Project: ghanalyze - GitHub Repository Analyzer
 
 ## What You're Building
 
-`ghanalyze` is a command-line tool that takes a GitHub username (or organization name) and produces a detailed analysis of their public repositories. It fetches repository metadata, language breakdowns, and activity information — all concurrently using async Tokio — and formats the results into a readable report.
+`ghanalyze` is a command-line tool that takes a GitHub username (or organization name) and produces a detailed analysis of their public repositories. It fetches repository metadata, language breakdowns, and activity information - all concurrently using async Tokio - and formats the results into a readable report.
 
 This project brings together everything from the section docs: async tasks, tokio::spawn for concurrent fetching, reqwest for HTTP, serde for JSON parsing, rate limit awareness, and proper async error handling.
 
@@ -84,7 +84,7 @@ The key architectural decisions:
 - **One `reqwest::Client`** wrapped in `Arc<Client>`, shared across all tasks.
 - **`JoinSet`** to spawn and collect repo analysis tasks.
 - **`tokio::sync::Semaphore`** to limit concurrent requests (respect rate limits).
-- **Individual task failures** don't crash the whole analysis — if one repo's language fetch fails, the others continue.
+- **Individual task failures** don't crash the whole analysis - if one repo's language fetch fails, the others continue.
 
 ---
 
@@ -277,11 +277,11 @@ The array returned by `/users/{username}/repos` contains many more fields than t
 ghanalyze/
 ├── Cargo.toml
 └── src/
-    ├── main.rs        — CLI argument parsing, orchestration, output formatting
-    ├── models.rs      — Serde structs (GitHubRepo, RepoAnalysis, etc.)
-    ├── github.rs      — All GitHub API calls (fetch_repos, fetch_languages, etc.)
-    ├── analysis.rs    — Compute statistics from collected data
-    └── display.rs     — Format and print the report
+    ├── main.rs        - CLI argument parsing, orchestration, output formatting
+    ├── models.rs      - Serde structs (GitHubRepo, RepoAnalysis, etc.)
+    ├── github.rs      - All GitHub API calls (fetch_repos, fetch_languages, etc.)
+    ├── analysis.rs    - Compute statistics from collected data
+    └── display.rs     - Format and print the report
 ```
 
 ---
@@ -314,7 +314,7 @@ clap = { version = "4", features = ["derive"] }
 
 ### 2. Making HTTP Requests with reqwest
 
-Create ONE client per program (not one per request — that's expensive). Share it with `Arc`:
+Create ONE client per program (not one per request - that's expensive). Share it with `Arc`:
 
 ```rust
 use reqwest::Client;
@@ -351,7 +351,7 @@ pub struct GithubRepo {
 }
 ```
 
-If a field in your struct doesn't exist in the JSON, deserialization fails. If a JSON field isn't in your struct, it's silently ignored. You don't have to map every JSON field — only the ones you need.
+If a field in your struct doesn't exist in the JSON, deserialization fails. If a JSON field isn't in your struct, it's silently ignored. You don't have to map every JSON field - only the ones you need.
 
 ### 4. Concurrent Requests with JoinSet
 
@@ -389,7 +389,7 @@ while let Some(result) = set.join_next().await {
 
 ### 5. Rate Limit Awareness
 
-The GitHub API allows 60 unauthenticated requests per hour. Your analyzer makes 1 request for the repo list + 1 per repo for languages. With 50 repos, that's 51 requests — close to the limit.
+The GitHub API allows 60 unauthenticated requests per hour. Your analyzer makes 1 request for the repo list + 1 per repo for languages. With 50 repos, that's 51 requests - close to the limit.
 
 Check the response headers:
 ```rust
@@ -423,24 +423,24 @@ let client = Client::builder()
 
 ## Engineering Approach: Failure-Mode Analysis
 
-Before building `ghanalyze`, list every external interaction and its failure modes. This is not optional — it's the design step that determines whether your error handling will be complete.
+Before building `ghanalyze`, list every external interaction and its failure modes. This is not optional - it's the design step that determines whether your error handling will be complete.
 
 **GitHub API calls:**
 
-- `GET /users/{username}/repos` — User doesn't exist (404), rate limited (429 or 403 with rate limit headers), network connection failure, valid user but 0 repos (empty JSON array — this is success, not a failure, but your code must handle it), malformed JSON in the response body.
-- `GET /repos/{owner}/{repo}/languages` — Repo exists but has no detected language data (empty JSON object `{}` — valid response, not an error), request timeout on a slow repo, 404 if the repo was deleted between your list fetch and your language fetch.
+- `GET /users/{username}/repos` - User doesn't exist (404), rate limited (429 or 403 with rate limit headers), network connection failure, valid user but 0 repos (empty JSON array - this is success, not a failure, but your code must handle it), malformed JSON in the response body.
+- `GET /repos/{owner}/{repo}/languages` - Repo exists but has no detected language data (empty JSON object `{}` - valid response, not an error), request timeout on a slow repo, 404 if the repo was deleted between your list fetch and your language fetch.
 
-**Rate limit handling — the details matter:**
+**Rate limit handling - the details matter:**
 
 - The `X-RateLimit-Remaining` header tells you how many requests you can still make in the current window. Check it on every response, not just at startup.
 - The `X-RateLimit-Reset` header is a Unix timestamp (seconds since epoch) indicating when the limit resets. If `Remaining` is 0, compute `Reset - now` to get the sleep duration.
 - Checking only at the start of the program is wrong: your remaining count decreases with every request, and you have no idea how many you'll make until you know how many repos the user has.
 
-**Pagination — the silent truncation failure:**
+**Pagination - the silent truncation failure:**
 
-- GitHub returns at most 100 repos per page. If a user has more than 100 repos and you don't handle pagination, you silently analyze only the first 100. No error, no warning — just incomplete data. The `Link` response header tells you if there is a next page: `<https://...?page=2>; rel="next"`. Failing to handle pagination is a category 4 failure (silent data loss).
+- GitHub returns at most 100 repos per page. If a user has more than 100 repos and you don't handle pagination, you silently analyze only the first 100. No error, no warning - just incomplete data. The `Link` response header tells you if there is a next page: `<https://...?page=2>; rel="next"`. Failing to handle pagination is a category 4 failure (silent data loss).
 
-Write the failure-mode list for your specific implementation before writing the code. Then handle each failure mode explicitly — not with a generic `?` that loses the failure type, but with specific error variants that let you respond differently to each.
+Write the failure-mode list for your specific implementation before writing the code. Then handle each failure mode explicitly - not with a generic `?` that loses the failure type, but with specific error variants that let you respond differently to each.
 
 ---
 
@@ -449,28 +449,28 @@ Write the failure-mode list for your specific implementation before writing the 
 Nothing in this project is entirely new. The tools are new; the patterns are familiar:
 
 - **S1 error handling:** Every `Result` chain in `ghanalyze` uses the same `?` propagation pattern you learned in Section 1. The difference is that the errors come from HTTP responses instead of TCP connections. The error type structure is the same.
-- **S3 threads → S4 tasks:** In Section 3 you used `thread::spawn` for each chat client. Here you use `tokio::spawn` instead — same ownership rules (`'static`, `move` into the closure, `Arc::clone` for shared data), but tasks are cooperatively scheduled instead of preemptively. One Tokio thread can drive thousands of tasks; one OS thread can only run one thing.
-- **S2 `HashMap`:** The language breakdown is a `HashMap<String, u64>` — language name to byte count. The same data structure you used in Section 2, applied to a different domain.
+- **S3 threads → S4 tasks:** In Section 3 you used `thread::spawn` for each chat client. Here you use `tokio::spawn` instead - same ownership rules (`'static`, `move` into the closure, `Arc::clone` for shared data), but tasks are cooperatively scheduled instead of preemptively. One Tokio thread can drive thousands of tasks; one OS thread can only run one thing.
+- **S2 `HashMap`:** The language breakdown is a `HashMap<String, u64>` - language name to byte count. The same data structure you used in Section 2, applied to a different domain.
 - **S2 structs + serde:** `GithubRepo`, `LanguageMap`, `AnalysisReport` are all structs. Same as Section 2 structs, but now they derive `Deserialize` so serde fills them from JSON automatically. You don't write any parsing code.
-- **S3 `Arc`:** `Arc<reqwest::Client>` shared across spawned tasks is the same pattern as `Arc<Mutex<client_list>>` in Section 3 — shared ownership across concurrent units of work. The difference is tasks instead of threads, and no `Mutex` because `reqwest::Client` is already designed to be shared.
+- **S3 `Arc`:** `Arc<reqwest::Client>` shared across spawned tasks is the same pattern as `Arc<Mutex<client_list>>` in Section 3 - shared ownership across concurrent units of work. The difference is tasks instead of threads, and no `Mutex` because `reqwest::Client` is already designed to be shared.
 
 The difficulty here is not the Rust concepts. It's understanding what the GitHub API does, handling all its failure modes, and managing concurrency cleanly at the task level rather than the thread level.
 
 ---
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 The data flow in `ghanalyze`:
 
-The program starts by creating one `reqwest::Client`. This client maintains a connection pool and handles TLS negotiation — creating it is expensive, so you create it once. It goes into an `Arc<reqwest::Client>` so it can be shared across all spawned tasks.
+The program starts by creating one `reqwest::Client`. This client maintains a connection pool and handles TLS negotiation - creating it is expensive, so you create it once. It goes into an `Arc<reqwest::Client>` so it can be shared across all spawned tasks.
 
-To fetch all repos for a user, the program makes a paginated GET request to the GitHub API. The response comes back as raw bytes. `serde_json` deserializes those bytes directly into `Vec<GithubRepo>` using the `Deserialize` implementation that `#[derive(Deserialize)]` generated. No manual JSON parsing — serde does it from the struct definition.
+To fetch all repos for a user, the program makes a paginated GET request to the GitHub API. The response comes back as raw bytes. `serde_json` deserializes those bytes directly into `Vec<GithubRepo>` using the `Deserialize` implementation that `#[derive(Deserialize)]` generated. No manual JSON parsing - serde does it from the struct definition.
 
-For each repo in the list, the program spawns a Tokio task with `tokio::spawn`. Each task receives an `Arc` clone of the client (cheap — just an atomic counter increment) and an owned `repo` struct (moved into the task). A `Semaphore` limits how many tasks run simultaneously, preventing the program from opening hundreds of connections at once and hitting rate limits immediately.
+For each repo in the list, the program spawns a Tokio task with `tokio::spawn`. Each task receives an `Arc` clone of the client (cheap - just an atomic counter increment) and an owned `repo` struct (moved into the task). A `Semaphore` limits how many tasks run simultaneously, preventing the program from opening hundreds of connections at once and hitting rate limits immediately.
 
 A `JoinSet` tracks all the spawned tasks. As each task completes, `join_next()` returns its result. The results are collected and processed to compute statistics.
 
-The key insight about async futures: none of the async code runs until you `.await` it. Calling `reqwest::get(url)` does not make a network request — it creates a `Future` struct that describes a network request. The request happens when the runtime polls that future. This is why futures can be cancelled cleanly: dropping an un-polled future is simply dropping a struct. No partial request was made. This also means you can compose complex combinations of operations (join, select, timeout) before starting any of them, with full control over when and whether they execute.
+The key insight about async futures: none of the async code runs until you `.await` it. Calling `reqwest::get(url)` does not make a network request - it creates a `Future` struct that describes a network request. The request happens when the runtime polls that future. This is why futures can be cancelled cleanly: dropping an un-polled future is simply dropping a struct. No partial request was made. This also means you can compose complex combinations of operations (join, select, timeout) before starting any of them, with full control over when and whether they execute.
 
 ---
 
@@ -480,7 +480,7 @@ Work through these in order. Each milestone builds on the previous one.
 
 ### Milestone 1: Fetch and Print Repos (Blocking)
 
-Get the project compiling and talking to the GitHub API. Use `reqwest::blocking::get()` (the synchronous version) first — no async needed yet. Just fetch and print the repo list as raw JSON.
+Get the project compiling and talking to the GitHub API. Use `reqwest::blocking::get()` (the synchronous version) first - no async needed yet. Just fetch and print the repo list as raw JSON.
 
 Goals:
 - Project compiles with reqwest and serde dependencies
@@ -507,7 +507,7 @@ Check what the actual JSON looks like first:
 ```bash
 curl -s "https://api.github.com/users/torvalds/repos" | head -100
 ```
-Your struct fields must match the JSON keys exactly. Start with just `name` and `stargazers_count` — add more fields as you need them.
+Your struct fields must match the JSON keys exactly. Start with just `name` and `stargazers_count` - add more fields as you need them.
 
 ### Milestone 3: Make It Async
 
@@ -519,7 +519,7 @@ Goals:
 - All HTTP calls use `.await`
 - Program still works identically to Milestone 2
 
-This milestone is intentionally small — you're just changing the plumbing, not the logic.
+This milestone is intentionally small - you're just changing the plumbing, not the logic.
 
 ### Milestone 4: Concurrent Language Fetching
 
@@ -536,13 +536,13 @@ At this point, all language fetches should run concurrently. Test with `--limit 
 
 **Stuck on the `'static` / Arc requirement for spawned tasks?**
 
-`tokio::spawn` requires that everything the task captures is `'static` — meaning it must be owned, not borrowed. You can't capture a `&str` or a reference into a local variable.
+`tokio::spawn` requires that everything the task captures is `'static` - meaning it must be owned, not borrowed. You can't capture a `&str` or a reference into a local variable.
 
-The fix: clone what you need before spawning. You saw `Arc::clone` used for the client map in Section 3 (chat server) — this is the same pattern: cheap reference-count increment, full shared ownership.
+The fix: clone what you need before spawning. You saw `Arc::clone` used for the client map in Section 3 (chat server) - this is the same pattern: cheap reference-count increment, full shared ownership.
 
 ```rust
 let repo_name = repo.name.clone();  // owned String, not &str
-let client = Arc::clone(&client);   // cheap — increments a counter, not a deep clone
+let client = Arc::clone(&client);   // cheap - increments a counter, not a deep clone
 tokio::spawn(async move {           // move captures repo_name and client by ownership
     // ...
 });
@@ -603,7 +603,7 @@ Goals:
 
 ## Key Hints (Not Solutions)
 
-**The reqwest Client.** Create it once in `main()` and wrap it in `Arc<reqwest::Client>`. Pass `Arc::clone(&client)` into each spawned task. Don't create a new `Client` per request — you'll lose connection pooling.
+**The reqwest Client.** Create it once in `main()` and wrap it in `Arc<reqwest::Client>`. Pass `Arc::clone(&client)` into each spawned task. Don't create a new `Client` per request - you'll lose connection pooling.
 
 **Concurrent fetching pattern.** The pattern for fetching N things concurrently:
 
@@ -696,7 +696,7 @@ Once the main milestones are complete, these extend the project in interesting d
 
 **Contributor analysis.** For each repo, fetch the top contributors from `/repos/{owner}/{repo}/contributors` and show who contributes most across the user's repos.
 
-**Compare two users.** `ghanalyze compare alice bob` — fetch both users' repos, compute stats for each, and produce a side-by-side comparison table.
+**Compare two users.** `ghanalyze compare alice bob` - fetch both users' repos, compute stats for each, and produce a side-by-side comparison table.
 
 **Historical activity trend.** Use the commit activity endpoint `/repos/{owner}/{repo}/stats/commit_activity` to determine if a repo's activity has increased or decreased over the past year.
 
@@ -704,7 +704,7 @@ Once the main milestones are complete, these extend the project in interesting d
 
 **Progress bar.** Replace the simple "[N/M]" progress messages with a real terminal progress bar using the `indicatif` crate.
 
-**Filter by language.** `ghanalyze torvalds --lang C` — only show repos where C is the primary language.
+**Filter by language.** `ghanalyze torvalds --lang C` - only show repos where C is the primary language.
 
 **Org support.** Detect whether the username is a GitHub user or organization and use the appropriate endpoint (`/users/{name}/repos` vs `/orgs/{name}/repos`).
 

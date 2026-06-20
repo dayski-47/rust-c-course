@@ -1,14 +1,14 @@
-# 08 — Rust Idioms and Best Practices
+# 08 - Rust Idioms and Best Practices
 
-> **Project:** Hex Viewer — reading binary files, formatting bytes as hex and ASCII, printing aligned output to the terminal.
+> **Project:** Hex Viewer - reading binary files, formatting bytes as hex and ASCII, printing aligned output to the terminal.
 
 ## In This Section
 
 You are building a hex viewer that opens a binary file, reads it in chunks, and prints each 16-byte line as both hex digits and a printable-ASCII sidebar. Three idioms from this document will appear immediately:
 
-- **Testing in the same file** — `is_printable(byte: u8)` is the perfect first test function to write for this project. It has clear boundaries and no side effects.
-- **References in function signatures** — your formatting functions will take `&[u8]` (a slice of bytes), not `Vec<u8>`. Slices are the idiomatic way to accept a sequence of bytes without taking ownership.
-- **Error handling hierarchy** — the entry point reads a file path from `argv`. File I/O can fail. Use `anyhow::Result<()>` in `main` or a thin `run()` wrapper from the start.
+- **Testing in the same file** - `is_printable(byte: u8)` is the perfect first test function to write for this project. It has clear boundaries and no side effects.
+- **References in function signatures** - your formatting functions will take `&[u8]` (a slice of bytes), not `Vec<u8>`. Slices are the idiomatic way to accept a sequence of bytes without taking ownership.
+- **Error handling hierarchy** - the entry point reads a file path from `argv`. File I/O can fail. Use `anyhow::Result<()>` in `main` or a thin `run()` wrapper from the start.
 
 ---
 
@@ -36,7 +36,7 @@ A C developer's instinct: "use a pointer to avoid copying." In Rust, this leads 
 
 **Rule: Functions should borrow.** Function parameters should be `&str` (not `String`), `&[T]` (not `Vec<T>`), `&T` (not `T`) unless you need to store or transfer ownership.
 
-Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true — you cannot pass a `&str` where a `String` is needed without cloning.
+Why this works: `String` can be passed as `&str` automatically (deref coercion). `Vec<T>` can be passed as `&[T]` automatically. The reverse is not true - you cannot pass a `&str` where a `String` is needed without cloning.
 
 In the hex viewer, your `format_hex_line` function takes `&[u8]` so that the caller is not forced to give up its buffer:
 
@@ -46,7 +46,7 @@ fn format_hex_line(bytes: &[u8], offset: usize) -> String {
     // ...
 }
 
-// Bad: takes ownership of the Vec — caller loses its buffer
+// Bad: takes ownership of the Vec - caller loses its buffer
 fn format_hex_line(bytes: Vec<u8>, offset: usize) -> String {
     // ...
 }
@@ -76,7 +76,7 @@ You will use this pattern when working with `reqwest` clients, Tokio runtimes, a
 
 ## 4. Error Handling Hierarchy
 
-**Do not use:** `unwrap()` or `expect()` in production paths — anything that can be caused by external input, file contents, or command-line arguments.
+**Do not use:** `unwrap()` or `expect()` in production paths - anything that can be caused by external input, file contents, or command-line arguments.
 
 **Early development:** `Box<dyn std::error::Error>` as the error type. Gets you started without designing an error type first.
 
@@ -106,11 +106,11 @@ fn main() {
 }
 ```
 
-The `{e:#}` format prints the full error chain — every `.with_context()` layer, in order. This is what users actually need to diagnose problems.
+The `{e:#}` format prints the full error chain - every `.with_context()` layer, in order. This is what users actually need to diagnose problems.
 
 ---
 
-## 5. Don't Match on Bool — Use the Right Abstraction
+## 5. Don't Match on Bool - Use the Right Abstraction
 
 ```rust
 // Bad: checking is_some() then calling unwrap()
@@ -150,11 +150,11 @@ let lines: Vec<String> = data
 
 Know the three closure traits:
 
-- `Fn` — can be called multiple times, borrows captured variables
-- `FnMut` — can be called multiple times, mutably borrows captured variables
-- `FnOnce` — can only be called once, takes ownership of captured variables
+- `Fn` - can be called multiple times, borrows captured variables
+- `FnMut` - can be called multiple times, mutably borrows captured variables
+- `FnOnce` - can only be called once, takes ownership of captured variables
 
-When you pass a closure to `thread::spawn` or `tokio::spawn` (in later sections), it must be `FnOnce + Send + 'static`. That `'static` requirement is what forces you to use `Arc::clone` instead of passing a raw reference — the thread may outlive the stack frame where the reference lives.
+When you pass a closure to `thread::spawn` or `tokio::spawn` (in later sections), it must be `FnOnce + Send + 'static`. That `'static` requirement is what forces you to use `Arc::clone` instead of passing a raw reference - the thread may outlive the stack frame where the reference lives.
 
 ---
 
@@ -187,7 +187,7 @@ for i in 0..bytes.len() {
 let count = bytes.iter().filter(|&&b| is_printable(b)).count();
 ```
 
-Use generics over `Box<dyn Trait>` when the concrete type is known at compile time. Use `Box<dyn Trait>` when you genuinely need different concrete types at runtime — for example, a list of formatters chosen at startup.
+Use generics over `Box<dyn Trait>` when the concrete type is known at compile time. Use `Box<dyn Trait>` when you genuinely need different concrete types at runtime - for example, a list of formatters chosen at startup.
 
 ---
 
@@ -208,10 +208,10 @@ mod tests {
 
     #[test]
     fn printable_boundaries() {
-        assert!(is_printable(0x20));   // space — printable
-        assert!(is_printable(0x7e));   // ~ — printable
-        assert!(!is_printable(0x1f));  // control char — not printable
-        assert!(!is_printable(0x7f));  // DEL — not printable
+        assert!(is_printable(0x20));   // space - printable
+        assert!(is_printable(0x7e));   // ~ - printable
+        assert!(!is_printable(0x1f));  // control char - not printable
+        assert!(!is_printable(0x7f));  // DEL - not printable
     }
 
     #[test]

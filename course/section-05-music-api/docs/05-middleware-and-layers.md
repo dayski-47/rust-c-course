@@ -1,6 +1,6 @@
-# Doc 05 — Middleware and Layers 🟡
+# Doc 05 - Middleware and Layers 🟡
 
-Middleware is code that runs before or after your handlers — across every request — without duplicating logic in every handler. Logging every incoming request, adding CORS headers, killing requests that take too long — all of this belongs in middleware.
+Middleware is code that runs before or after your handlers - across every request - without duplicating logic in every handler. Logging every incoming request, adding CORS headers, killing requests that take too long - all of this belongs in middleware.
 
 Axum uses Tower for middleware. You've seen Tower mentioned earlier in the course. Here's the practical side.
 
@@ -54,8 +54,8 @@ INFO  request{method=GET path=/songs}: finished processing request status=200 la
 
 Control the verbosity with the `RUST_LOG` environment variable:
 ```bash
-RUST_LOG=info cargo run         # Info level — requests and important events
-RUST_LOG=debug cargo run        # Debug — much more verbose
+RUST_LOG=info cargo run         # Info level - requests and important events
+RUST_LOG=debug cargo run        # Debug - much more verbose
 RUST_LOG=tower_http=debug cargo run  # Debug only for HTTP layer
 ```
 
@@ -103,7 +103,7 @@ let app = Router::new()
     .layer(TimeoutLayer::new(Duration::from_secs(10)));
 ```
 
-Any request that doesn't complete within 10 seconds gets terminated with a 408 Request Timeout response. Handlers don't need to know this exists — they just get cancelled if they run too long.
+Any request that doesn't complete within 10 seconds gets terminated with a 408 Request Timeout response. Handlers don't need to know this exists - they just get cancelled if they run too long.
 
 ## Compression
 
@@ -121,7 +121,7 @@ let app = Router::new()
 
 ## Adding Multiple Layers
 
-Add layers to the router in a chain. The order matters — layers are applied from bottom to top as the request flows in, and top to bottom as the response flows out:
+Add layers to the router in a chain. The order matters - layers are applied from bottom to top as the request flows in, and top to bottom as the response flows out:
 
 ```rust
 use tower::ServiceBuilder;
@@ -140,15 +140,15 @@ let app = Router::new()
     );
 ```
 
-`ServiceBuilder` lets you chain layers cleanly. The first `.layer()` in the builder is the outermost middleware — it sees the request first and the response last.
+`ServiceBuilder` lets you chain layers cleanly. The first `.layer()` in the builder is the outermost middleware - it sees the request first and the response last.
 
 A practical ordering guideline:
 
 ```
-1. TraceLayer        — must be outermost to log everything including timeout errors
-2. TimeoutLayer      — kill slow requests before they hit downstream layers
-3. CompressionLayer  — compress the outgoing response
-4. CorsLayer         — add CORS headers
+1. TraceLayer        - must be outermost to log everything including timeout errors
+2. TimeoutLayer      - kill slow requests before they hit downstream layers
+3. CompressionLayer  - compress the outgoing response
+4. CorsLayer         - add CORS headers
 5. Your handlers
 ```
 

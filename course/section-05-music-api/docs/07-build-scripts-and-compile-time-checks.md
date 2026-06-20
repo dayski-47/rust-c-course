@@ -1,8 +1,8 @@
-# Doc 07 — Build Scripts and Compile-Time Checks
+# Doc 07 - Build Scripts and Compile-Time Checks
 
-🟢 This is a superpower most Rust developers underuse — moving work from runtime to compile time.
+🟢 This is a superpower most Rust developers underuse - moving work from runtime to compile time.
 
-The music API has a problem every deployed service has: how do you know which version is running on a given server? How do you embed the git commit hash, build timestamp, or target architecture into the binary — without making the code brittle?
+The music API has a problem every deployed service has: how do you know which version is running on a given server? How do you embed the git commit hash, build timestamp, or target architecture into the binary - without making the code brittle?
 
 The answer is `build.rs`. It's also how you compile C libraries, run code generation, and probe the system for libraries you depend on. This doc covers all five patterns, including how to connect them to the music API.
 
@@ -23,11 +23,11 @@ Cargo compiles and runs `build.rs` **before** compiling your crate:
 
 Key facts that matter for real usage:
 - `build.rs` runs on the **host** machine, not the target. During cross-compilation (section 8), the build script runs on your laptop even if you're targeting ARM embedded.
-- It communicates by printing special instructions to stdout — `cargo::rustc-env=KEY=VALUE`, `cargo::rerun-if-changed=PATH`, etc.
+- It communicates by printing special instructions to stdout - `cargo::rustc-env=KEY=VALUE`, `cargo::rerun-if-changed=PATH`, etc.
 - Without any `rerun-if-changed` instruction, it re-runs on **every change to any file** in your crate. That's slow. Always emit at least one.
 
 ```rust
-// build.rs — the minimal structure
+// build.rs - the minimal structure
 fn main() {
     // This is the most important line in any build script.
     // Without it, Cargo re-runs build.rs whenever ANY file in the package changes.
@@ -86,7 +86,7 @@ fn main() {
     let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".to_string());
     println!("cargo::rustc-env=APP_BUILD_TARGET={target}");
 
-    // Timestamp — use SOURCE_DATE_EPOCH if set for reproducible builds
+    // Timestamp - use SOURCE_DATE_EPOCH if set for reproducible builds
     let timestamp = std::env::var("SOURCE_DATE_EPOCH").unwrap_or_else(|_| {
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -163,7 +163,7 @@ pub async fn health_check() -> Json<HealthResponse> {
 
 ## Pattern 2: Compiling C Code with `cc`
 
-When your service wraps a C library — common when integrating vendor SDKs, hardware drivers, or performance-critical code — the `cc` crate handles compilation inside `build.rs`:
+When your service wraps a C library - common when integrating vendor SDKs, hardware drivers, or performance-critical code - the `cc` crate handles compilation inside `build.rs`:
 
 ```toml
 # Cargo.toml
@@ -172,7 +172,7 @@ cc = "1.0"
 ```
 
 ```rust
-// build.rs — compiling a C helper for the music API's audio fingerprinting
+// build.rs - compiling a C helper for the music API's audio fingerprinting
 fn main() {
     println!("cargo::rerun-if-changed=csrc/");
 
@@ -189,7 +189,7 @@ fn main() {
 ```
 
 ```rust
-// src/fingerprint.rs — FFI bindings to the C code
+// src/fingerprint.rs - FFI bindings to the C code
 extern "C" {
     fn chromaprint_get_fingerprint(
         audio_data: *const f32,
@@ -222,13 +222,13 @@ pub fn compute_fingerprint(samples: &[f32], sample_rate: u32) -> Option<Vec<u8>>
 }
 ```
 
-The `cc` crate respects the cross-compilation toolchain — if `$CC` is set to a cross-compiler, it uses that. Raw `Command::new("gcc")` doesn't. Always use `cc` for C compilation in build scripts.
+The `cc` crate respects the cross-compilation toolchain - if `$CC` is set to a cross-compiler, it uses that. Raw `Command::new("gcc")` doesn't. Always use `cc` for C compilation in build scripts.
 
 ---
 
 ## Pattern 3: Code Generation from Schema Files
 
-Build scripts run code generation — turning `.proto`, `.capnp`, or `.fbs` schema files into Rust source at compile time. For the music API, this could be a Protocol Buffers schema for a gRPC API:
+Build scripts run code generation - turning `.proto`, `.capnp`, or `.fbs` schema files into Rust source at compile time. For the music API, this could be a Protocol Buffers schema for a gRPC API:
 
 ```toml
 # Cargo.toml
@@ -248,13 +248,13 @@ fn main() {
 ```
 
 ```rust
-// src/lib.rs — include the generated types
+// src/lib.rs - include the generated types
 pub mod music_service {
     include!(concat!(env!("OUT_DIR"), "/music.music_service.rs"));
 }
 ```
 
-`OUT_DIR` is a Cargo-provided path where build scripts should write generated files. Each crate gets its own `OUT_DIR` under `target/`. Never write to `src/` — Cargo doesn't expect source to change during a build.
+`OUT_DIR` is a Cargo-provided path where build scripts should write generated files. Each crate gets its own `OUT_DIR` under `target/`. Never write to `src/` - Cargo doesn't expect source to change during a build.
 
 ---
 
@@ -268,16 +268,16 @@ pkg-config = "0.3"
 ```
 
 ```rust
-// build.rs — probing for optional system libraries
+// build.rs - probing for optional system libraries
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
-    // Probe for ALSA (Linux audio) — needed for live audio input in the music API
+    // Probe for ALSA (Linux audio) - needed for live audio input in the music API
     if pkg_config::probe_library("alsa").is_ok() {
         println!("cargo::rustc-cfg=has_alsa");
     }
 
-    // Probe for libpq (PostgreSQL) — optional alternative to SQLite
+    // Probe for libpq (PostgreSQL) - optional alternative to SQLite
     if pkg_config::probe_library("libpq").is_ok() {
         println!("cargo::rustc-cfg=has_postgresql");
     }
@@ -285,7 +285,7 @@ fn main() {
 ```
 
 ```rust
-// src/audio_input.rs — conditional compilation based on detected system libraries
+// src/audio_input.rs - conditional compilation based on detected system libraries
 #[cfg(has_alsa)]
 pub mod live_input {
     extern "C" {
@@ -314,7 +314,7 @@ pub mod live_input {
 Build scripts can probe the compilation environment and set `#[cfg]` flags for conditional code paths:
 
 ```rust
-// build.rs — target-aware build configuration
+// build.rs - target-aware build configuration
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
@@ -341,7 +341,7 @@ fn main() {
 ```
 
 ```rust
-// src/audio_device.rs — different implementations per platform
+// src/audio_device.rs - different implementations per platform
 #[cfg(platform_linux)]
 pub fn default_audio_device() -> &'static str {
     "hw:0,0"  // ALSA default
@@ -376,20 +376,20 @@ let hash    = env!("APP_GIT_HASH");           // "a3f2c1d4b5"
 let profile = env!("APP_BUILD_PROFILE");      // "release"
 ```
 
-The `env!` macro resolves these at compile time — the resulting binary contains the string literal, not a runtime lookup.
+The `env!` macro resolves these at compile time - the resulting binary contains the string literal, not a runtime lookup.
 
 ---
 
 ## Reproducible Builds: The Tension
 
-Embedding timestamps and git hashes makes binaries traceable. It also makes them non-reproducible — the same source code produces a different binary every time you build it, because the timestamp changes.
+Embedding timestamps and git hashes makes binaries traceable. It also makes them non-reproducible - the same source code produces a different binary every time you build it, because the timestamp changes.
 
 This matters for security-conscious deployments that want to verify binary integrity.
 
 The resolution is `SOURCE_DATE_EPOCH`:
 
 ```rust
-// build.rs — respects SOURCE_DATE_EPOCH for reproducibility
+// build.rs - respects SOURCE_DATE_EPOCH for reproducibility
 let timestamp = std::env::var("SOURCE_DATE_EPOCH")
     .unwrap_or_else(|_| {
         std::time::SystemTime::now()
@@ -415,7 +415,7 @@ SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) cargo build --release --locked
 
 | Anti-Pattern | Why It's Bad | Fix |
 |-------------|-------------|-----|
-| No `rerun-if-changed` | Build script runs on every change to any file — slow rebuilds | Always emit at least `cargo::rerun-if-changed=build.rs` |
+| No `rerun-if-changed` | Build script runs on every change to any file - slow rebuilds | Always emit at least `cargo::rerun-if-changed=build.rs` |
 | Network calls in build.rs | Offline builds fail; non-reproducible | Vendor files or separate fetch step |
 | Writing to `src/` | Cargo doesn't expect source to change during builds | Write to `OUT_DIR` and use `include!()` |
 | Using `Command::new("gcc")` for C compilation | Breaks cross-compilation | Use the `cc` crate |
@@ -427,7 +427,7 @@ SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) cargo build --release --locked
 ## How It Breaks
 
 **Forgetting that `env!` is checked at compile time.**
-If `APP_GIT_HASH` isn't set (because `build.rs` didn't run or failed silently), `env!("APP_GIT_HASH")` is a **compile error**, not a runtime panic. This is actually good — it forces you to fix the build script rather than silently shipping a binary with no git hash. But it's surprising the first time.
+If `APP_GIT_HASH` isn't set (because `build.rs` didn't run or failed silently), `env!("APP_GIT_HASH")` is a **compile error**, not a runtime panic. This is actually good - it forces you to fix the build script rather than silently shipping a binary with no git hash. But it's surprising the first time.
 
 **Build script runs on every `cargo check`.**
 `cargo check` also runs build scripts (it needs the cfg flags to type-check conditional code). A slow build script (one that calls git, runs pkg-config multiple times, etc.) makes `cargo check` slow. Keep build scripts fast and always use `rerun-if-changed`.

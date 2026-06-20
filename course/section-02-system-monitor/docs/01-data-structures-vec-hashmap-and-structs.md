@@ -1,4 +1,4 @@
-# Doc 01: Data Structures — Vec, HashMap, and Structs
+# Doc 01: Data Structures - Vec, HashMap, and Structs
 
 ---
 
@@ -9,7 +9,7 @@ Data-driven design means you define your data model before writing any functions
 For the system monitor: before you write a single line of Rust, answer these questions on paper:
 
 - What is a "metric reading"? What fields does it have? What are the types of those fields?
-- Is CPU usage a percentage (`f32`, `f64`) or raw ticks (`u64`)? Both exist in the OS — which does your program need?
+- Is CPU usage a percentage (`f32`, `f64`) or raw ticks (`u64`)? Both exist in the OS - which does your program need?
 - Is memory stored in bytes, kilobytes, or megabytes? Make a consistent choice and document it.
 - What's the relationship between a CPU reading and a memory reading? Are they the same struct? Siblings in a parent struct? Completely separate?
 - What's the structure for disk data? There are multiple disks. Is that a `Vec<DiskMetrics>` or a `HashMap<String, DiskMetrics>` keyed by mount point?
@@ -23,9 +23,9 @@ DiskMetrics  → path: String, total_gb: u64, used_gb: u64, percent_full: u64
 SystemSnapshot → timestamp + CpuMetrics + MemoryMetrics + Vec<DiskMetrics>
 ```
 
-This is your data model. Once it exists, the question "how do I display disk usage?" has an obvious answer: iterate over `Vec<DiskMetrics>` and format each entry. The question "how do I look up a disk by mount point?" has an obvious answer: you can't with a `Vec` — change the structure to a `HashMap` if that lookup matters.
+This is your data model. Once it exists, the question "how do I display disk usage?" has an obvious answer: iterate over `Vec<DiskMetrics>` and format each entry. The question "how do I look up a disk by mount point?" has an obvious answer: you can't with a `Vec` - change the structure to a `HashMap` if that lookup matters.
 
-This habit — define data first, then functions — is one of the highest-leverage engineering practices you can build. Apply it to every feature you add for the rest of this course.
+This habit - define data first, then functions - is one of the highest-leverage engineering practices you can build. Apply it to every feature you add for the rest of this course.
 
 ---
 
@@ -33,7 +33,7 @@ Section 1 gave you enough to build a hex viewer. You used basic types, slices, i
 
 ---
 
-## Vec<T> — The Dynamic Array
+## Vec<T> - The Dynamic Array
 
 In C, you'd write something like:
 
@@ -55,14 +55,14 @@ fn main() {
     readings.push(47.1);
 
     println!("Count: {}", readings.len());         // 3
-    println!("Capacity: {}", readings.capacity()); // 4 or more — Vec reserves extra
+    println!("Capacity: {}", readings.capacity()); // 4 or more - Vec reserves extra
 
-    // Safe indexing — returns an Option
+    // Safe indexing - returns an Option
     if let Some(first) = readings.get(0) {
         println!("First reading: {}", first);
     }
 
-    // Direct indexing — panics if out of bounds (like C, but controlled)
+    // Direct indexing - panics if out of bounds (like C, but controlled)
     println!("Last: {}", readings[readings.len() - 1]);
 
     // Remove from the end and get the value back
@@ -81,7 +81,7 @@ let temps = vec![72.1, 68.4, 75.3]; // already has 3 elements
 let zeroes = vec![0.0f64; 10];       // 10 elements, all 0.0
 ```
 
-**Iterating** — prefer `&v` to avoid consuming the Vec:
+**Iterating** - prefer `&v` to avoid consuming the Vec:
 
 ```rust
 let cpu_samples = vec![40.0, 41.5, 42.1, 38.9];
@@ -96,7 +96,7 @@ println!("Total samples: {}", cpu_samples.len());
 
 ---
 
-## HashMap<K, V> — The Hash Table
+## HashMap<K, V> - The Hash Table
 
 `HashMap` is like C's hash table, but built into the standard library with a safe interface. You need to explicitly import it:
 
@@ -111,7 +111,7 @@ fn main() {
     disk_usage.insert("/home".to_string(), 42);
     disk_usage.insert("/tmp".to_string(), 3);
 
-    // Look up a key — returns Option<&V>
+    // Look up a key - returns Option<&V>
     match disk_usage.get("/home") {
         Some(pct) => println!("/home is {}% full", pct),
         None => println!("/home not found"),
@@ -129,7 +129,7 @@ fn main() {
 }
 ```
 
-### 🟡 The entry API — idiomatic and important
+### 🟡 The entry API - idiomatic and important
 
 One of the most common patterns in Rust: update a value if it exists, or insert a default if it doesn't. The entry API handles both cases without a double lookup:
 
@@ -153,11 +153,11 @@ fn main() {
 }
 ```
 
-This pattern replaces the C idiom of `if (find) update; else insert;`. Learn it — you'll use it constantly.
+This pattern replaces the C idiom of `if (find) update; else insert;`. Learn it - you'll use it constantly.
 
 ---
 
-## Structs — Grouping Related Data
+## Structs - Grouping Related Data
 
 You already saw basic structs in Section 1. Let's go deeper.
 
@@ -170,12 +170,12 @@ struct CpuMetrics {
 }
 ```
 
-### impl blocks — methods and associated functions
+### impl blocks - methods and associated functions
 
 An `impl` block is where you put functions that belong to your struct. Two kinds:
 
-1. **Methods** take `&self` or `&mut self` — they operate on an instance
-2. **Associated functions** take no `self` — they're called on the type itself, like constructors
+1. **Methods** take `&self` or `&mut self` - they operate on an instance
+2. **Associated functions** take no `self` - they're called on the type itself, like constructors
 
 ```rust
 #[derive(Debug)]
@@ -186,7 +186,7 @@ struct CpuMetrics {
 }
 
 impl CpuMetrics {
-    // Associated function — called as CpuMetrics::new(...)
+    // Associated function - called as CpuMetrics::new(...)
     // Like a constructor. No self parameter.
     pub fn new(core_count: u32) -> Self {
         CpuMetrics {
@@ -196,14 +196,14 @@ impl CpuMetrics {
         }
     }
 
-    // Method — called on an instance as metrics.update(...)
+    // Method - called on an instance as metrics.update(...)
     // &mut self means we can modify the struct
     pub fn update(&mut self, usage: f64, freq: u64) {
         self.usage_percent = usage;
         self.frequency_mhz = freq;
     }
 
-    // Method — &self means we only read, not modify
+    // Method - &self means we only read, not modify
     pub fn is_overloaded(&self) -> bool {
         self.usage_percent > 90.0
     }
@@ -235,13 +235,13 @@ By default, struct fields are private to the module they're defined in. You cont
 pub struct MemoryMetrics {
     pub total_mb: u64,        // visible everywhere
     pub used_mb: u64,         // visible everywhere
-    cached_mb: u64,           // private — only accessible within this module
+    cached_mb: u64,           // private - only accessible within this module
 }
 ```
 
 If a field is private, code outside the module can't read or write it directly. They have to go through your methods. This is how you enforce invariants.
 
-### Tuple structs — brief but useful
+### Tuple structs - brief but useful
 
 When you want to wrap a primitive to give it a distinct type:
 
@@ -253,12 +253,12 @@ fn sleep_for(ms: Milliseconds) { /* ... */ }
 
 let timeout = Milliseconds(500);
 sleep_for(timeout);
-// sleep_for(Megabytes(500));  // Won't compile — types don't match
+// sleep_for(Megabytes(500));  // Won't compile - types don't match
 ```
 
 Access the inner value with `.0`: `timeout.0` gives you the `u64`. Tuple structs are great for preventing you from passing memory amounts where time is expected.
 
-### Derive macros — free implementations
+### Derive macros - free implementations
 
 The `#[derive(...)]` attribute auto-generates trait implementations. You'll use these constantly:
 
@@ -271,9 +271,9 @@ struct DiskInfo {
 }
 ```
 
-- **`Debug`** — lets you print with `{:?}` and `{:#?}`. Add this to every struct you create. Debugging without it is painful.
-- **`Clone`** — lets you make an explicit copy: `let copy = original.clone()`. Without this you'd have to implement it by hand.
-- **`PartialEq`** — lets you compare with `==` and `!=`. Without it `if a == b` doesn't compile for your struct.
+- **`Debug`** - lets you print with `{:?}` and `{:#?}`. Add this to every struct you create. Debugging without it is painful.
+- **`Clone`** - lets you make an explicit copy: `let copy = original.clone()`. Without this you'd have to implement it by hand.
+- **`PartialEq`** - lets you compare with `==` and `!=`. Without it `if a == b` doesn't compile for your struct.
 
 You don't need to know how they work internally yet. Just know when to use them: `Debug` on almost everything, `Clone` when you need to copy values, `PartialEq` when you need to compare values.
 
@@ -334,7 +334,7 @@ fn main() {
 ## How It Breaks
 
 **Vec: index out of bounds panics at runtime.**
-`v[i]` panics if `i >= v.len()`. In C this is undefined behavior; in Rust it's a controlled panic with a message and line number — better, but still a crash. In production code that indexes into a Vec based on external data, use `.get(i)` which returns `Option<&T>`:
+`v[i]` panics if `i >= v.len()`. In C this is undefined behavior; in Rust it's a controlled panic with a message and line number - better, but still a crash. In production code that indexes into a Vec based on external data, use `.get(i)` which returns `Option<&T>`:
 ```rust
 // unsafe in the sense of "will crash on bad index"
 let first = readings[0];
@@ -361,7 +361,7 @@ mounts.sort_by_key(|(path, _)| path.as_str());
 ```
 
 **Modifying a HashMap while iterating.**
-You can't call `.insert()` or `.remove()` while you have an iterator over the same map — the borrow checker prevents it. Collect the keys you want to modify first, then loop over them to update:
+You can't call `.insert()` or `.remove()` while you have an iterator over the same map - the borrow checker prevents it. Collect the keys you want to modify first, then loop over them to update:
 ```rust
 let keys_to_update: Vec<String> = map.keys().cloned().collect();
 for key in keys_to_update {

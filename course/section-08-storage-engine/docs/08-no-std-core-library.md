@@ -1,8 +1,8 @@
-# Doc 08 — `no_std` and the Core Library
+# Doc 08 - `no_std` and the Core Library
 
-🔴 The standard library is a luxury. For embedded systems, kernel modules, UEFI firmware, and WebAssembly targets, there is no operating system to provide the heap, threads, or file system that `std` depends on. This doc teaches you what remains when you strip `std` — and how to use it.
+🔴 The standard library is a luxury. For embedded systems, kernel modules, UEFI firmware, and WebAssembly targets, there is no operating system to provide the heap, threads, or file system that `std` depends on. This doc teaches you what remains when you strip `std` - and how to use it.
 
-For ironkv, `no_std` is not a primary requirement. The value of this doc is understanding the *layers* of the Rust standard library — what `core` provides unconditionally, what `alloc` adds with a heap, and what `std` adds with an OS. That understanding changes how you reason about portability and dependencies.
+For ironkv, `no_std` is not a primary requirement. The value of this doc is understanding the *layers* of the Rust standard library - what `core` provides unconditionally, what `alloc` adds with a heap, and what `std` adds with an OS. That understanding changes how you reason about portability and dependencies.
 
 ---
 
@@ -22,7 +22,7 @@ For ironkv, `no_std` is not a primary requirement. The value of this doc is unde
 └─────────────────────────────────────────────────────┘
 ```
 
-`core` works everywhere — bare metal, kernel space, WASM, embedded. It has no runtime dependencies and uses no heap. Everything in `core` is available in your `no_std` crate.
+`core` works everywhere - bare metal, kernel space, WASM, embedded. It has no runtime dependencies and uses no heap. Everything in `core` is available in your `no_std` crate.
 
 `alloc` adds heap-allocated types. It requires a global allocator to be registered (your `#[global_allocator]` annotation). It's available in `no_std` environments that have a heap (custom allocators, embedded with external SRAM).
 
@@ -32,7 +32,7 @@ For ironkv, `no_std` is not a primary requirement. The value of this doc is unde
 
 ## What `core` Provides
 
-Core types you've been using — they all live in `core`:
+Core types you've been using - they all live in `core`:
 
 ```rust
 // These work in no_std environments:
@@ -48,11 +48,11 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use core::marker::{PhantomData, Send, Sync};
 ```
 
-The fundamental numeric types, all iterator adaptors, pattern matching, closures, traits — all in `core`. The things that are NOT in `core`:
+The fundamental numeric types, all iterator adaptors, pattern matching, closures, traits - all in `core`. The things that are NOT in `core`:
 
-- `Vec`, `Box`, `String`, `Arc`, `Rc` — require heap allocation (in `alloc`)
-- `File`, `TcpStream`, `Mutex` — require OS primitives (in `std`)
-- `thread::spawn` — requires OS threads (in `std`)
+- `Vec`, `Box`, `String`, `Arc`, `Rc` - require heap allocation (in `alloc`)
+- `File`, `TcpStream`, `Mutex` - require OS primitives (in `std`)
+- `thread::spawn` - requires OS threads (in `std`)
 
 ---
 
@@ -110,11 +110,11 @@ use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // In real embedded code, write to a debug UART or halt:
-    loop {}  // Infinite loop — can't exit without an OS
+    loop {}  // Infinite loop - can't exit without an OS
 }
 ```
 
-For `no_std` libraries (not applications), you don't provide a panic handler — the final application binary is responsible for that. Your library just needs `#![no_std]`.
+For `no_std` libraries (not applications), you don't provide a panic handler - the final application binary is responsible for that. Your library just needs `#![no_std]`.
 
 ---
 
@@ -229,12 +229,12 @@ When a crate doesn't support `no_std`, you can't use it in `no_std` code. For ir
 
 ## Relevance for ironkv
 
-ironkv itself runs on Linux — it needs OS file I/O and memory mapping, which are firmly in `std`. The `no_std` knowledge applies in two ways:
+ironkv itself runs on Linux - it needs OS file I/O and memory mapping, which are firmly in `std`. The `no_std` knowledge applies in two ways:
 
 **1. Keeping `ironkv-core` portably designed:**
-The index types (`IndexEntry`), the entry format (`EntryHeader`), checksum functions — these don't inherently need `std`. Writing them with `core` primitives means they could be embedded in a future `no_std` variant (e.g., ironkv on a microcontroller with SPI flash storage).
+The index types (`IndexEntry`), the entry format (`EntryHeader`), checksum functions - these don't inherently need `std`. Writing them with `core` primitives means they could be embedded in a future `no_std` variant (e.g., ironkv on a microcontroller with SPI flash storage).
 
 **2. Auditing dependencies:**
-`cargo tree --no-dedupe | grep "\[proc-macro\]"` shows your proc-macro dependencies. Proc macros always run on the host machine, so they can use `std` freely — they're compiled for the host, not the target. But regular dependencies that aren't `no_std` compatible pull in `std` transitively, which prevents ever using your crate in `no_std` environments.
+`cargo tree --no-dedupe | grep "\[proc-macro\]"` shows your proc-macro dependencies. Proc macros always run on the host machine, so they can use `std` freely - they're compiled for the host, not the target. But regular dependencies that aren't `no_std` compatible pull in `std` transitively, which prevents ever using your crate in `no_std` environments.
 
 The practical takeaway: even if you don't need `no_std` now, write your core types against `core` traits where possible. It costs nothing and leaves doors open.

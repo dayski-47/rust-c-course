@@ -1,8 +1,8 @@
-# Doc 08 — Cancellation Safety and tokio::select!
+# Doc 08 - Cancellation Safety and tokio::select!
 
-🔴 This is where async bugs hide — code that looks correct but corrupts state on cancellation.
+🔴 This is where async bugs hide - code that looks correct but corrupts state on cancellation.
 
-Async Rust has a property C programmers rarely think about explicitly: when you stop waiting for something — by dropping a future, timing out, or handling a shutdown signal — that operation is cancelled *immediately at the next `.await` point*. No cleanup runs. No destructor notifies the underlying work. The state machine is dropped in the middle of what it was doing.
+Async Rust has a property C programmers rarely think about explicitly: when you stop waiting for something - by dropping a future, timing out, or handling a shutdown signal - that operation is cancelled *immediately at the next `.await` point*. No cleanup runs. No destructor notifies the underlying work. The state machine is dropped in the middle of what it was doing.
 
 This sounds dangerous. It is, if you're not prepared for it. This doc explains what "cancellation safe" means, how `tokio::select!` works, and how to write async code that handles cancellation without corrupting state.
 
@@ -30,7 +30,7 @@ In C, you'd solve this with mutexes and rollback logic. In Rust, the solution is
 
 ## `tokio::select!`: Racing Multiple Futures
 
-`tokio::select!` runs multiple futures simultaneously and completes when **any one of them** resolves. All the others are **immediately dropped** — cancelled.
+`tokio::select!` runs multiple futures simultaneously and completes when **any one of them** resolves. All the others are **immediately dropped** - cancelled.
 
 ```rust
 use tokio::time::{timeout, Duration};
@@ -42,7 +42,7 @@ async fn fetch_with_timeout(url: &str) -> Option<String> {
             response.ok()?.text().await.ok()
         }
         _ = tokio::time::sleep(Duration::from_secs(5)) => {
-            // timeout fired first — the fetch future is dropped
+            // timeout fired first - the fetch future is dropped
             eprintln!("Request to {url} timed out");
             None
         }
@@ -50,7 +50,7 @@ async fn fetch_with_timeout(url: &str) -> Option<String> {
 }
 ```
 
-When the sleep fires, `reqwest::get(url)` is dropped — the HTTP connection is closed, any partial response body is discarded, and the future's state machine is freed. This is intentional — but if `reqwest::get` had already partially read a response body that was shared elsewhere, you'd have a problem.
+When the sleep fires, `reqwest::get(url)` is dropped - the HTTP connection is closed, any partial response body is discarded, and the future's state machine is freed. This is intentional - but if `reqwest::get` had already partially read a response body that was shared elsewhere, you'd have a problem.
 
 ### The Four Patterns of `select!`
 
@@ -59,13 +59,13 @@ tokio::select! {
     // Pattern 1: plain future
     result = some_future => { /* result is the future's output */ }
     
-    // Pattern 2: future with a condition — only enters the arm if the guard is true
+    // Pattern 2: future with a condition - only enters the arm if the guard is true
     result = fallible_future, if should_attempt => { /* only active when should_attempt */ }
     
     // Pattern 3: receive from a channel
     Some(msg) = rx.recv() => { /* msg is the received value, arm skipped if channel closed */ }
     
-    // Pattern 4: else branch — taken when ALL other branches have their guards as false
+    // Pattern 4: else branch - taken when ALL other branches have their guards as false
     else => { /* fallthrough when all guards are false */ }
 }
 ```
@@ -80,7 +80,7 @@ The standard library documents this property for its primitives. For example:
 
 | Operation | Cancellation Safe? | Why |
 |-----------|-------------------|-----|
-| `tokio::time::sleep()` | ✅ Yes | Dropping it just cancels the timer — no state changes |
+| `tokio::time::sleep()` | ✅ Yes | Dropping it just cancels the timer - no state changes |
 | `channel.recv()` | ✅ Yes | If cancelled before receiving, no message is consumed |
 | `channel.send(val)` | ❌ No | If cancelled mid-send, `val` may be partially enqueued |
 | `channel.recv()` in a loop | ⚠️ Context-dependent | See below |
@@ -107,7 +107,7 @@ async fn process_batch(rx: &mut mpsc::Receiver<Item>) {
 }
 ```
 
-If `process_batch` is wrapped in a `select!` and cancelled while `rx.recv().await` is awaiting, no item is lost — `recv()` is cancellation safe. The item never left the channel.
+If `process_batch` is wrapped in a `select!` and cancelled while `rx.recv().await` is awaiting, no item is lost - `recv()` is cancellation safe. The item never left the channel.
 
 But here's the dangerous version:
 
@@ -155,7 +155,7 @@ Collect first (doing only cancellation-safe work), then process in a way that ca
 
 ```rust
 async fn process_with_backlog(rx: &mut mpsc::Receiver<Item>) {
-    // Phase 1: collect a batch — recv() is cancellation safe
+    // Phase 1: collect a batch - recv() is cancellation safe
     let mut batch = Vec::new();
     while batch.len() < 10 {
         match rx.recv().await {
@@ -164,7 +164,7 @@ async fn process_with_backlog(rx: &mut mpsc::Receiver<Item>) {
         }
     }
     
-    // Phase 2: process the batch — not inside a select!, won't be cancelled
+    // Phase 2: process the batch - not inside a select!, won't be cancelled
     // Run this outside any select! to ensure it completes:
     flush_to_database(&batch).await;
 }
@@ -183,18 +183,18 @@ async fn rate_limited_fetcher(
     
     for repo in &repos {
         tokio::select! {
-            // Only race at the TOP of the loop — when state is consistent
+            // Only race at the TOP of the loop - when state is consistent
             info = fetch_repo_info(repo) => {
                 results.push(info);
             }
             _ = shutdown.changed() => {
-                // Shutdown — we have a partial result set, but results is consistent
+                // Shutdown - we have a partial result set, but results is consistent
                 break;
             }
         }
     }
     
-    results  // Partial but consistent — no torn writes
+    results  // Partial but consistent - no torn writes
 }
 ```
 
@@ -221,7 +221,7 @@ pub struct GitHubAnalyzer {
 }
 
 impl GitHubAnalyzer {
-    /// Fetch one repo — handles its own timeout, cancellation-safe at the entry point
+    /// Fetch one repo - handles its own timeout, cancellation-safe at the entry point
     async fn fetch_repo(
         &self,
         repo: &str,
@@ -296,7 +296,7 @@ async fn run(cancel: CancellationToken) {
     }
 }
 
-// A token can be cloned — clones share the same cancellation state
+// A token can be cloned - clones share the same cancellation state
 let token = CancellationToken::new();
 
 let child = token.child_token();  // cancelling parent also cancels child
@@ -346,7 +346,7 @@ async fn priority_select(
         tokio::select! {
             biased;  // Arms checked in declaration order
             
-            // 1st priority: shutdown — always check this first
+            // 1st priority: shutdown - always check this first
             _ = shutdown.changed() => {
                 if *shutdown.borrow() { break; }
             }
@@ -391,7 +391,7 @@ loop {
 }
 ```
 
-`socket.read_buf` modifies `buffer` as it reads. If cancelled mid-read, `buffer` might contain partial data from a read that never completed. This is why `read_buf` is not cancellation safe — the buffer's contents are indeterminate after cancellation.
+`socket.read_buf` modifies `buffer` as it reads. If cancelled mid-read, `buffer` might contain partial data from a read that never completed. This is why `read_buf` is not cancellation safe - the buffer's contents are indeterminate after cancellation.
 
 The safe pattern: use `tokio::io::ReadBuf` at the proper boundary level, or use higher-level primitives like `BufReader::read_line()` which are designed to be cancellation safe:
 
@@ -440,9 +440,9 @@ if result.is_err() {
 After timeout, the future is dropped and the TCP connection is closed. Any partial response body is gone. Retry logic must restart from scratch. If the server has already begun processing the request, it may process it twice. Use idempotent operations or implement proper retry logic with deduplication.
 
 **Using `std::sync::Mutex` across a `select!` branch.**
-If you hold a `std::sync::Mutex` lock inside a branch and the branch is cancelled, the lock guard drops — the mutex unlocks. That's fine. But if you use a `std::sync::Mutex` across a `.await` inside a branch, the branch is `!Send` and won't compile on a multi-threaded runtime. Use `tokio::sync::Mutex` for locks held across `.await` points.
+If you hold a `std::sync::Mutex` lock inside a branch and the branch is cancelled, the lock guard drops - the mutex unlocks. That's fine. But if you use a `std::sync::Mutex` across a `.await` inside a branch, the branch is `!Send` and won't compile on a multi-threaded runtime. Use `tokio::sync::Mutex` for locks held across `.await` points.
 
-**Writing to a channel inside a `select!` branch — infinite loop risk.**
+**Writing to a channel inside a `select!` branch - infinite loop risk.**
 ```rust
 // Subtle bug: if send() is the future that LOSES the race, the message is lost
 tokio::select! {
@@ -456,6 +456,6 @@ tokio::select! {
     _ = some_event => {}
     _ = timeout => {}
 }
-// Now send outside the select — no cancellation risk
+// Now send outside the select - no cancellation risk
 tx.send(to_send).await?;
 ```

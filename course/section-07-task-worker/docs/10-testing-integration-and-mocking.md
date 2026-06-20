@@ -1,7 +1,7 @@
-# Doc 05 — Testing: Integration Tests and Mocking
+# Doc 05 - Testing: Integration Tests and Mocking
 
 You built a layered architecture (Doc 04) specifically to make testing possible.
-This document is about how you actually do it — unit tests for business logic,
+This document is about how you actually do it - unit tests for business logic,
 integration tests with real Redis, and the tooling to measure how much of the
 code your tests actually reach.
 
@@ -67,7 +67,7 @@ mod tests {
         
         let result = service.get_status(id).await;
         // Should either be NotFound or show Cancelled status
-        // depending on your design — test what makes sense
+        // depending on your design - test what makes sense
         assert!(result.is_err() || 
             result.unwrap().status == JobStatus::Cancelled);
     }
@@ -159,7 +159,7 @@ impl JobRepository for InMemoryJobRepository {
 ```
 
 The `Mutex` here is `tokio::sync::Mutex`, not `std::sync::Mutex`, because
-the methods are `async`. Never use `std::sync::Mutex` in async code — holding
+the methods are `async`. Never use `std::sync::Mutex` in async code - holding
 a standard mutex across an `.await` point can deadlock.
 
 ---
@@ -270,7 +270,7 @@ async fn with_containerized_redis() {
 ```
 
 This is cleaner for CI because the workflow does not need to install Redis as a
-service — just Docker, which most CI runners already have.
+service - just Docker, which most CI runners already have.
 
 ---
 
@@ -393,7 +393,7 @@ exclusion macros. Aim for:
 
 Pay special attention to error handling branches. In job queue code, the most
 dangerous bugs are in the retry logic, the dead letter queue handling, and the
-error recovery paths — exactly the paths that are hardest to test manually.
+error recovery paths - exactly the paths that are hardest to test manually.
 
 ---
 
@@ -470,7 +470,7 @@ async fn test_cancel_pending_job() {
 
 **Tests that only test the happy path.** Your job worker is tested when jobs succeed, but not when they fail, timeout, panic, or are duplicated. Add failure case tests before claiming "it's tested."
 
-**Tests that mock too much.** If you mock the database, the job queue, the serializer, and the retry logic, you're testing that your mock returns what you set it to return — not that your code works. Mock at the outermost boundary only.
+**Tests that mock too much.** If you mock the database, the job queue, the serializer, and the retry logic, you're testing that your mock returns what you set it to return - not that your code works. Mock at the outermost boundary only.
 
 **Property tests finding edge cases.** When you write a property test like "any valid job can be serialized and deserialized back to the same job," you'll sometimes find that empty strings or special characters break your JSON parsing.
 

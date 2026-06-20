@@ -1,8 +1,8 @@
-# Doc 02 — Smart Pointers: Box, Rc, Arc
+# Doc 02 - Smart Pointers: Box, Rc, Arc
 
 Here's a question you've probably already hit: what do you do when you want to share data between two parts of your program, but the ownership model says only one place can own something at a time?
 
-You're about to meet three answers to that question: `Box<T>`, `Rc<T>`, and `Arc<T>`. By the end of this chapter you'll know which one to reach for and — most importantly — you'll understand the `Arc<Mutex<T>>` pattern that makes the chat server work.
+You're about to meet three answers to that question: `Box<T>`, `Rc<T>`, and `Arc<T>`. By the end of this chapter you'll know which one to reach for and - most importantly - you'll understand the `Arc<Mutex<T>>` pattern that makes the chat server work.
 
 ---
 
@@ -29,7 +29,7 @@ Stack                  Heap
 
 When do you actually need `Box`?
 
-**Recursive types.** A linked list node that contains itself can't be a fixed size on the stack — the type would be infinitely large. Box solves this because a pointer is always the same size regardless of what it points to.
+**Recursive types.** A linked list node that contains itself can't be a fixed size on the stack - the type would be infinitely large. Box solves this because a pointer is always the same size regardless of what it points to.
 
 ```rust
 enum List {
@@ -53,9 +53,9 @@ fn main() {
 
 ## Rc\<T\>: Reference Counting (Single-Threaded) 🟡
 
-Here's the ownership problem Box doesn't solve. You have an `Employee` record that you want to store in two different collections — say, a department list and a global registry. With normal ownership, once you push the employee into the first collection, it's moved. You can't also push it into the second.
+Here's the ownership problem Box doesn't solve. You have an `Employee` record that you want to store in two different collections - say, a department list and a global registry. With normal ownership, once you push the employee into the first collection, it's moved. You can't also push it into the second.
 
-`Rc<T>` (Reference Counted) solves this with shared ownership. Multiple `Rc` handles can point to the same data. The data is dropped when the last `Rc` is dropped — when the reference count hits zero.
+`Rc<T>` (Reference Counted) solves this with shared ownership. Multiple `Rc` handles can point to the same data. The data is dropped when the last `Rc` is dropped - when the reference count hits zero.
 
 ```rust
 use std::rc::Rc;
@@ -84,15 +84,15 @@ fn main() {
 }
 ```
 
-`Rc::clone(&emp)` does NOT copy the `Employee`. It just increments a counter and gives you another pointer to the same heap data. This is cheap — it's just an integer increment.
+`Rc::clone(&emp)` does NOT copy the `Employee`. It just increments a counter and gives you another pointer to the same heap data. This is cheap - it's just an integer increment.
 
-Critical limitation: **Rc cannot be sent to another thread.** The reference count is not atomic — if two threads incremented it simultaneously, the count would corrupt. The compiler enforces this: `Rc<T>` does not implement the `Send` trait, so trying to move it into `thread::spawn` is a compile error. For threads, you need `Arc`.
+Critical limitation: **Rc cannot be sent to another thread.** The reference count is not atomic - if two threads incremented it simultaneously, the count would corrupt. The compiler enforces this: `Rc<T>` does not implement the `Send` trait, so trying to move it into `thread::spawn` is a compile error. For threads, you need `Arc`.
 
 ---
 
 ## Arc\<T\>: Atomic Reference Counting (Multi-Threaded) 🟡
 
-`Arc<T>` (Atomically Reference Counted) is exactly like `Rc<T>` except it uses atomic operations for the reference count. Atomic operations are thread-safe — they can't be interrupted mid-increment by another thread. This makes `Arc` slightly more expensive than `Rc` (an atomic increment costs more than a plain increment), but it's the right tool whenever threads are involved.
+`Arc<T>` (Atomically Reference Counted) is exactly like `Rc<T>` except it uses atomic operations for the reference count. Atomic operations are thread-safe - they can't be interrupted mid-increment by another thread. This makes `Arc` slightly more expensive than `Rc` (an atomic increment costs more than a plain increment), but it's the right tool whenever threads are involved.
 
 ```rust
 use std::sync::Arc;
@@ -117,7 +117,7 @@ fn main() {
 
 All three threads share the same `Vec` without copying it. The `Arc::clone` is just "bump the reference count and give me another handle to the same allocation."
 
-But wait — `Arc<T>` alone only lets you *read* the shared data. You can't mutate it through an `Arc` because that would allow multiple threads to write simultaneously, which is a data race. To also mutate, you pair `Arc` with `Mutex`.
+But wait - `Arc<T>` alone only lets you *read* the shared data. You can't mutate it through an `Arc` because that would allow multiple threads to write simultaneously, which is a data race. To also mutate, you pair `Arc` with `Mutex`.
 
 ---
 
@@ -125,7 +125,7 @@ But wait — `Arc<T>` alone only lets you *read* the shared data. You can't muta
 
 This is the bread and butter of shared mutable state in multi-threaded Rust. You'll use it constantly in the chat server.
 
-`Arc` provides shared ownership across threads. `Mutex` provides exclusive mutable access — only one thread can hold the lock at a time.
+`Arc` provides shared ownership across threads. `Mutex` provides exclusive mutable access - only one thread can hold the lock at a time.
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -153,7 +153,7 @@ fn main() {
 }
 ```
 
-Think of `Mutex` like a ticket system. The data is inside the booth. Only one person can enter at a time. When you call `.lock()`, you wait your turn. When you get the `MutexGuard` back, you're inside the booth — exclusive access to the data. When the guard drops (goes out of scope), you leave the booth and the next thread can enter. This is RAII — exactly like `std::lock_guard` in C++.
+Think of `Mutex` like a ticket system. The data is inside the booth. Only one person can enter at a time. When you call `.lock()`, you wait your turn. When you get the `MutexGuard` back, you're inside the booth - exclusive access to the data. When the guard drops (goes out of scope), you leave the booth and the next thread can enter. This is RAII - exactly like `std::lock_guard` in C++.
 
 In the chat server, this pattern will hold the list of connected clients:
 
@@ -183,14 +183,14 @@ You rarely need to write `*` manually. Rust inserts it for you.
 
 ## Weak\<T\>: Breaking Reference Cycles 🔴
 
-`Rc` and `Arc` count references. That means if two values hold `Rc` references to each other, neither will ever reach a count of zero — they'll leak forever. This is a **reference cycle**.
+`Rc` and `Arc` count references. That means if two values hold `Rc` references to each other, neither will ever reach a count of zero - they'll leak forever. This is a **reference cycle**.
 
 ```rust
 // This would leak if parent and child both held strong Rc refs to each other
 // A -> B and B -> A: count never reaches 0, memory leaks
 ```
 
-`Weak<T>` is a non-owning reference. It does NOT increment the strong count. To use a `Weak` reference you have to try to upgrade it to an `Rc` — which returns `Option<Rc<T>>` since the data might already have been freed.
+`Weak<T>` is a non-owning reference. It does NOT increment the strong count. To use a `Weak` reference you have to try to upgrade it to an `Rc` - which returns `Option<Rc<T>>` since the data might already have been freed.
 
 ```rust
 use std::rc::{Rc, Weak};
@@ -246,13 +246,13 @@ Use `Weak` for back-pointers in trees and graphs, or for caches where it's okay 
 
 **`Rc<T>` used across a thread boundary.** The compiler catches this with a hard error: `Rc<T>` does not implement `Send`. The fix is always `Arc<T>`. If you see "cannot be sent between threads safely" and you're using `Rc`, that's your answer.
 
-**Arc\<Mutex\<T\>\> deadlock.** Thread A holds the lock on mutex 1 and tries to acquire mutex 2. Thread B holds the lock on mutex 2 and tries to acquire mutex 1. Both wait forever. Rust cannot detect this at compile time — it's a logic error. The prevention rule: always acquire multiple locks in the same order across all code paths.
+**Arc\<Mutex\<T\>\> deadlock.** Thread A holds the lock on mutex 1 and tries to acquire mutex 2. Thread B holds the lock on mutex 2 and tries to acquire mutex 1. Both wait forever. Rust cannot detect this at compile time - it's a logic error. The prevention rule: always acquire multiple locks in the same order across all code paths.
 
-**Reference cycles with `Rc`.** A points to B with a strong `Rc`, and B points back to A with a strong `Rc`. The reference count for each never reaches zero. The memory leaks for the lifetime of the program. The heap grows. No crash — just quiet resource exhaustion. Use `Weak` to break the cycle for back-pointers.
+**Reference cycles with `Rc`.** A points to B with a strong `Rc`, and B points back to A with a strong `Rc`. The reference count for each never reaches zero. The memory leaks for the lifetime of the program. The heap grows. No crash - just quiet resource exhaustion. Use `Weak` to break the cycle for back-pointers.
 
-**`Arc::clone()` is cheap, but cloning the data inside the Arc is not.** `Arc::clone(&x)` is just an atomic counter increment — it does not copy the contained data. If you write `(*arc).clone()` or call `.to_owned()` on the contents on every access, you've turned a cheap pointer operation into a full data copy. Only clone the `Arc`, not the thing inside it, unless you specifically need an independent copy of the data.
+**`Arc::clone()` is cheap, but cloning the data inside the Arc is not.** `Arc::clone(&x)` is just an atomic counter increment - it does not copy the contained data. If you write `(*arc).clone()` or call `.to_owned()` on the contents on every access, you've turned a cheap pointer operation into a full data copy. Only clone the `Arc`, not the thing inside it, unless you specifically need an independent copy of the data.
 
-**`Rc`/`Arc` doesn't make the `T` inside thread-safe.** `Arc<Vec<u8>>` gives you a shared pointer to a Vec, but you cannot call `.push()` on it from multiple threads — you don't have `&mut Vec<u8>`, and getting one from a shared reference is impossible without interior mutability. The `Arc` only makes the *pointer* (reference count) thread-safe. The data still needs `Mutex` or `RwLock` to mutate safely from multiple threads.
+**`Rc`/`Arc` doesn't make the `T` inside thread-safe.** `Arc<Vec<u8>>` gives you a shared pointer to a Vec, but you cannot call `.push()` on it from multiple threads - you don't have `&mut Vec<u8>`, and getting one from a shared reference is impossible without interior mutability. The `Arc` only makes the *pointer* (reference count) thread-safe. The data still needs `Mutex` or `RwLock` to mutate safely from multiple threads.
 
 ---
 
@@ -260,7 +260,7 @@ Use `Weak` for back-pointers in trees and graphs, or for caches where it's okay 
 
 `Arc<Mutex<T>>` is the right pattern when multiple threads need to mutate shared data. But what if you're on a single thread and need to mutate something behind a shared reference? That's what `RefCell<T>` and `Cell<T>` are for.
 
-**`RefCell<T>` — runtime borrow checking**
+**`RefCell<T>` - runtime borrow checking**
 
 `RefCell` moves the borrow checking rules from compile time to runtime. Instead of the compiler enforcing one `&mut T` at a time, `RefCell` tracks borrows at runtime and panics if you violate the rules.
 
@@ -269,14 +269,14 @@ use std::cell::RefCell;
 
 let data = RefCell::new(vec![1, 2, 3]);
 
-// Borrow immutably — returns Ref<Vec<i32>>
+// Borrow immutably - returns Ref<Vec<i32>>
 let read1 = data.borrow();
 let read2 = data.borrow(); // ✅ multiple immutable borrows OK
 println!("{:?} {:?}", read1, read2);
 drop(read1);
 drop(read2);
 
-// Borrow mutably — returns RefMut<Vec<i32>>
+// Borrow mutably - returns RefMut<Vec<i32>>
 data.borrow_mut().push(4); // ✅ no immutable borrows active
 
 // THIS PANICS at runtime:
@@ -286,7 +286,7 @@ data.borrow_mut().push(4); // ✅ no immutable borrows active
 
 When to use `RefCell`: when you have a struct that needs to mutate its own internals through a `&self` method (called "interior mutability"), and you're certain you won't have aliasing borrows at runtime. The chat server uses this for shared state that only one piece of code touches at a time.
 
-**`Cell<T>` — copy-only interior mutability without borrowing**
+**`Cell<T>` - copy-only interior mutability without borrowing**
 
 `Cell<T>` works only for types that implement `Copy`. Instead of borrowing the inner value, you copy it out and set a new one:
 
@@ -295,13 +295,13 @@ use std::cell::Cell;
 
 let count = Cell::new(0u32);
 
-// No borrow — just copy the value out
+// No borrow - just copy the value out
 let current = count.get(); // returns u32 (copy)
 count.set(current + 1);    // replace the stored value
 println!("Count: {}", count.get()); // 1
 ```
 
-`Cell` has zero overhead — it's just a wrapper that removes the borrow checker's restriction. No locks, no runtime checks. Use it for simple counters or flags inside a single-threaded struct.
+`Cell` has zero overhead - it's just a wrapper that removes the borrow checker's restriction. No locks, no runtime checks. Use it for simple counters or flags inside a single-threaded struct.
 
 **Summary: choosing interior mutability**
 
@@ -315,7 +315,7 @@ println!("Count: {}", count.get()); // 1
 **Runtime cost of each smart pointer:**
 
 - `Box<T>`: single heap allocation, zero overhead at access. Equivalent to C's `malloc` + pointer dereference.
-- `Rc<T>`: non-atomic reference count (2 extra `usize` on the heap). `Rc::clone` is just an increment. Cannot cross thread boundaries — the compiler rejects it.
-- `Arc<T>`: atomic reference count (same size as `Rc` but uses atomic ops). `Arc::clone` is an atomic increment — cheap but not free. Measurably slower than `Rc` under contention.
+- `Rc<T>`: non-atomic reference count (2 extra `usize` on the heap). `Rc::clone` is just an increment. Cannot cross thread boundaries - the compiler rejects it.
+- `Arc<T>`: atomic reference count (same size as `Rc` but uses atomic ops). `Arc::clone` is an atomic increment - cheap but not free. Measurably slower than `Rc` under contention.
 - `RefCell<T>`: 2 `usize` overhead for the borrow counter. `borrow()` is just an integer check. No heap allocation beyond what `T` itself needs.
 - `Mutex<T>`: OS or futex-based locking. Cross-thread safe. Lock acquisition blocks if the mutex is held. The right tool for the chat server's shared client list.

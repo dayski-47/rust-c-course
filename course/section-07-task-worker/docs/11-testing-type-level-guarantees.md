@@ -1,10 +1,10 @@
-# Doc 11 — Testing Type-Level Guarantees
+# Doc 11 - Testing Type-Level Guarantees
 
 🟡 Testing that valid code works is table stakes. Testing that invalid code doesn't compile is what separates a type-safe system from one that only claims to be.
 
 When you build type-state machines, capability tokens, validated newtypes, and sealed traits, you've made specific promises: "you cannot use a `JobHandle<Pending>` where a `JobHandle<Running>` is expected," "you cannot call `purge_failed` without an `AdminToken`," "you cannot construct a `JobId` that isn't a valid UUID."
 
-Those promises are enforced by the compiler — but only if you *don't accidentally break the type system* in a later refactor. The tools in this doc let you write tests that fail to compile when your type invariants are correct, and *pass* when someone weakens them. This is the inverse of a normal test, and it's the only way to verify compile-time properties.
+Those promises are enforced by the compiler - but only if you *don't accidentally break the type system* in a later refactor. The tools in this doc let you write tests that fail to compile when your type invariants are correct, and *pass* when someone weakens them. This is the inverse of a normal test, and it's the only way to verify compile-time properties.
 
 ---
 
@@ -36,7 +36,7 @@ fn type_safety_tests() {
 
 Each test case is a small Rust file. The test file lives in `tests/ui/`, the expected error in a matching `.stderr` file:
 
-**`tests/ui/job_handle_reuse.rs`** — verify that a consumed `JobHandle<Pending>` can't be used twice:
+**`tests/ui/job_handle_reuse.rs`** - verify that a consumed `JobHandle<Pending>` can't be used twice:
 
 ```rust
 use taskforge_core::{JobHandle, job_id};
@@ -48,7 +48,7 @@ fn main() {
 }
 ```
 
-**`tests/ui/job_handle_reuse.stderr`** — the expected compiler error:
+**`tests/ui/job_handle_reuse.stderr`** - the expected compiler error:
 
 ```text
 error[E0382]: use of moved value: `handle`
@@ -62,7 +62,7 @@ error[E0382]: use of moved value: `handle`
   |                     ^^^^^^ value used here after move
 ```
 
-**`tests/ui/missing_admin_token.rs`** — verify that `purge_failed` requires `AdminToken`:
+**`tests/ui/missing_admin_token.rs`** - verify that `purge_failed` requires `AdminToken`:
 
 ```rust
 use taskforge_core::JobQueue;
@@ -84,7 +84,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   |           ^^^^^^^^^^^^ -- an argument of type `&WorkerAdminToken` is missing
 ```
 
-**`tests/ui/wrong_job_state.rs`** — verify that `complete()` isn't callable on a `Pending` handle:
+**`tests/ui/wrong_job_state.rs`** - verify that `complete()` isn't callable on a `Pending` handle:
 
 ```rust
 use taskforge_core::{JobHandle, job_id};
@@ -103,7 +103,7 @@ fn main() {
   run: cargo test --test compile_fail
 ```
 
-Compile-fail tests run as part of the normal test suite. If someone adds `#[derive(Clone)]` to `JobHandle`, the `job_handle_reuse` test starts *passing to compile* — which fails the compile-fail test runner. The regression is caught automatically.
+Compile-fail tests run as part of the normal test suite. If someone adds `#[derive(Clone)]` to `JobHandle`, the `job_handle_reuse` test starts *passing to compile* - which fails the compile-fail test runner. The regression is caught automatically.
 
 ---
 
@@ -126,7 +126,7 @@ Each test is 5–15 lines. Together they form a regression suite for the type sy
 
 ## Property-Based Testing of Validated Boundaries
 
-Validated newtypes (Section 5's parse-don't-validate pattern) make a specific promise: "all input that passes validation is safe to use." That promise is hard to verify with hand-written examples — you can only write examples you think of. Property-based testing generates *thousands* of random inputs and verifies that the invariants hold for all of them.
+Validated newtypes (Section 5's parse-don't-validate pattern) make a specific promise: "all input that passes validation is safe to use." That promise is hard to verify with hand-written examples - you can only write examples you think of. Property-based testing generates *thousands* of random inputs and verifies that the invariants hold for all of them.
 
 ### Setup
 
@@ -152,7 +152,7 @@ proptest! {
                 assert_eq!(id.to_string().parse::<JobId>().unwrap(), id);
             }
             Err(_) => {
-                // If it failed, that's fine — the input was invalid
+                // If it failed, that's fine - the input was invalid
             }
         }
     }
@@ -161,7 +161,7 @@ proptest! {
     #[test]
     fn job_id_rejects_non_uuid(s in "[a-z]{1,20}") {
         // A random lowercase string is almost certainly not a UUID
-        // (with overwhelming probability — this tests the constraint)
+        // (with overwhelming probability - this tests the constraint)
         let is_valid_uuid = s.parse::<uuid::Uuid>().is_ok();
         let parsed = s.parse::<JobId>();
         assert_eq!(parsed.is_ok(), is_valid_uuid,
@@ -258,7 +258,7 @@ cargo install cargo-show-asm
 cargo asm --lib taskforge_core::JobQueue::cancel_job
 ```
 
-A function that accepts `_admin: &WorkerAdminToken` where `WorkerAdminToken` is a zero-sized type should generate identical assembly to the same function without the parameter. If you see extra register moves or stack operations for the token, the type isn't truly zero-cost — that's worth investigating.
+A function that accepts `_admin: &WorkerAdminToken` where `WorkerAdminToken` is a zero-sized type should generate identical assembly to the same function without the parameter. If you see extra register moves or stack operations for the token, the type isn't truly zero-cost - that's worth investigating.
 
 For the unit-of-measure `Duration<Unit>` type, the arithmetic should compile to the same instructions as operating on a raw `f64`. Compare:
 
@@ -295,7 +295,7 @@ async fn transaction_rollback_on_drop() {
             .execute(&mut tx)
             .await
             .unwrap();
-        // tx dropped here without commit — Drop must roll back
+        // tx dropped here without commit - Drop must roll back
     }
 
     let final_count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM jobs")
@@ -325,7 +325,7 @@ async fn transaction_commit_persists() {
 }
 ```
 
-These tests verify that the `Drop` implementation is correct — the RAII contract holds at runtime, not just in theory.
+These tests verify that the `Drop` implementation is correct - the RAII contract holds at runtime, not just in theory.
 
 ---
 
@@ -353,4 +353,4 @@ Each layer catches different classes of problems:
 - **Snapshot**: serialization formats and error messages haven't silently changed
 - **Unit**: specific behaviors work correctly
 
-All four layers are in the taskforge test suite. The compile-fail tests are the most unusual, but they're critical — without them, adding `#[derive(Clone)]` to `JobHandle` breaks the type-state guarantee silently.
+All four layers are in the taskforge test suite. The compile-fail tests are the most unusual, but they're critical - without them, adding `#[derive(Clone)]` to `JobHandle` breaks the type-state guarantee silently.

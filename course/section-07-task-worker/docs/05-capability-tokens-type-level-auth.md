@@ -1,10 +1,10 @@
-# Doc 05 — Capability Tokens and Type-Level Authorization
+# Doc 05 - Capability Tokens and Type-Level Authorization
 
 🟡 Runtime permission checks let bugs in. Compile-time capability tokens make them impossible.
 
 In every production task-worker system there are operations that only certain callers should be allowed to perform. Cancelling someone else's job. Reprioritizing the high-priority queue. Purging all failed jobs. Accessing job payloads (which may contain PII).
 
-In C — and in most Rust code written by people coming from C — these restrictions are runtime checks:
+In C - and in most Rust code written by people coming from C - these restrictions are runtime checks:
 
 ```c
 int cancel_job(job_system_t *sys, job_id_t id, user_t *caller) {
@@ -18,7 +18,7 @@ int cancel_job(job_system_t *sys, job_id_t id, user_t *caller) {
 }
 ```
 
-Every function that does something sensitive must repeat the check. Forget one — privilege escalation. The checks scatter throughout the codebase and are impossible to audit completely.
+Every function that does something sensitive must repeat the check. Forget one - privilege escalation. The checks scatter throughout the codebase and are impossible to audit completely.
 
 This doc shows how to replace runtime permission checks with compile-time **capability tokens**: zero-sized types that prove the caller has the required authority, enforced by the compiler at zero runtime cost.
 
@@ -30,7 +30,7 @@ A capability token is a struct with no fields (or only `pub(crate)` private fiel
 
 ```rust
 /// Proof that the holder has worker-management authority.
-/// Zero bytes at runtime — exists only for the compiler.
+/// Zero bytes at runtime - exists only for the compiler.
 pub struct WorkerAdminToken {
     _private: (),  // prevents construction outside this module
 }
@@ -42,7 +42,7 @@ pub struct OwnerToken {
 }
 ```
 
-`WorkerAdminToken { _private: () }` compiles fine inside the module. From outside, the `_private` field is inaccessible — the compiler prevents forging the token.
+`WorkerAdminToken { _private: () }` compiles fine inside the module. From outside, the `_private` field is inaccessible - the compiler prevents forging the token.
 
 ---
 
@@ -104,7 +104,7 @@ pub struct JobQueue {
 
 impl JobQueue {
     /// Cancel any job. Requires admin authority.
-    /// No runtime check — the AdminToken IS the check.
+    /// No runtime check - the AdminToken IS the check.
     pub async fn cancel_job(
         &self,
         job_id: Uuid,
@@ -122,7 +122,7 @@ impl JobQueue {
         job_id: Uuid,
         owner: &OwnerToken,  // proof of ownership
     ) -> Result<(), JobError> {
-        // The owner ID is in the token — no separate "who is calling?" lookup
+        // The owner ID is in the token - no separate "who is calling?" lookup
         let affected = sqlx::query!(
             "UPDATE jobs SET status = 'cancelled' WHERE id = ? AND owner_id = ?",
             job_id,
@@ -139,7 +139,7 @@ impl JobQueue {
     }
 
     /// Purge all failed jobs from all queues.
-    /// Administrative — requires admin token. No owner token accepted.
+    /// Administrative - requires admin token. No owner token accepted.
     pub async fn purge_failed(&self, _admin: &WorkerAdminToken) -> Result<u64, JobError> {
         let result = sqlx::query!("DELETE FROM jobs WHERE status = 'failed'")
             .execute(&self.db)
@@ -173,16 +173,16 @@ async fn unauthorized_cancel(queue: &JobQueue, id: Uuid) {
     // error[E0061]: this function takes 2 arguments but 1 argument was supplied
 }
 
-// This won't compile either — owner token for wrong owner is a logic error at compile time:
+// This won't compile either - owner token for wrong owner is a logic error at compile time:
 // owner.job_owner_id is a runtime field, so this check stays runtime.
-// But the type system guarantees an owner token WAS issued — no check forgotten.
+// But the type system guarantees an owner token WAS issued - no check forgotten.
 ```
 
 ---
 
 ## Token Hierarchies: Composing Proofs
 
-Some operations require multiple tokens — you need to prove both "I am an admin" AND "I own the infra account":
+Some operations require multiple tokens - you need to prove both "I am an admin" AND "I own the infra account":
 
 ```rust
 /// Proof of both admin authority AND infrastructure-level access.
@@ -207,7 +207,7 @@ impl InfraAdminToken {
 }
 
 impl JobQueue {
-    /// Delete the entire job queue — destructive.
+    /// Delete the entire job queue - destructive.
     /// Requires the strongest authority token.
     pub async fn nuke_all_queues(&self, _infra: &InfraAdminToken) -> Result<(), JobError> {
         sqlx::query!("DELETE FROM jobs").execute(&self.db).await?;
@@ -256,11 +256,11 @@ async fn require_session(
 ) -> Result<SessionToken, ApiError> {
     let token = extract_bearer_token(headers)?;
     let session = auth.validate_session_token(&token).await?;
-    // Returns only if the session is valid — subsequent handlers get the proof
+    // Returns only if the session is valid - subsequent handlers get the proof
     Ok(session)
 }
 
-// Handlers receive SessionToken — they know it was valid at request start:
+// Handlers receive SessionToken - they know it was valid at request start:
 async fn get_my_jobs(
     session: SessionToken,
     queue: &JobQueue,
@@ -269,7 +269,7 @@ async fn get_my_jobs(
 }
 ```
 
-This is not zero-cost — `validate_session_token` does a database or cache lookup. But it runs once per request, in the middleware. Every handler downstream gets the `SessionToken` proof for free: no repeated validation, no "did someone forget to check auth on this handler?"
+This is not zero-cost - `validate_session_token` does a database or cache lookup. But it runs once per request, in the middleware. Every handler downstream gets the `SessionToken` proof for free: no repeated validation, no "did someone forget to check auth on this handler?"
 
 ---
 
@@ -277,14 +277,14 @@ This is not zero-cost — `validate_session_token` does a database or cache look
 
 A common question: isn't this what HTTP middleware is for?
 
-Middleware is a *runtime* mechanism — it runs at request time and can enforce auth for a group of routes. Capability tokens are a *compile-time* mechanism — the compiler rejects code that calls privileged functions without a token.
+Middleware is a *runtime* mechanism - it runs at request time and can enforce auth for a group of routes. Capability tokens are a *compile-time* mechanism - the compiler rejects code that calls privileged functions without a token.
 
 They complement each other:
 
 - Middleware: correct at runtime, catches requests that should have been rejected
 - Tokens: correct at compile time, catches internal functions called without going through auth
 
-The worst case for middleware-only auth: an internal function bypasses the middleware chain (called directly from a background task, a cron job, an admin script). With capability tokens, that internal function still requires the token — there's no way to bypass it from within the same codebase.
+The worst case for middleware-only auth: an internal function bypasses the middleware chain (called directly from a background task, a cron job, an admin script). With capability tokens, that internal function still requires the token - there's no way to bypass it from within the same codebase.
 
 ---
 
@@ -293,7 +293,7 @@ The worst case for middleware-only auth: an internal function bypasses the middl
 In C:
 
 ```c
-// C — runtime check, easily forgotten
+// C - runtime check, easily forgotten
 int cancel_job(job_system_t *sys, job_id_t id, user_context_t *ctx) {
     if (!ctx || !ctx->authenticated || ctx->role < ROLE_ADMIN) {
         return -EPERM;  // Forgot to add this check? Bug.
@@ -305,17 +305,17 @@ int cancel_job(job_system_t *sys, job_id_t id, user_context_t *ctx) {
 In Rust with capability tokens:
 
 ```rust
-// Rust — compile-time check, impossible to forget
+// Rust - compile-time check, impossible to forget
 pub async fn cancel_job(
     &self,
     job_id: Uuid,
     _admin: &WorkerAdminToken,  // Required by the type system
 ) -> Result<(), JobError> {
-    // No runtime check needed — if we got here, the token exists
+    // No runtime check needed - if we got here, the token exists
 }
 ```
 
-The C version requires trust that every caller remembered to pass a valid `ctx` and that the function remembered to check it. The Rust version requires nothing from the caller except producing the token — which they can only do by going through the authentication function.
+The C version requires trust that every caller remembered to pass a valid `ctx` and that the function remembered to check it. The Rust version requires nothing from the caller except producing the token - which they can only do by going through the authentication function.
 
 ---
 
@@ -336,17 +336,17 @@ The `WorkerProcessToken` is particularly useful: it's issued once at worker star
 
 ## Exercises
 
-**Exercise 1 — Implement WorkerAdminToken**
+**Exercise 1 - Implement WorkerAdminToken**
 
 Implement the sealed `WorkerAdminToken` with `_private: ()`. Add a constructor that
 validates an admin credential. Implement two functions:
-- `list_all_jobs(token: &WorkerAdminToken, repo: &dyn JobRepository) -> Vec<Job>` — requires admin
-- `clear_dead_letter_queue(token: &WorkerAdminToken, repo: &dyn JobRepository)` — requires admin
+- `list_all_jobs(token: &WorkerAdminToken, repo: &dyn JobRepository) -> Vec<Job>` - requires admin
+- `clear_dead_letter_queue(token: &WorkerAdminToken, repo: &dyn JobRepository)` - requires admin
 
-Try to construct a `WorkerAdminToken { _private: () }` from outside the crate —
+Try to construct a `WorkerAdminToken { _private: () }` from outside the crate -
 it should fail with a private-field error. Use `trybuild` to capture the expected error.
 
-**Exercise 2 — Token Hierarchy**
+**Exercise 2 - Token Hierarchy**
 
 Implement an `InfraAdminToken` that can issue `WorkerAdminToken` instances, and a
 `WorkerAdminToken` that can issue `WorkerProcessToken` instances. Each issuance requires
@@ -362,7 +362,7 @@ let process = admin.issue_worker_process()?;
 Write a test that verifies a `WorkerProcessToken` cannot directly issue an
 `InfraAdminToken` (no `InfraAdminToken::from_process_token` method exists).
 
-**Exercise 3 — Revocable Session Token**
+**Exercise 3 - Revocable Session Token**
 
 Implement a `SessionToken { issued_at: Instant, expires_after: Duration }` that
 wraps a `WorkerAdminToken`. Add a method `is_valid(&self) -> bool` that checks

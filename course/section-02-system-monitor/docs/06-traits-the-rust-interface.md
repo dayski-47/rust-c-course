@@ -1,8 +1,8 @@
-# Doc 05: Traits — The Rust Interface
+# Doc 05: Traits - The Rust Interface
 
 Rust has no inheritance. There is no base class, no virtual dispatch hierarchy, no `extends` keyword. Instead, Rust uses traits to define shared behavior. A trait is a contract: "any type that implements this trait can do these things."
 
-If you're thinking "that sounds like a C++ pure virtual interface" — yes, that's the closest analogy, but with some important differences that make it safer and more flexible.
+If you're thinking "that sounds like a C++ pure virtual interface" - yes, that's the closest analogy, but with some important differences that make it safer and more flexible.
 
 ---
 
@@ -64,7 +64,7 @@ trait Collector {
     fn name(&self) -> &str;
     fn collect(&self) -> f64;
 
-    // Default implementation — types can override this
+    // Default implementation - types can override this
     fn is_healthy(&self) -> bool {
         self.collect() < 90.0
     }
@@ -83,7 +83,7 @@ Any type that implements `name()` and `collect()` automatically gets `is_healthy
 
 ---
 
-## Traits as Parameters — Static Dispatch
+## Traits as Parameters - Static Dispatch
 
 The `impl Trait` syntax lets you write a function that accepts any type implementing a trait:
 
@@ -99,7 +99,7 @@ print_metric(&cpu);  // Works
 print_metric(&mem);  // Works
 ```
 
-This is **static dispatch**. The compiler generates a separate version of `print_metric` for each concrete type (`CpuCollector`, `MemoryCollector`). At runtime there's no overhead — the call is direct, not through a pointer.
+This is **static dispatch**. The compiler generates a separate version of `print_metric` for each concrete type (`CpuCollector`, `MemoryCollector`). At runtime there's no overhead - the call is direct, not through a pointer.
 
 The equivalent using trait bounds with generics looks slightly different but behaves the same:
 
@@ -118,7 +118,7 @@ where
 }
 ```
 
-The `where` clause is just a different way to write the bounds — use it when the inline version gets too long.
+The `where` clause is just a different way to write the bounds - use it when the inline version gets too long.
 
 ---
 
@@ -134,7 +134,7 @@ fn active_collectors(collectors: &[Box<dyn Collector>]) -> impl Iterator<Item = 
 }
 ```
 
-The caller gets an iterator — they can chain `.sum()`, `.max_by()`, etc. — but they never need to know the concrete iterator type (`Filter<Map<...>>`), which the compiler generates internally. This is zero cost: no heap allocation, the chain is inlined.
+The caller gets an iterator - they can chain `.sum()`, `.max_by()`, etc. - but they never need to know the concrete iterator type (`Filter<Map<...>>`), which the compiler generates internally. This is zero cost: no heap allocation, the chain is inlined.
 
 The same pattern works for returning closures:
 
@@ -148,13 +148,13 @@ println!("{}", is_critical(92.5));  // true
 println!("{}", is_critical(42.0));  // false
 ```
 
-**The critical rule:** all return paths must return the *same* concrete type. The compiler resolves `impl Trait` to one specific type — it's not a runtime union.
+**The critical rule:** all return paths must return the *same* concrete type. The compiler resolves `impl Trait` to one specific type - it's not a runtime union.
 
 ```rust
 // COMPILE ERROR: if/else returns different concrete types
 fn make_collector(cpu: bool) -> impl Collector {
     if cpu { CpuCollector }        // concrete type: CpuCollector
-    else { MemCollector { ... } }  // concrete type: MemCollector — mismatch!
+    else { MemCollector { ... } }  // concrete type: MemCollector - mismatch!
 }
 ```
 
@@ -171,9 +171,9 @@ fn make_collector(cpu: bool) -> Box<dyn Collector> {
 
 ---
 
-## The Display Trait — Making Your Struct Printable
+## The Display Trait - Making Your Struct Printable
 
-You've used `{:?}` (Debug) to print structs. To use `{}` — the human-readable format — you implement `std::fmt::Display`:
+You've used `{:?}` (Debug) to print structs. To use `{}` - the human-readable format - you implement `std::fmt::Display`:
 
 ```rust
 use std::fmt;
@@ -215,15 +215,15 @@ CPU: 42.7%  |  Memory: 6144 / 16384 MB  (37%)
 Metrics { cpu_percent: 42.7, memory_used_mb: 6144, memory_total_mb: 16384 }
 ```
 
-Implementing `Display` also gives you `.to_string()` for free — it calls your `fmt` method.
+Implementing `Display` also gives you `.to_string()` for free - it calls your `fmt` method.
 
 **When to use Debug vs Display:**
-- `Debug` (`{:?}`) — for developers, shows internal structure. Derive it automatically.
-- `Display` (`{}`) — for end users, you control the format. Implement it manually.
+- `Debug` (`{:?}`) - for developers, shows internal structure. Derive it automatically.
+- `Display` (`{}`) - for end users, you control the format. Implement it manually.
 
 ---
 
-## From and Into — Type Conversions
+## From and Into - Type Conversions
 
 The `From` and `Into` traits are how Rust handles explicit type conversion. You implement `From<T>` for your type and `Into<YourType>` is automatically available on `T`:
 
@@ -273,7 +273,7 @@ These traits appear everywhere in Rust. You'll encounter them constantly:
 
 ---
 
-## 🔴 Dynamic Dispatch — Box<dyn Trait>
+## 🔴 Dynamic Dispatch - Box<dyn Trait>
 
 Static dispatch requires knowing the concrete type at compile time. When you want to store multiple different types in the same collection, you need dynamic dispatch:
 
@@ -291,7 +291,7 @@ fn main() {
 }
 ```
 
-`Box<dyn Collector>` is a "fat pointer" — it holds a pointer to the data and a pointer to a vtable (a table of function pointers). Each call goes through the vtable at runtime. This has a small overhead compared to static dispatch.
+`Box<dyn Collector>` is a "fat pointer" - it holds a pointer to the data and a pointer to a vtable (a table of function pointers). Each call goes through the vtable at runtime. This has a small overhead compared to static dispatch.
 
 **When to use which:**
 
@@ -371,22 +371,22 @@ Output:
 
 ## How It Breaks
 
-**Object safety violations — `dyn Trait` doesn't work with all traits.**
+**Object safety violations - `dyn Trait` doesn't work with all traits.**
 Not every trait can be used as `dyn Trait`. A trait is "object safe" only if all its methods can be called without knowing the concrete type at compile time. Two things break object safety:
-- Methods that return `Self` — the compiler can't know the size of `Self` through a vtable
-- Generic methods — each monomorphization would need a separate vtable entry
+- Methods that return `Self` - the compiler can't know the size of `Self` through a vtable
+- Generic methods - each monomorphization would need a separate vtable entry
 
 ```rust
 trait Bad {
-    fn clone_me(&self) -> Self;  // returns Self — not object safe
-    fn process<T>(&self, t: T);  // generic — not object safe
+    fn clone_me(&self) -> Self;  // returns Self - not object safe
+    fn process<T>(&self, t: T);  // generic - not object safe
 }
 
 // Vec<Box<dyn Bad>> won't compile
 ```
 If you need `dyn Trait`, design your trait without `Self` returns and without generic methods. Use associated types or specific concrete types instead.
 
-**The orphan rule — you can't implement a foreign trait for a foreign type.**
+**The orphan rule - you can't implement a foreign trait for a foreign type.**
 You can implement your trait for someone else's type, or implement someone else's trait for your type. But you can't implement someone else's trait for someone else's type:
 ```rust
 // Your trait, external type: OK
@@ -419,7 +419,7 @@ fn print_metric<T: Collector>(collector: &T) {
     println!("{}", collector.report());  // now OK
 }
 ```
-The compiler error tells you which method is missing and suggests adding the bound. This isn't a complex issue — just easy to forget when writing a quick generic function.
+The compiler error tells you which method is missing and suggests adding the bound. This isn't a complex issue - just easy to forget when writing a quick generic function.
 
 ---
 

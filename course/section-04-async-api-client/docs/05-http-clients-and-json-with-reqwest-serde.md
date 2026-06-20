@@ -1,4 +1,4 @@
-# 05 — HTTP Clients and JSON with reqwest and serde 🟡
+# 05 - HTTP Clients and JSON with reqwest and serde 🟡
 
 This is where the rubber meets the road for `ghanalyze`. We need to make HTTP requests to the GitHub API and parse the JSON responses into Rust structs. Two crates handle this: `reqwest` for HTTP and `serde` for serialization/deserialization.
 
@@ -45,7 +45,7 @@ async fn main() -> Result<(), reqwest::Error> {
 
 ## The Client: Create Once, Reuse Many Times
 
-`reqwest::get()` is convenient but creates a new HTTP client for each call. This is wasteful — HTTP clients maintain connection pools. Creating a new client per request means no connection reuse, which is slow.
+`reqwest::get()` is convenient but creates a new HTTP client for each call. This is wasteful - HTTP clients maintain connection pools. Creating a new client per request means no connection reuse, which is slow.
 
 **Create one `reqwest::Client` and reuse it for all requests:**
 
@@ -70,7 +70,7 @@ impl GitHubClient {
 }
 ```
 
-`reqwest::Client` is cheap to clone — it's backed by an `Arc` internally. This means you can freely pass `Client::clone()` across tasks without paying to copy connection pool state.
+`reqwest::Client` is cheap to clone - it's backed by an `Arc` internally. This means you can freely pass `Client::clone()` across tasks without paying to copy connection pool state.
 
 ---
 
@@ -112,7 +112,7 @@ async fn fetch_user_repos(
 
 ## serde: Serialization and Deserialization
 
-`serde` is a framework for converting Rust data structures to and from formats like JSON, TOML, YAML, and many others. It's ubiquitous — nearly every Rust crate that deals with structured data uses serde.
+`serde` is a framework for converting Rust data structures to and from formats like JSON, TOML, YAML, and many others. It's ubiquitous - nearly every Rust crate that deals with structured data uses serde.
 
 The core concept: derive `Deserialize` on any struct you want to deserialize from JSON, and `Serialize` on any struct you want to serialize to JSON.
 
@@ -176,12 +176,12 @@ pub struct GitHubRepo {
     pub updated_at: String,
     pub html_url: String,
     pub archived: bool,
-    // private: bool — you can include or omit fields you don't need.
+    // private: bool - you can include or omit fields you don't need.
     // serde ignores fields in the JSON that aren't in your struct by default.
 }
 ```
 
-If you omit a field from the struct, serde ignores it in the JSON. You don't have to map every field — only the ones you need.
+If you omit a field from the struct, serde ignores it in the JSON. You don't have to map every field - only the ones you need.
 
 ---
 
@@ -415,4 +415,4 @@ async fn fetch_repo_safe(
 
 **Not handling Option for nullable fields.** If a JSON field can be `null` and your struct uses `String` instead of `Option<String>`, deserialization will fail on any response where that field is null. Use `Option<T>` liberally when you're not sure.
 
-**Reading the body twice.** The HTTP response body is a stream — you can only read it once. If you call `.text().await` to debug, you've consumed the body and can't call `.json().await` afterward. Store the text, then parse it.
+**Reading the body twice.** The HTTP response body is a stream - you can only read it once. If you call `.text().await` to debug, you've consumed the body and can't call `.json().await` afterward. Store the text, then parse it.

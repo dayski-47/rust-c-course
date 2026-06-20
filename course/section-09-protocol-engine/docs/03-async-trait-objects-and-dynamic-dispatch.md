@@ -1,6 +1,6 @@
-# Doc 03 — Async Trait Objects and Dynamic Dispatch
+# Doc 03 - Async Trait Objects and Dynamic Dispatch
 
-🟡 nexus has a `MessageStore` — something that persists messages for replay. In
+🟡 nexus has a `MessageStore` - something that persists messages for replay. In
 tests it's an in-memory `HashMap`. In production it's ironkv from Section 8. In the
 future it might be PostgreSQL. The interface is the same; the implementation varies.
 This doc covers how to write traits with async methods and use them with dynamic
@@ -57,7 +57,7 @@ async fn replay_messages_dyn(
 
 The error says "not dyn-compatible" (formerly called "not object-safe"). The reason:
 `async fn` desugars to returning `impl Future<Output = T>`. Each implementation
-returns a different concrete future type — `InMemoryStore::store` returns one type,
+returns a different concrete future type - `InMemoryStore::store` returns one type,
 `IronkvStore::store` returns another. `dyn MessageStore` requires a single known
 vtable, but there's no single return type.
 
@@ -69,7 +69,7 @@ With generics only (`<S: MessageStore>`), the caller's type must be known at com
 time. The handler struct can't store a `Box<dyn MessageStore>`:
 
 ```rust
-// ❌ Generic struct — works but requires the type at compile time everywhere
+// ❌ Generic struct - works but requires the type at compile time everywhere
 struct NexusEngine<S: MessageStore> {
     store: S,
 }
@@ -77,7 +77,7 @@ struct NexusEngine<S: MessageStore> {
 // A `HashMap<u64, Box<dyn ConnectionHandler>>` won't work because each handler
 // might have a different <S>.
 
-// ✅ Dynamic dispatch — store is type-erased
+// ✅ Dynamic dispatch - store is type-erased
 struct NexusEngine {
     store: Arc<dyn MessageStore + Send + Sync>,  // Problem: async methods aren't dyn-compatible
 }
@@ -91,7 +91,7 @@ without changing the engine's type signature.
 
 ## How Vtables Work and Why Async Breaks Them
 
-`dyn Trait` works by building a vtable — a struct of function pointers, one per
+`dyn Trait` works by building a vtable - a struct of function pointers, one per
 trait method. For a synchronous method like `fn store(&self, ...) -> Result<(), E>`,
 the vtable entry is a function pointer: `fn(*const (), ...) -> Result<(), E>`. Every
 implementation has the same return type, so every implementation's function pointer
@@ -116,7 +116,7 @@ slot cannot hold a pointer to functions with different return types. This is why
 all implementations.
 
 The fix is to make the return type *the same for all implementations*:
-`Pin<Box<dyn Future<Output = T> + Send>>`. This is a type-erased heap allocation —
+`Pin<Box<dyn Future<Output = T> + Send>>`. This is a type-erased heap allocation -
 every implementation can return it, and it fits in a single vtable slot.
 
 ## Solution 1: Box<dyn Future> Manually
@@ -251,10 +251,10 @@ pub trait SendMessageStore: Send + Sync {
 Use `SendMessageStore` in generic bounds when you need `Send`:
 
 ```rust
-// Static dispatch — requires Send
+// Static dispatch - requires Send
 async fn spawn_store_worker<S: SendMessageStore + 'static>(store: Arc<S>) {
     tokio::spawn(async move {
-        // This task runs on any thread — needs Send
+        // This task runs on any thread - needs Send
         store.store("metrics", 1, b"data").await.ok();
     });
 }
@@ -285,10 +285,10 @@ pub trait MessageStore: Send + Sync {
 }
 ```
 
-`#[async_trait]` is a proc-macro that rewrites the trait to use `BoxFuture` internally —
+`#[async_trait]` is a proc-macro that rewrites the trait to use `BoxFuture` internally -
 the same as Solution 1, but automatically. It makes `dyn MessageStore` work.
 
-**Should you use `async-trait` in new code?** Generally no — prefer the manual
+**Should you use `async-trait` in new code?** Generally no - prefer the manual
 `BoxFuture` approach for dyn dispatch, or RPITIT (`async fn` in traits) for generic
 dispatch. `async-trait` adds a heap allocation per call, which is identical to the
 manual `Box::pin(async move { ... })`. But since the macro hides this cost, it's
@@ -410,7 +410,7 @@ A trait is not dyn-compatible (not "object-safe") if any method:
 **Fixing common violations:**
 
 ```rust
-// ❌ Generic method — not dyn-compatible
+// ❌ Generic method - not dyn-compatible
 trait Encoder {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()>;
 }
@@ -464,7 +464,7 @@ transform or inspect frames. Async closures make this composable.
 
 ## Exercises
 
-**Exercise 1 — InMemoryStore**
+**Exercise 1 - InMemoryStore**
 
 Implement `MessageStore` for `InMemoryStore`:
 - `store()`: insert `(seq, payload)` into `HashMap<String, Vec<(u64, Bytes)>>`
@@ -475,7 +475,7 @@ Wrap the inner `HashMap` in `Arc<tokio::sync::RwLock<...>>` so the store is `Sen
 Write a test that stores 3 messages and replays from seq 1, verifying only messages
 with seq > 1 are returned.
 
-**Exercise 2 — NullStore**
+**Exercise 2 - NullStore**
 
 Implement a `NullStore` that implements `MessageStore` by discarding all messages:
 - `store()` returns `Ok(())`
@@ -486,7 +486,7 @@ Use `NullStore` in a unit test of the publish path to verify publish logic witho
 needing a real store. This tests the principle: swapping implementations is a one-line
 change because of `dyn MessageStore`.
 
-**Exercise 3 — dyn Compatibility Verification**
+**Exercise 3 - dyn Compatibility Verification**
 
 Try adding a generic method to `MessageStore`:
 

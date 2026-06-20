@@ -1,8 +1,8 @@
-# Doc 09 — Putting It All Together
+# Doc 09 - Putting It All Together
 
 🔴 This doc synthesizes every pattern from Sections 1–9 into a working nexus
-protocol engine. It walks through the critical paths — connection establishment,
-message routing, graceful shutdown — and shows where each concept from the course
+protocol engine. It walks through the critical paths - connection establishment,
+message routing, graceful shutdown - and shows where each concept from the course
 appears in the running system.
 
 ---
@@ -103,7 +103,7 @@ pub async fn handle_connection(stream: TcpStream, engine: Arc<NexusEngine>) {
         NexusCodec::new(engine.config.max_payload_bytes),
     );
 
-    // [Doc 04] Start in the unauthenticated state — type enforces this
+    // [Doc 04] Start in the unauthenticated state - type enforces this
     let unauth: Connection<Unauthenticated> = Connection::new(conn_id);
 
     // Authentication: must happen before any other command
@@ -133,7 +133,7 @@ pub async fn handle_connection(stream: TcpStream, engine: Arc<NexusEngine>) {
 
 ## Critical Path 2: Message Routing
 
-A publish from one client reaches all subscribers. This is the hot path — every
+A publish from one client reaches all subscribers. This is the hot path - every
 optimization matters here:
 
 ```rust
@@ -158,17 +158,17 @@ pub async fn route(
 
     for (conn_id, sub) in &topic_state.subscribers {
         // [Doc 08] .clone() on Bytes is an atomic reference count increment
-        // Not a memory copy — all 1000 subscribers share the same bytes
+        // Not a memory copy - all 1000 subscribers share the same bytes
         match sub.try_send((seq, payload.clone())) {
             Ok(()) => {
                 delivered += 1;
             }
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-                // [Doc 06] Log at debug — slow subscribers are expected at scale
+                // [Doc 06] Log at debug - slow subscribers are expected at scale
                 tracing::debug!(subscriber_id = conn_id, "Subscriber channel full, dropping message");
             }
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-                // Subscriber disconnected — clean up on next write
+                // Subscriber disconnected - clean up on next write
                 disconnected.push(*conn_id);
             }
         }
@@ -320,8 +320,8 @@ async fn test_publish_reaches_subscriber() {
 }
 
 // Compile-fail tests: type-state enforced
-// tests/ui/publish_before_auth.rs — must not compile
-// tests/ui/use_after_close.rs — must not compile
+// tests/ui/publish_before_auth.rs - must not compile
+// tests/ui/use_after_close.rs - must not compile
 ```
 
 ---
@@ -370,7 +370,7 @@ propagate and which should be handled locally, and add context with `anyhow`.
 and understand why `std::thread::sleep` in async code is wrong.
 
 **Section 5:** HTTP APIs with Axum. REST endpoints, `Json<T>`, middleware. Now you're
-building below the HTTP layer — the binary protocol that HTTP itself runs over.
+building below the HTTP layer - the binary protocol that HTTP itself runs over.
 
 **Section 6:** Larger async systems. Channels, backpressure, structured concurrency.
 Now `mpsc::channel(128)` is a deliberate design choice: 128 is the backpressure point
@@ -378,7 +378,7 @@ where a slow subscriber stops the publisher rather than accumulating unbounded d
 
 **Section 7:** Type-level programming. `PhantomData`, type-state, capability tokens.
 `Connection<Unauthenticated>` and `Connection<Active>` are the same pattern as
-`JobHandle<Pending>` — illegal states cannot be represented.
+`JobHandle<Pending>` - illegal states cannot be represented.
 
 **Section 8:** Systems programming. Unsafe, FFI, memory-mapped files, binary formats.
 The `NexusCodec::decode` function reads bytes with the same care you brought to
@@ -405,8 +405,8 @@ and routes their pub/sub traffic.
 **Add observability.** Export `NexusMetrics` in Prometheus format. Wire Grafana to
 the `/metrics` endpoint. Set an alert when `active_connections` exceeds capacity.
 
-**Build something unrelated.** The skills you have now — ownership, async, type-state,
-binary protocols, structured logging, property-based testing — transfer directly to
+**Build something unrelated.** The skills you have now - ownership, async, type-state,
+binary protocols, structured logging, property-based testing - transfer directly to
 embedded Rust, WebAssembly, game development, scientific computing, compiler development.
 
 The Rust ecosystem is vast. Pick the direction that interests you and go deeper.
@@ -417,32 +417,32 @@ The Rust ecosystem is vast. Pick the direction that interests you and go deeper.
 
 Work through the milestones in order. Each milestone produces a running, testable system.
 
-**Milestone 1 — Frame Parsing (no networking)**
+**Milestone 1 - Frame Parsing (no networking)**
 Implement `NexusCodec` (`Decoder` + `Encoder`). Write unit tests for all command types.
 No TCP yet.
 
-**Milestone 2 — TCP Echo Server**
+**Milestone 2 - TCP Echo Server**
 Accept connections with `tokio::net::TcpListener`. For each connection, spawn a task,
 wrap the stream in `Framed::new(stream, NexusCodec::new(...))`, and echo every frame back.
 Test with `nc` or a test client.
 
-**Milestone 3 — Authentication**
+**Milestone 3 - Authentication**
 Add CONNECT/CONNACK handling. Implement `Connection<Unauthenticated>::authenticate()`.
 Add tracing with `#[instrument]` on `handle_connection`. Write an integration test
 that connects, sends CONNECT with the right token, and verifies CONNACK success.
 
-**Milestone 4 — Publish and Subscribe**
+**Milestone 4 - Publish and Subscribe**
 Implement `TopicMap`. On PUBLISH, route to all subscribers. On SUBSCRIBE, register a
 channel receiver. On DELIVER, send from the channel to the framed sink.
 
 Write the property-based routing consistency test from Doc 07.
 
-**Milestone 5 — Graceful Shutdown**
+**Milestone 5 - Graceful Shutdown**
 Add SIGTERM / Ctrl+C handling with `tokio::sync::watch`. Verify that in-flight messages
 complete before the server exits. Integration test: publish 100 messages, send SIGTERM
 mid-publish, verify no messages are lost.
 
-**Stretch — Message Persistence**
+**Stretch - Message Persistence**
 Wire in an `InMemoryStore` implementing `MessageStore`. Persist every published message.
 On SUBSCRIBE, replay all stored messages from seq 0. Write a test that subscribes after
 publishing, and verifies all prior messages are received.

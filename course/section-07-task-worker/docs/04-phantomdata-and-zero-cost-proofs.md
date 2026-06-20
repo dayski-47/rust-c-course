@@ -1,10 +1,10 @@
-# Doc 04 — PhantomData and Zero-Cost Proofs
+# Doc 04 - PhantomData and Zero-Cost Proofs
 
 🔴 This is Rust's most misunderstood feature. By the end of this doc you'll know exactly what it does, why it exists, and how to use it to make bugs impossible at compile time.
 
 Every C developer has seen this class of bug: two things that look identical in the type system but aren't interchangeable at runtime. A 32-bit register and a 16-bit register are both "an integer." A read DMA buffer and a write DMA buffer are both "a pointer." An open file descriptor and a closed one are both "a number." The C type system has no way to distinguish them.
 
-Rust's `PhantomData<T>` gives you a way to attach type-level information to a struct without storing any data. The phantom type parameter exists only during compilation — it compiles to zero bytes — but it makes the compiler enforce distinctions that would otherwise only be caught at runtime (or not at all).
+Rust's `PhantomData<T>` gives you a way to attach type-level information to a struct without storing any data. The phantom type parameter exists only during compilation - it compiles to zero bytes - but it makes the compiler enforce distinctions that would otherwise only be caught at runtime (or not at all).
 
 ---
 
@@ -17,15 +17,15 @@ use std::marker::PhantomData;
 
 struct JobHandle<S> {
     id: u64,
-    _state: PhantomData<S>,  // zero bytes — exists only in the type system
+    _state: PhantomData<S>,  // zero bytes - exists only in the type system
 }
 ```
 
-At runtime, `JobHandle<Pending>` and `JobHandle<Running>` are identical — both are a single `u64`. At compile time they are different types and the compiler won't let you mix them.
+At runtime, `JobHandle<Pending>` and `JobHandle<Running>` are identical - both are a single `u64`. At compile time they are different types and the compiler won't let you mix them.
 
 **Why does the compiler require `PhantomData` at all?**
 
-Rust's variance rules require that every type parameter appear in at least one field. If you write `struct Foo<T>` with no field that mentions `T`, the compiler rejects it — it can't determine variance or drop behavior for `T`. `PhantomData<T>` declares "this struct is logically related to `T`" without actually storing one.
+Rust's variance rules require that every type parameter appear in at least one field. If you write `struct Foo<T>` with no field that mentions `T`, the compiler rejects it - it can't determine variance or drop behavior for `T`. `PhantomData<T>` declares "this struct is logically related to `T`" without actually storing one.
 
 ---
 
@@ -37,7 +37,7 @@ Rust's variance rules require that every type parameter appear in at least one f
 | Ownership simulation | `PhantomData<T>` | Drop check assumes struct owns a `T` |
 | Variance control | `PhantomData<fn(T)>` | Makes struct contravariant over `T` |
 
-For taskforge, the first two jobs are the most important. The variance table is worth knowing but rarely needs deliberate control — the common phantom patterns pick the right variance automatically.
+For taskforge, the first two jobs are the most important. The variance table is worth knowing but rarely needs deliberate control - the common phantom patterns pick the right variance automatically.
 
 ---
 
@@ -56,7 +56,7 @@ The type-state pattern uses PhantomData to encode which state the handle refers 
 use std::marker::PhantomData;
 use uuid::Uuid;
 
-// State marker types — zero-sized, live only in the type system
+// State marker types - zero-sized, live only in the type system
 pub struct Pending;
 pub struct Running;
 pub struct Completed;
@@ -75,7 +75,7 @@ impl JobHandle<Pending> {
     }
 
     /// Transition from Pending → Running.
-    /// Consumes the Pending handle — you can't run a job twice.
+    /// Consumes the Pending handle - you can't run a job twice.
     pub fn start(self) -> JobHandle<Running> {
         JobHandle { id: self.id, _state: PhantomData }
     }
@@ -93,7 +93,7 @@ impl JobHandle<Running> {
     }
 }
 
-// Only Running jobs can be retried — Completed and Failed cannot
+// Only Running jobs can be retried - Completed and Failed cannot
 impl JobHandle<Failed> {
     pub fn retry(self) -> JobHandle<Pending> {
         JobHandle { id: self.id, _state: PhantomData }
@@ -125,7 +125,7 @@ fn process_job(handle: JobHandle<Pending>) {
 }
 ```
 
-In C, this lifecycle would be a `job_status_t` enum checked with `if` statements. Every caller who forgets to check the status — or checks the wrong field — introduces a bug. The type-state version makes the wrong path a compile error.
+In C, this lifecycle would be a `job_status_t` enum checked with `if` statements. Every caller who forgets to check the status - or checks the wrong field - introduces a bug. The type-state version makes the wrong path a compile error.
 
 ---
 
@@ -136,7 +136,7 @@ taskforge-worker communicates with Redis via raw byte manipulation in some paths
 ```rust
 use std::marker::PhantomData;
 
-// Width markers — zero-sized
+// Width markers - zero-sized
 pub struct U16;
 pub struct U32;
 pub struct U64;
@@ -188,7 +188,7 @@ Lifetime branding is the most subtle use of `PhantomData`. It brands a handle wi
 use std::marker::PhantomData;
 
 /// A scoped connection handle branded to a specific pool checkout.
-/// Invariant over 'pool — handles from one checkout can't be used in another.
+/// Invariant over 'pool - handles from one checkout can't be used in another.
 pub struct PooledConn<'pool> {
     raw: redis::Connection,
     _brand: PhantomData<*mut &'pool ()>,  // *mut → invariant (not covariant)
@@ -205,13 +205,13 @@ pub fn with_connection<R>(
     // conn returned to pool here via Drop
 }
 
-// This would be a compile error — handle can't escape the closure:
+// This would be a compile error - handle can't escape the closure:
 // let stolen: PooledConn<'_>;
 // with_connection(&pool, |conn| { stolen = conn; });
 // use_elsewhere(stolen);
 ```
 
-The `*mut` in `PhantomData<*mut &'pool ()>` makes the struct *invariant* over `'pool`. Invariance means "the lifetime is exact" — the compiler won't let you store a `PooledConn<'short>` where a `PooledConn<'long>` is expected, which prevents the handle from escaping its lexical scope.
+The `*mut` in `PhantomData<*mut &'pool ()>` makes the struct *invariant* over `'pool`. Invariance means "the lifetime is exact" - the compiler won't let you store a `PooledConn<'short>` where a `PooledConn<'long>` is expected, which prevents the handle from escaping its lexical scope.
 
 ---
 
@@ -266,11 +266,11 @@ impl<U> Add for Duration<U> {
 // Usage in taskforge:
 fn record_job_timing(execution: Duration<Microseconds>, queue_wait: Duration<Milliseconds>) {
     let total_ms = execution.to_millis() + queue_wait;
-    // execution + queue_wait would be a compile error — different units
+    // execution + queue_wait would be a compile error - different units
 }
 ```
 
-The add `impl` only works within a unit — you can't add `Duration<Milliseconds>` and `Duration<Microseconds>` directly. The compiler enforces dimensional consistency.
+The add `impl` only works within a unit - you can't add `Duration<Milliseconds>` and `Duration<Microseconds>` directly. The compiler enforces dimensional consistency.
 
 ---
 
@@ -290,7 +290,7 @@ struct JobBuffer<T> {
 }
 
 // Without PhantomData<T>, JobBuffer would always be !Send due to *mut T.
-// With PhantomData<T>, JobBuffer<T> is Send when T: Send — which is correct.
+// With PhantomData<T>, JobBuffer<T> is Send when T: Send - which is correct.
 // If T were a non-Send type (like Rc), JobBuffer<T> would correctly be !Send.
 ```
 
@@ -302,12 +302,12 @@ This matters for taskforge's concurrent queue processing: worker threads share h
 
 | C pattern | C problem | Rust equivalent |
 |-----------|-----------|-----------------|
-| `typedef uint32_t job_id_t` | `job_id_t x = worker_id;` compiles | `struct JobId(u32)` — newtype |
+| `typedef uint32_t job_id_t` | `job_id_t x = worker_id;` compiles | `struct JobId(u32)` - newtype |
 | `int status;` with `STATUS_PENDING/RUNNING` enum | Forgot to check status | `JobHandle<Pending>` vs `JobHandle<Running>` |
 | `void *buf` for different widths | Wrong cast, wrong size | `Buffer<U32>` vs `Buffer<U16>` |
 | `int fd;` can be open or closed | Used after close | `OpenFd` vs `ClosedFd` type-state |
 
-All of these C patterns require runtime checks or trust in convention. The Rust phantom type versions are compile-time — they cannot be violated.
+All of these C patterns require runtime checks or trust in convention. The Rust phantom type versions are compile-time - they cannot be violated.
 
 ---
 
@@ -331,28 +331,28 @@ The taskforge project uses PhantomData in two places: the `JobHandle<S>` lifecyc
 
 ## Exercises
 
-**Exercise 1 — JobHandle Type-State**
+**Exercise 1 - JobHandle Type-State**
 
 Implement `JobHandle<S>` with states `Pending`, `Running`, `Completed`. Add:
-- `fn start(self: JobHandle<Pending>) -> JobHandle<Running>` — transition from pending to running
-- `fn complete(self: JobHandle<Running>, result: String) -> JobHandle<Completed>` — transition from running to completed
-- `fn result(self: &JobHandle<Completed>) -> &str` — only available on completed handles
+- `fn start(self: JobHandle<Pending>) -> JobHandle<Running>` - transition from pending to running
+- `fn complete(self: JobHandle<Running>, result: String) -> JobHandle<Completed>` - transition from running to completed
+- `fn result(self: &JobHandle<Completed>) -> &str` - only available on completed handles
 
 Write a unit test that chains these three calls. Then write a second test that tries to
-call `complete()` on a `JobHandle<Pending>` — it should not compile. Use `trybuild` to
+call `complete()` on a `JobHandle<Pending>` - it should not compile. Use `trybuild` to
 verify the compile error.
 
-**Exercise 2 — Duration<Unit> Arithmetic**
+**Exercise 2 - Duration<Unit> Arithmetic**
 
 Implement `Duration<Milliseconds>` and `Duration<Microseconds>` as newtype wrappers
 around `u64`. Add `impl Add` for `Duration<T> + Duration<T>` (same unit) but not
 `Duration<Milliseconds> + Duration<Microseconds>` (different units).
 
 Write a test that adds two `Duration<Milliseconds>` values and asserts the result.
-Then try to add a `Duration<Milliseconds>` and a `Duration<Microseconds>` — it should
+Then try to add a `Duration<Milliseconds>` and a `Duration<Microseconds>` - it should
 not compile. Verify with `trybuild`.
 
-**Exercise 3 — Verify Zero Cost**
+**Exercise 3 - Verify Zero Cost**
 
 Use `cargo-show-asm` to inspect the generated assembly for a function that creates and
 transitions a `JobHandle<Pending>` to `JobHandle<Running>`:
@@ -369,7 +369,7 @@ a `u64`. The PhantomData should produce zero overhead.
 
 ## Variance: Why PhantomData's Type Parameter Matters
 
-Variance determines whether a generic type can be substituted with a "sub-type." In Rust, "sub-type" means "has a longer lifetime" — a `&'long str` is a sub-type of `&'short str` because it's more specific (lives longer, so usable anywhere a shorter-lived reference is needed).
+Variance determines whether a generic type can be substituted with a "sub-type." In Rust, "sub-type" means "has a longer lifetime" - a `&'long str` is a sub-type of `&'short str` because it's more specific (lives longer, so usable anywhere a shorter-lived reference is needed).
 
 **The three variances:**
 
@@ -389,14 +389,14 @@ Variance determines whether a generic type can be substituted with a "sub-type."
 | `PhantomData<*mut T>` | **Invariant** | Non-owning mutable pointer |
 | `PhantomData<fn(T)>` | **Contravariant** | T appears in argument position |
 
-**Why invariance matters — a concrete example:**
+**Why invariance matters - a concrete example:**
 
 ```rust
 use std::marker::PhantomData;
 
 // If JobHandle<S> were covariant over S, you could substitute
 // JobHandle<Running> where JobHandle<Pending> is expected.
-// That breaks the state machine — you'd call methods on the wrong state.
+// That breaks the state machine - you'd call methods on the wrong state.
 
 // Make it INVARIANT over S to prevent this:
 struct JobHandle<S> {
@@ -412,7 +412,7 @@ For the taskforge type-state machine, you almost always want `PhantomData<fn(S) 
 
 ## Send + Sync Derivation with PhantomData
 
-When you have raw pointers or PhantomData in a struct, Rust's automatic `Send`/`Sync` derivation stops working — the compiler can't prove the type is safe to send across threads. You have to assert it manually with `unsafe impl`:
+When you have raw pointers or PhantomData in a struct, Rust's automatic `Send`/`Sync` derivation stops working - the compiler can't prove the type is safe to send across threads. You have to assert it manually with `unsafe impl`:
 
 ```rust
 use std::marker::PhantomData;
@@ -431,12 +431,12 @@ struct JobQueue<J> {
 // the queue is safe to transfer to another thread.
 unsafe impl<J: Send> Send for JobQueue<J> {}
 
-// SAFETY: We never allow concurrent mutation — &JobQueue<J>
+// SAFETY: We never allow concurrent mutation - &JobQueue<J>
 // only provides read access, so sharing a reference is safe.
 unsafe impl<J: Send> Sync for JobQueue<J> {}
 ```
 
-The `unsafe impl` is your contract to the compiler: "I have verified this is safe, please trust me." The comment is required — it explains WHY it's safe so the next person reading the code knows what invariant you're maintaining. If the code ever changes in a way that breaks that invariant, the comment tells them to revisit the `unsafe impl`.
+The `unsafe impl` is your contract to the compiler: "I have verified this is safe, please trust me." The comment is required - it explains WHY it's safe so the next person reading the code knows what invariant you're maintaining. If the code ever changes in a way that breaks that invariant, the comment tells them to revisit the `unsafe impl`.
 
 **Rule of thumb:**
 - Types made of only `Send + Sync` types → automatically `Send + Sync`

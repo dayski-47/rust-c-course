@@ -1,8 +1,8 @@
 # File I/O, Slices, and Iterators
 
-🟡 Think about it — these are the hands-on tools that make hexview real.
+🟡 Think about it - these are the hands-on tools that make hexview real.
 
-Everything in the previous docs — ownership, error handling, types — was building a mental model. This doc is about the concrete tools you'll actually use when you write hexview. By the end, you'll know how to open a binary file, read it in 16-byte chunks, format each byte as hex, and output it correctly.
+Everything in the previous docs - ownership, error handling, types - was building a mental model. This doc is about the concrete tools you'll actually use when you write hexview. By the end, you'll know how to open a binary file, read it in 16-byte chunks, format each byte as hex, and output it correctly.
 
 ---
 
@@ -23,9 +23,9 @@ fclose(f);
 You pass a pointer, get back a count. Errors come from `errno` or NULL returns. You must remember to call `fclose`.
 
 Rust's version is structurally similar, but three things change:
-1. Errors are `Result` — you can't ignore them
+1. Errors are `Result` - you can't ignore them
 2. The file closes automatically (Drop)
-3. Buffering is explicit — you opt in with `BufReader`
+3. Buffering is explicit - you opt in with `BufReader`
 
 ### Opening a File
 
@@ -41,13 +41,13 @@ let file = File::open("data.bin")?;
 let reader = BufReader::new(file);  // file is moved into BufReader
 ```
 
-`BufReader::new(file)` takes ownership of the `File`. The variable `file` is no longer accessible after this line — ownership transferred.
+`BufReader::new(file)` takes ownership of the `File`. The variable `file` is no longer accessible after this line - ownership transferred.
 
 ### Why BufReader?
 
-Raw `File::read()` calls the OS kernel for each read. On most systems, that's a context switch — slow. `BufReader` reads a large chunk from the OS into an internal buffer, then hands bytes out of that buffer for your smaller reads. Same data, fewer syscalls.
+Raw `File::read()` calls the OS kernel for each read. On most systems, that's a context switch - slow. `BufReader` reads a large chunk from the OS into an internal buffer, then hands bytes out of that buffer for your smaller reads. Same data, fewer syscalls.
 
-In C, `setvbuf()` does this. In Rust, you compose the buffering in explicitly. It's the same idea — you're just more in control of when it happens.
+In C, `setvbuf()` does this. In Rust, you compose the buffering in explicitly. It's the same idea - you're just more in control of when it happens.
 
 ### Reading Bytes
 
@@ -57,7 +57,7 @@ The `Read` trait (from `std::io`) defines how to read bytes. `BufReader<File>` i
 reader.read(&mut buf)  // returns Result<usize, io::Error>
 ```
 
-The `usize` is the number of bytes actually placed into `buf`. This is not necessarily `buf.len()`. At the end of a file, it could be 7 or 3 or 0. **Always check the returned count.** Reading 0 bytes means EOF — you're done.
+The `usize` is the number of bytes actually placed into `buf`. This is not necessarily `buf.len()`. At the end of a file, it could be 7 or 3 or 0. **Always check the returned count.** Reading 0 bytes means EOF - you're done.
 
 `read_exact(&mut buf)` is the variant that fills the buffer completely or errors. Use it when you know exactly how many bytes you expect (like reading a fixed file header). It returns `UnexpectedEof` error if the file is shorter than `buf.len()`.
 
@@ -67,7 +67,7 @@ The `usize` is the number of bytes actually placed into `buf`. This is not neces
 
 **Not flushing writes.** If you write to a `BufWriter` (the write equivalent) and don't flush, the last chunk of data may not reach disk before the file is dropped. For reads, this doesn't apply.
 
-**Seeking past the end of file.** `seek(SeekFrom::Start(9999))` on a 100-byte file does not error — but the next `read()` returns `Ok(0)` immediately. You don't get an error for seeking out of range; you get EOF on the next read.
+**Seeking past the end of file.** `seek(SeekFrom::Start(9999))` on a 100-byte file does not error - but the next `read()` returns `Ok(0)` immediately. You don't get an error for seeking out of range; you get EOF on the next read.
 
 ---
 
@@ -75,9 +75,9 @@ The `usize` is the number of bytes actually placed into `buf`. This is not neces
 
 ### The types for raw binary data
 
-A byte in Rust is `u8` — `unsigned char` in C. It holds values 0–255.
+A byte in Rust is `u8` - `unsigned char` in C. It holds values 0–255.
 
-A fixed array of bytes: `[u8; 16]` — exactly like `unsigned char buf[16]` in C. It lives on the stack. It's a `Copy` type (assignment copies the bytes, no move needed). The size is baked into the type — `[u8; 16]` and `[u8; 32]` are different types.
+A fixed array of bytes: `[u8; 16]` - exactly like `unsigned char buf[16]` in C. It lives on the stack. It's a `Copy` type (assignment copies the bytes, no move needed). The size is baked into the type - `[u8; 16]` and `[u8; 32]` are different types.
 
 ```rust
 let mut buf = [0u8; 16];  // 16 zero bytes, on the stack
@@ -88,7 +88,7 @@ let n = reader.read(&mut buf)?;
 
 ### Slices: Fat Pointers
 
-A slice `&[u8]` is a pointer-plus-length pair. In C, when you pass a buffer to a function, you pass both the pointer and the length separately: `void process(unsigned char *buf, size_t len)`. In Rust, the slice bundles them: `fn process(buf: &[u8])` — `buf.len()` is right there.
+A slice `&[u8]` is a pointer-plus-length pair. In C, when you pass a buffer to a function, you pass both the pointer and the length separately: `void process(unsigned char *buf, size_t len)`. In Rust, the slice bundles them: `fn process(buf: &[u8])` - `buf.len()` is right there.
 
 You get a slice from an array with range syntax:
 
@@ -102,7 +102,7 @@ This doesn't copy. `data` is a reference into `buf`. It's valid as long as `buf`
 
 ### How It Breaks
 
-**Index out of bounds panics, not undefined behavior.** `buf[20]` on a 16-byte array panics at runtime with a clear message. In C, `buf[20]` is undefined behavior that silently corrupts memory. Rust panics are better — they're loud. But use `buf.get(i)` (which returns `Option<&u8>`) when you're not sure the index is valid.
+**Index out of bounds panics, not undefined behavior.** `buf[20]` on a 16-byte array panics at runtime with a clear message. In C, `buf[20]` is undefined behavior that silently corrupts memory. Rust panics are better - they're loud. But use `buf.get(i)` (which returns `Option<&u8>`) when you're not sure the index is valid.
 
 **Working with the wrong slice.** This is the subtle one:
 
@@ -141,19 +141,19 @@ for chunk in bytes.chunks(16) {
 
 `chunks(16)` handles the last-chunk-shorter-than-16 case for you. The last chunk is whatever's left.
 
-### `.chunks(n)` — Split a Slice Into Fixed-Size Pieces
+### `.chunks(n)` - Split a Slice Into Fixed-Size Pieces
 
 ```rust
 let bytes: &[u8] = &[0x7f, 0x45, 0x4c, 0x46, /* ... */ ];
 for chunk in bytes.chunks(16) {
-    // chunk is &[u8] — exactly 16 bytes, except the last which may be shorter
+    // chunk is &[u8] - exactly 16 bytes, except the last which may be shorter
     println!("{} bytes in this chunk", chunk.len());
 }
 ```
 
-`chunks(16)` produces an iterator. Calling `.chunks(16)` alone doesn't process anything — it creates a description of an iteration. The processing happens when you loop.
+`chunks(16)` produces an iterator. Calling `.chunks(16)` alone doesn't process anything - it creates a description of an iteration. The processing happens when you loop.
 
-### `.enumerate()` — Getting the Index Too
+### `.enumerate()` - Getting the Index Too
 
 For a hex viewer, you need the byte offset of each line. `.enumerate()` wraps an iterator so each item becomes `(index, item)`:
 
@@ -181,11 +181,11 @@ This matters when you're chaining multiple operations: `bytes.chunks(16).enumera
 bytes.chunks(16).enumerate();  // creates an iterator, immediately drops it
 ```
 
-You must consume the iterator — with `for`, `.for_each()`, `.collect()`, or similar.
+You must consume the iterator - with `for`, `.for_each()`, `.collect()`, or similar.
 
 **Assuming all chunks are exactly 16 bytes.** The last chunk of a file is usually shorter. `chunk.len()` may be 1 through 16. If your formatting code assumes 16 bytes (to align the ASCII column), you need to explicitly pad the short last line.
 
-**Collecting when iteration is enough.** `.collect::<Vec<_>>()` allocates a Vec holding all the chunks at once. For a hex viewer, you don't need all chunks in memory simultaneously — just process them one at a time with `for`.
+**Collecting when iteration is enough.** `.collect::<Vec<_>>()` allocates a Vec holding all the chunks at once. For a hex viewer, you don't need all chunks in memory simultaneously - just process them one at a time with `for`.
 
 ---
 
@@ -211,9 +211,9 @@ Rust's `format!` macro uses the same printf-style format specifiers you know fro
 | `printf("%02x", byte)` | `format!("{:02x}", byte)` |
 | `printf("%c", ch)` | `format!("{}", ch as char)` |
 
-- `:08x` — lowercase hex, minimum 8 characters, zero-padded
-- `:02x` — lowercase hex, minimum 2 characters, zero-padded
-- `:X` — uppercase hex (use lowercase for hex dumps by convention)
+- `:08x` - lowercase hex, minimum 8 characters, zero-padded
+- `:02x` - lowercase hex, minimum 2 characters, zero-padded
+- `:X` - uppercase hex (use lowercase for hex dumps by convention)
 
 ### Building a line
 
@@ -254,14 +254,14 @@ This is different from `std::io::Write` (for writing to files or stdout). The `w
 
 The hexview program doesn't do anything magic. It's these four pieces in sequence:
 
-Open the file with `File::open`, which returns a `Result` — your first `?` of the program. Wrap it in `BufReader` for efficient reads. If `--offset` was provided, seek to that position.
+Open the file with `File::open`, which returns a `Result` - your first `?` of the program. Wrap it in `BufReader` for efficient reads. If `--offset` was provided, seek to that position.
 
-Enter a read loop. Each iteration calls `reader.read(&mut buf)`. The `usize` returned tells you how many bytes landed in `buf`. If it's 0, you're at EOF — break. If `--length` was provided, stop when you've processed that many total bytes.
+Enter a read loop. Each iteration calls `reader.read(&mut buf)`. The `usize` returned tells you how many bytes landed in `buf`. If it's 0, you're at EOF - break. If `--length` was provided, stop when you've processed that many total bytes.
 
 For each chunk of up to 16 bytes, format one line: the offset (bytes processed so far, formatted as 8-digit hex), the hex bytes (each as two hex digits, space-separated in pairs), and the ASCII column (printable bytes as characters, others as `.`). Print the line.
 
-The file closes when `BufReader` goes out of scope — `Drop` handles it. No `fclose`. No resource leak.
+The file closes when `BufReader` goes out of scope - `Drop` handles it. No `fclose`. No resource leak.
 
-Every failure — file not found, seek error, read error, argument parse error — comes back as a `Result` that you propagate with `?` up to `main`. At `main`, you handle the final error: print a clear message to stderr and exit with code 1.
+Every failure - file not found, seek error, read error, argument parse error - comes back as a `Result` that you propagate with `?` up to `main`. At `main`, you handle the final error: print a clear message to stderr and exit with code 1.
 
-That's the whole program. The complexity is in getting the formatting exactly right and handling edge cases (offset beyond file, empty file, last line shorter than 16 bytes). The Rust parts — ownership, Result, slices, iterators — are the scaffolding that holds it together safely.
+That's the whole program. The complexity is in getting the formatting exactly right and handling edge cases (offset beyond file, empty file, last line shorter than 16 bytes). The Rust parts - ownership, Result, slices, iterators - are the scaffolding that holds it together safely.

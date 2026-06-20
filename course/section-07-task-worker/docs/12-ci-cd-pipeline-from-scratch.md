@@ -1,8 +1,8 @@
-# Doc 12 — CI/CD Pipeline from Scratch
+# Doc 12 - CI/CD Pipeline from Scratch
 
 🟡 A CI pipeline that takes 20 minutes gives developers enough time to switch context and forget what they were doing. A good pipeline gives fast feedback, catches real bugs, and automates the tedious parts of shipping.
 
-This doc builds a production GitHub Actions CI/CD pipeline for taskforge from first principles — not a copy-paste template, but a design with reasons for each choice.
+This doc builds a production GitHub Actions CI/CD pipeline for taskforge from first principles - not a copy-paste template, but a design with reasons for each choice.
 
 ---
 
@@ -10,11 +10,11 @@ This doc builds a production GitHub Actions CI/CD pipeline for taskforge from fi
 
 A good CI pipeline for a Rust project must:
 
-1. **Give fast feedback on obvious problems** (formatting, compilation) — under 2 minutes
+1. **Give fast feedback on obvious problems** (formatting, compilation) - under 2 minutes
 2. **Catch real bugs** (tests, coverage gates, Clippy errors)
 3. **Verify cross-platform behavior** (Linux + Windows minimum)
-4. **Gate merges on passing checks** — no broken main branch
-5. **Automate releases** — no manual `cargo publish` or binary uploads
+4. **Gate merges on passing checks** - no broken main branch
+5. **Automate releases** - no manual `cargo publish` or binary uploads
 
 ---
 
@@ -87,7 +87,7 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      # Cache compiled dependencies — avoids recompiling on every push
+      # Cache compiled dependencies - avoids recompiling on every push
       - uses: Swatinem/rust-cache@v2
 
       - name: Check Cargo.lock is committed
@@ -210,9 +210,9 @@ jobs:
 
 ## Caching Strategy
 
-The `Swatinem/rust-cache@v2` action caches compiled dependencies in `~/.cargo`. Without it, every CI run recompiles all crates from scratch — for a project with many dependencies, that's 5–15 minutes wasted per run.
+The `Swatinem/rust-cache@v2` action caches compiled dependencies in `~/.cargo`. Without it, every CI run recompiles all crates from scratch - for a project with many dependencies, that's 5–15 minutes wasted per run.
 
-The cache is keyed on `Cargo.lock`. When you update a dependency, the cache misses (correct behavior — the new dependency needs to compile). Between pushes on the same lockfile, the cache hits and the check stage runs in under a minute.
+The cache is keyed on `Cargo.lock`. When you update a dependency, the cache misses (correct behavior - the new dependency needs to compile). Between pushes on the same lockfile, the cache hits and the check stage runs in under a minute.
 
 For large monorepos, add `save-if` to avoid flooding the cache with PR caches that are never reused:
 
@@ -242,9 +242,9 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## The Compile-Fail Tests in CI
 
-The `trybuild` compile-fail tests (doc 11) run as part of `cargo test --workspace` automatically. No special CI step needed — they're normal tests that invoke the compiler on fixture files.
+The `trybuild` compile-fail tests (doc 11) run as part of `cargo test --workspace` automatically. No special CI step needed - they're normal tests that invoke the compiler on fixture files.
 
-One subtlety: the `.stderr` snapshot files must match the *exact* error message. Error messages sometimes change between Rust versions. When you update the Rust toolchain in CI (via `dtolnay/rust-toolchain@stable`), compile-fail tests may need `.stderr` file updates. This is expected — run `cargo test` locally with the new toolchain and update the snapshots.
+One subtlety: the `.stderr` snapshot files must match the *exact* error message. Error messages sometimes change between Rust versions. When you update the Rust toolchain in CI (via `dtolnay/rust-toolchain@stable`), compile-fail tests may need `.stderr` file updates. This is expected - run `cargo test` locally with the new toolchain and update the snapshots.
 
 ---
 
@@ -386,4 +386,4 @@ Miri interprets Rust code in a simulated environment that catches undefined beha
 - Nightly-only features (nightly toolchain can break at any time)
 - Miri (too slow for per-PR feedback)
 
-The goal of CI gates is: if CI passes, the PR is safe to merge. False failures from benchmark noise or nightly instability train developers to ignore CI results — defeating the purpose.
+The goal of CI gates is: if CI passes, the PR is safe to merge. False failures from benchmark noise or nightly instability train developers to ignore CI results - defeating the purpose.

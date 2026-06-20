@@ -1,11 +1,11 @@
-# Doc 01 — Web Frameworks and Axum Introduction 🟢
+# Doc 01 - Web Frameworks and Axum Introduction 🟢
 
 ## Engineering Methodology: Domain-Driven Design (DDD)
 
 Domain-Driven Design means you model the real world first, then build the code around that model.
 
 Before writing a single HTTP handler, answer:
-- What are the entities in this domain? (Song, Album, Artist — these are the nouns)
+- What are the entities in this domain? (Song, Album, Artist - these are the nouns)
 - What are the relationships? (An Album belongs to an Artist. A Song belongs to an Album.)
 - What operations are valid? (You can't add a Song to an Album that doesn't exist. You can't delete an Artist that has Albums.)
 - What are the invariants? (A Song must always have a title. An Album must always have a valid artist_id.)
@@ -16,15 +16,15 @@ If you skip domain modeling and go straight to writing handlers, you'll write ha
 
 ---
 
-You've built a TCP chat server and an async API client. Now it's time to build something that actually looks like production backend code: a REST API. This section introduces Axum — the framework you'll use for the next three sections.
+You've built a TCP chat server and an async API client. Now it's time to build something that actually looks like production backend code: a REST API. This section introduces Axum - the framework you'll use for the next three sections.
 
 ## What Axum Is
 
-Axum is an async web framework built on top of two mature crates: **Tokio** (which you already know) and **hyper** (a battle-tested HTTP library). You don't call Tokio or hyper directly — Axum handles the plumbing and gives you a clean interface for defining routes and handlers.
+Axum is an async web framework built on top of two mature crates: **Tokio** (which you already know) and **hyper** (a battle-tested HTTP library). You don't call Tokio or hyper directly - Axum handles the plumbing and gives you a clean interface for defining routes and handlers.
 
-It's currently the most popular production Rust web framework alongside Actix-web. Axum's philosophy is that middleware and routing should compose cleanly. That's not a marketing claim — it's structural: Axum is built on **Tower**, a generic middleware framework, which means any Tower-compatible middleware works with your Axum app out of the box.
+It's currently the most popular production Rust web framework alongside Actix-web. Axum's philosophy is that middleware and routing should compose cleanly. That's not a marketing claim - it's structural: Axum is built on **Tower**, a generic middleware framework, which means any Tower-compatible middleware works with your Axum app out of the box.
 
-If you've touched Node.js or Express, the mental model transfers well. If not, don't worry — you'll see the pattern immediately.
+If you've touched Node.js or Express, the mental model transfers well. If not, don't worry - you'll see the pattern immediately.
 
 ## Adding Axum to Cargo.toml
 
@@ -67,9 +67,9 @@ async fn health_handler() -> &'static str {
 Run it with `cargo run`, then in another terminal: `curl http://localhost:3000/health`. You'll get `OK`.
 
 Three things to notice:
-1. `Router::new().route(path, method(handler))` — routes are defined declaratively
-2. Handlers are just async functions — no special boilerplate
-3. `axum::serve` takes a `TcpListener` (from Tokio) and the router — same Tokio you know
+1. `Router::new().route(path, method(handler))` - routes are defined declaratively
+2. Handlers are just async functions - no special boilerplate
+3. `axum::serve` takes a `TcpListener` (from Tokio) and the router - same Tokio you know
 
 ## Handler Functions
 
@@ -83,7 +83,7 @@ use axum::{
 };
 use serde_json::json;
 
-// Simplest handler — returns a string
+// Simplest handler - returns a string
 async fn hello() -> &'static str {
     "Hello, world!"
 }
@@ -127,7 +127,7 @@ Notice that `.route()` lets you chain multiple HTTP methods on the same path. `g
 
 ## Building a Slightly More Complete Server
 
-Here's an example that shows JSON responses with proper status codes — a preview of what you'll build:
+Here's an example that shows JSON responses with proper status codes - a preview of what you'll build:
 
 ```rust
 use axum::{Router, routing::{get, post}, Json, http::StatusCode};

@@ -1,9 +1,9 @@
-# Doc 01 — Atomics and Lock-Free Fundamentals
+# Doc 01 - Atomics and Lock-Free Fundamentals
 
 🟡 Every high-throughput server counts things: connections, messages, errors. When
 that counting happens across threads, you need thread-safe mutation. There are two
 correct tools: a `Mutex` (flexible, heavier) and an `Atomic` type (narrow, fast).
-Understanding the difference — and when each is correct — starts at the hardware
+Understanding the difference - and when each is correct - starts at the hardware
 level.
 
 ---
@@ -29,7 +29,7 @@ fn increment() {
 
 If two threads both execute step 1 before either executes step 3, they both read
 the same value. They both add 1 to it. They both store the result. The counter
-advances by 1, not 2. This is a data race — a lost update.
+advances by 1, not 2. This is a data race - a lost update.
 
 **In C** this was the original problem `_Atomic` was introduced to solve:
 
@@ -38,7 +38,7 @@ advances by 1, not 2. This is a data race — a lost update.
 
 // Without atomic: data race on concurrent increment
 int counter = 0;
-counter++;  // load, add, store — races with other threads
+counter++;  // load, add, store - races with other threads
 
 // With atomic: hardware-guaranteed single operation
 _Atomic int counter = 0;
@@ -46,7 +46,7 @@ atomic_fetch_add(&counter, 1);  // single CPU instruction: LOCK XADD
 ```
 
 The word "atomic" means *indivisible*. An atomic operation completes in a single
-step as seen by all other threads — there is no intermediate state where the load
+step as seen by all other threads - there is no intermediate state where the load
 has happened but the store has not.
 
 ---
@@ -64,16 +64,16 @@ let counter = Mutex::new(0u64);
 // In the connection handler:
 let mut count = counter.lock().unwrap();  // blocks if another thread holds the lock
 *count += 1;
-// Guard dropped here — lock released
+// Guard dropped here - lock released
 ```
 
 This is correct. But a `Mutex` acquires an OS-level lock. On an uncontended x86
-CPU, locking a mutex costs roughly 30–100 ns — not because the increment itself is
+CPU, locking a mutex costs roughly 30–100 ns - not because the increment itself is
 slow, but because of the kernel syscall, the cache coherency protocol, and the
 memory barriers that surround the lock acquisition.
 
-For a counter incremented on every connection accept — potentially thousands of
-times per second — this overhead adds up. More importantly, **it serializes threads
+For a counter incremented on every connection accept - potentially thousands of
+times per second - this overhead adds up. More importantly, **it serializes threads
 unnecessarily**: thread 2 cannot increment the counter while thread 1 holds the
 lock, even though "increment a counter" can be done as a single CPU instruction
 without a lock at all.
@@ -89,19 +89,19 @@ On x86-64:
 
 | Rust operation | CPU instruction |
 |---------------|-----------------|
-| `fetch_add(1, ...)` | `LOCK XADD` — lock the cache line, add, return old value |
-| `compare_exchange(old, new, ...)` | `LOCK CMPXCHG` — lock the cache line, compare, conditionally write |
+| `fetch_add(1, ...)` | `LOCK XADD` - lock the cache line, add, return old value |
+| `compare_exchange(old, new, ...)` | `LOCK CMPXCHG` - lock the cache line, compare, conditionally write |
 | `store(val, ...)` | `MOV` with optional `MFENCE` depending on ordering |
 | `load(...)` | `MOV` with optional `LFENCE` depending on ordering |
 
 The `LOCK` prefix causes the CPU to assert exclusive ownership of the relevant
 cache line for the duration of that instruction. No other CPU core can read or
 write that cache line until the operation completes. This is why atomic operations
-are thread-safe without an OS mutex — the synchronization happens in the CPU's
+are thread-safe without an OS mutex - the synchronization happens in the CPU's
 cache coherency hardware, not in kernel space.
 
 This is also why atomics are limited to a single value. The CPU can lock one cache
-line for one instruction. It cannot lock two cache lines atomically — that's what
+line for one instruction. It cannot lock two cache lines atomically - that's what
 mutexes are for.
 
 ---
@@ -141,13 +141,13 @@ let result = counter.compare_exchange(
     Ordering::AcqRel,     // ordering on success
     Ordering::Relaxed,    // ordering on failure
 );
-// Ok(old)         — swap happened: old value was `old`, now `old + 1`
-// Err(actual)     — swap did not happen: actual current value returned
+// Ok(old)         - swap happened: old value was `old`, now `old + 1`
+// Err(actual)     - swap did not happen: actual current value returned
 ```
 
 Every operation takes an `Ordering` argument. This is where Rust differs from C's
 `_Atomic`, which defaults to sequential consistency. Rust makes you specify exactly
-what you need — we'll explain why this matters next.
+what you need - we'll explain why this matters next.
 
 ---
 
@@ -170,11 +170,11 @@ ready.store(true)  // (2)          println!("{}", message) // read message
 This looks correct. It is not. The CPU might reorder (1) and (2) in Thread A's
 pipeline: the store to `ready` might become visible to other cores before the
 store to `message` does. Thread B observes `ready == true`, reads `message`, and
-gets garbage — or the old message, or an empty string.
+gets garbage - or the old message, or an empty string.
 
 This isn't a bug in the code. It's the hardware working correctly. The CPU
 optimizes for throughput; it does not guarantee that stores become visible to other
-cores in the order you wrote them — unless you add explicit ordering constraints.
+cores in the order you wrote them - unless you add explicit ordering constraints.
 
 **The four orderings, explained as constraints:**
 
@@ -230,7 +230,7 @@ let seq = self.message_counter.fetch_add(1, Ordering::AcqRel);
 
 ```c
 // C's _Atomic with no explicit ordering defaults to sequential consistency
-// This is like Rust's SeqCst — always correct, often slower than necessary
+// This is like Rust's SeqCst - always correct, often slower than necessary
 _Atomic uint64_t counter = 0;
 atomic_fetch_add(&counter, 1);  // implicitly memory_order_seq_cst
 
@@ -299,7 +299,7 @@ pub struct MetricsSnapshot {
     pub total_errors: u64,
 }
 
-// `const fn new()` enables a zero-cost static — no lazy_static, no Once, no heap
+// `const fn new()` enables a zero-cost static - no lazy_static, no Once, no heap
 pub static METRICS: NexusMetrics = NexusMetrics::new();
 ```
 
@@ -389,7 +389,7 @@ Because (2) uses `Release` and (3) uses `Acquire`, Thread B's read in (4) is
 guaranteed to see the write Thread A did in (1). Without this pairing, the CPU
 could reorder (4) before (3) and Thread B would read stale snapshot data.
 
-For nexus's async tasks, Tokio's `watch` channel is cleaner than `AtomicBool` —
+For nexus's async tasks, Tokio's `watch` channel is cleaner than `AtomicBool` -
 it integrates with the async runtime's notification mechanism. `AtomicBool` is
 correct for OS threads and for cases where you need the absolute minimum overhead.
 
@@ -415,7 +415,7 @@ The entire read-compare-write sequence happens under the CPU's cache lock, in on
 instruction. No other thread can observe the intermediate state.
 
 This enables **lock-free algorithms**: instead of "lock a mutex, do the work,
-unlock", you "read the current state, compute the new state, CAS — retry if
+unlock", you "read the current state, compute the new state, CAS - retry if
 someone changed it first." No OS involvement, no thread blocking.
 
 The retry loop is fundamental:
@@ -426,7 +426,7 @@ loop {
     let new = compute_next(current);  // your logic
 
     match atomic.compare_exchange_weak(current, new, Ordering::AcqRel, Ordering::Relaxed) {
-        Ok(_) => break,        // CAS succeeded — we updated the value
+        Ok(_) => break,        // CAS succeeded - we updated the value
         Err(_) => continue,    // another thread changed it; reload and retry
     }
 }
@@ -448,7 +448,7 @@ within that window must be updated together, atomically.
 If we used two separate atomics:
 
 ```rust
-// WRONG — not atomically consistent
+// WRONG - not atomically consistent
 struct BrokenRateLimiter {
     window_start: AtomicU32,  // which second are we in?
     count: AtomicU32,         // how many this second?
@@ -456,7 +456,7 @@ struct BrokenRateLimiter {
 ```
 
 A thread could observe `window_start` reset to the new second but `count` not yet
-reset — the two updates cannot be made atomic independently. Another thread might
+reset - the two updates cannot be made atomic independently. Another thread might
 incorrectly believe the rate limit has been exceeded in the new window.
 
 The fix: **pack both values into a single `u64`** so a single CAS can update both
@@ -513,13 +513,13 @@ impl RateLimiter {
             let count = (current & 0xFFFF_FFFF) as u32;
 
             let (new_window, new_count) = if window == now {
-                // Same second — check limit before incrementing
+                // Same second - check limit before incrementing
                 if count >= self.max_per_second {
                     return false;  // rate limited
                 }
                 (window, count + 1)
             } else {
-                // New second — reset counter, start at 1
+                // New second - reset counter, start at 1
                 (now, 1)
             };
 
@@ -548,14 +548,14 @@ impl RateLimiter {
 On ARM, the hardware provides `LDREX`/`STREX` which implement a "load-linked /
 store-conditional" pattern. STREX can fail spuriously (the cache line was observed
 by another core, even if not written). `compare_exchange_weak` maps directly to
-this pattern — slightly faster, with spurious failures handled by the retry loop.
+this pattern - slightly faster, with spurious failures handled by the retry loop.
 `compare_exchange` (strong) emits extra code on ARM to retry until the failure is
 genuine. Since we have a loop anyway, `weak` is always the right choice for CAS
 loops.
 
 ---
 
-## When to Use Atomics — and When Not To
+## When to Use Atomics - and When Not To
 
 Atomics are a sharp, narrow tool. The decision rules:
 
@@ -589,7 +589,7 @@ struct StatsInner {
     connection_count: u64,
     bytes_transferred: u64,
 }
-// Both fields update under a single lock — readers always see a consistent pair.
+// Both fields update under a single lock - readers always see a consistent pair.
 ```
 
 **The key rule**: Atomics operate on *one word*. The packing trick extends this to
@@ -600,7 +600,7 @@ struct StatsInner {
 ## Send and Sync: Why Atomics Need No Extra Wrapper
 
 Unlike `Cell<T>` or `RefCell<T>`, atomic types implement `Send + Sync` by
-definition — they are designed for multi-threaded access. You need `Arc` to share
+definition - they are designed for multi-threaded access. You need `Arc` to share
 the *allocation* across threads, but not to make the access thread-safe:
 
 ```rust
@@ -618,7 +618,7 @@ for _ in 0..8 {
 ```
 
 The `Arc` provides shared ownership of the heap allocation. The `AtomicU64`
-provides thread-safe mutation of the value. No `Mutex` wrapping needed — that is
+provides thread-safe mutation of the value. No `Mutex` wrapping needed - that is
 the whole point.
 
 **C parallel:**
@@ -631,14 +631,14 @@ atomic_fetch_add(&g_counter, 1);  // safe from any thread
 
 In Rust, prefer `Arc<AtomicU64>` over a `static AtomicU64` in library code.
 Global state complicates testing: you cannot reset a static between tests unless
-you write reset logic. Wrapping in `Arc` makes the counter testable — each test
+you write reset logic. Wrapping in `Arc` makes the counter testable - each test
 creates its own `Arc` and there is no shared global state to clean up.
 
 ---
 
 ## Exercises
 
-**Exercise 1 — Connection Counter Under Concurrency**
+**Exercise 1 - Connection Counter Under Concurrency**
 
 Implement `NexusMetrics::new()` with five `AtomicU64` fields. Add a `snapshot()`
 method that returns a `MetricsSnapshot`. Write a test that spawns 100 `tokio::task`
@@ -646,7 +646,7 @@ tasks, each calling `metrics.total_connections.fetch_add(1, Ordering::Relaxed)`,
 then awaits all tasks and asserts `snapshot().total_connections == 100`. The test
 verifies that 100 concurrent increments produce exactly 100, not fewer.
 
-**Exercise 2 — Rate Limiter**
+**Exercise 2 - Rate Limiter**
 
 Implement the `RateLimiter` from this doc. Write a unit test that:
 1. Creates a `RateLimiter` with `max_per_second = 3`
@@ -658,7 +658,7 @@ Implement the `RateLimiter` from this doc. Write a unit test that:
 Bonus: run the test with `cargo +nightly miri test` to verify no undefined
 behavior from the bit-packing operations.
 
-**Exercise 3 — Benchmark: Mutex vs AtomicU64**
+**Exercise 3 - Benchmark: Mutex vs AtomicU64**
 
 Write a Criterion benchmark in `benches/atomic_bench.rs` comparing:
 - Incrementing a `Mutex<u64>` from 8 concurrent threads, 100,000 times each
@@ -675,7 +675,7 @@ is the atomic version faster even though both are correct?
 
 - [ ] All monotonically increasing counters use `fetch_add` with `Relaxed` ordering
 - [ ] Sequence numbers that gate access to data use `AcqRel`
-- [ ] Shutdown flags use `Release` (set) and `Acquire` (read) — not `Relaxed`
+- [ ] Shutdown flags use `Release` (set) and `Acquire` (read) - not `Relaxed`
 - [ ] Complex multi-field updates use a `Mutex`, not multiple atomics
 - [ ] CAS loops use `compare_exchange_weak` (handles spurious failure on ARM correctly)
 - [ ] Packed CAS values have a comment explaining the bit layout before the code

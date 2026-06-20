@@ -1,6 +1,6 @@
-# 03 — JWT Authentication 🟡
+# 03 - JWT Authentication 🟡
 
-HTTP is stateless, which creates a problem: after a user logs in, how does the server know who they are on the next request? The classic answer is sessions — the server stores a session record in a database and gives the client a cookie with a session ID. Every request, the server looks up the session.
+HTTP is stateless, which creates a problem: after a user logs in, how does the server know who they are on the next request? The classic answer is sessions - the server stores a session record in a database and gives the client a cookie with a session ID. Every request, the server looks up the session.
 
 JWT (JSON Web Token) takes a different approach. Instead of storing state on the server, you encode the user's identity into a token and sign it. The client includes the token in every request. The server verifies the signature and trusts the contents without any database lookup. This is called stateless authentication.
 
@@ -14,11 +14,11 @@ A JWT is three base64-encoded JSON objects joined by dots:
 eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MiIsInVzZXJuYW1lIjoiYWxpY2UiLCJleHAiOjE3MTg4MDQwMDB9.abc123sig
 ```
 
-Part 1 (header): `{"alg":"HS256"}` — the signing algorithm.
-Part 2 (payload): `{"sub":"42","username":"alice","exp":1718804000}` — your claims.
+Part 1 (header): `{"alg":"HS256"}` - the signing algorithm.
+Part 2 (payload): `{"sub":"42","username":"alice","exp":1718804000}` - your claims.
 Part 3 (signature): HMAC-SHA256 of `header.payload` using your secret key.
 
-The signature is the key. Anyone can decode the header and payload — they are just base64, not encrypted. But without the secret key, no one can produce a valid signature. If a client tries to tamper with the payload (changing their user ID from 42 to 1), the signature check fails.
+The signature is the key. Anyone can decode the header and payload - they are just base64, not encrypted. But without the secret key, no one can produce a valid signature. If a client tries to tamper with the payload (changing their user ID from 42 to 1), the signature check fails.
 
 ## The jsonwebtoken Crate
 
@@ -34,7 +34,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    pub sub: String,       // "subject" — conventionally the user ID as a string
+    pub sub: String,       // "subject" - conventionally the user ID as a string
     pub username: String,
     pub role: String,      // "user", "dj", "admin"
     pub exp: u64,          // expiry as Unix timestamp (required by JWT spec)
@@ -83,7 +83,7 @@ pub fn verify_token(token: &str, secret: &str) -> jsonwebtoken::errors::Result<C
 
 ## Access Tokens and Refresh Tokens
 
-Access tokens expire quickly — 15 minutes is common. This limits the damage if a token is stolen: after 15 minutes it's useless. But you don't want users to log in every 15 minutes.
+Access tokens expire quickly - 15 minutes is common. This limits the damage if a token is stolen: after 15 minutes it's useless. But you don't want users to log in every 15 minutes.
 
 Refresh tokens solve this. They live longer (days or weeks) and are stored in a secure HTTP-only cookie. When the access token expires, the client calls `/auth/refresh` with the refresh token. The server verifies it, issues a new access token, and rotates the refresh token.
 
@@ -153,7 +153,7 @@ impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
             .ok_or((StatusCode::UNAUTHORIZED, "Invalid Authorization format".into()))?;
 
         // Pull the JWT secret from app state
-        // (you'll need to extract it from `state` — requires a concrete State type)
+        // (you'll need to extract it from `state` - requires a concrete State type)
         let secret = "your-secret-here"; // replace with state.jwt_secret
 
         let claims = verify_token(token, secret)
@@ -285,21 +285,21 @@ pub async fn login(
 }
 ```
 
-Note that login returns the same error message whether the username doesn't exist or the password is wrong. This is intentional — you don't want to tell attackers which usernames are valid.
+Note that login returns the same error message whether the username doesn't exist or the password is wrong. This is intentional - you don't want to tell attackers which usernames are valid.
 
 ## Security Considerations
 
 - **HTTPS only.** JWTs are signed, not encrypted. Anyone who intercepts the token can read the claims. Always run behind TLS in production.
 - **Short access token expiry.** 15 minutes is a good default. An hour is too long. Stolen tokens live until they expire.
 - **Don't put sensitive data in the payload.** The payload is readable by anyone. Don't include passwords, SSNs, or payment info.
-- **Rotate refresh tokens on use.** When a client refreshes, issue a new refresh token and invalidate the old one. If you see the old token used again, someone is replaying it — log them out everywhere.
+- **Rotate refresh tokens on use.** When a client refreshes, issue a new refresh token and invalidate the old one. If you see the old token used again, someone is replaying it - log them out everywhere.
 - **Store JWT secret in environment variables.** Never hardcode it. Generate at least 32 random bytes: `openssl rand -base64 32`.
 
 ## How It Breaks
 
 - Using a weak or exposed secret key: any JWT signed with a known key can be forged. Use a long random key, store it as an environment variable, never commit it.
 - Not checking expiry: if you decode a JWT but don't check the `exp` claim, expired tokens work forever.
-- JWT is not encrypted — it's only signed. The payload is base64-encoded and readable by anyone. Never put sensitive data (passwords, financial data) in JWT claims.
+- JWT is not encrypted - it's only signed. The payload is base64-encoded and readable by anyone. Never put sensitive data (passwords, financial data) in JWT claims.
 - Refresh token reuse: if you issue a new refresh token but don't invalidate the old one, a stolen refresh token can be used forever.
 - Clock skew: JWT expiry is a Unix timestamp. If the server clock is wrong, tokens expire at the wrong time.
 
@@ -318,7 +318,7 @@ Note that login returns the same error message whether the username doesn't exis
 ## JWT Authentication on WebSocket Connections
 
 WebSocket upgrades are HTTP GET requests, which means browser clients cannot set
-an `Authorization` header on them — that header is only available in `fetch`/XHR
+an `Authorization` header on them - that header is only available in `fetch`/XHR
 requests. Two approaches work:
 
 **Approach 1: JWT in query parameter** (most common for browser clients)
@@ -347,7 +347,7 @@ pub async fn ws_queue_handler(
     Query(params): Query<WsTokenQuery>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    // Verify the JWT before upgrading — if invalid, return 401 without upgrading
+    // Verify the JWT before upgrading - if invalid, return 401 without upgrading
     let claims = match verify_access_token(&params.token, &state.jwt_secret) {
         Ok(c) => c,
         Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
@@ -383,7 +383,7 @@ pub async fn handle_queue_socket(
                 }
             }
         }
-        _ => return, // Non-text first message — close
+        _ => return, // Non-text first message - close
     };
 
     // Now handle the authenticated session

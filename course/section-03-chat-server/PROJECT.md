@@ -1,6 +1,6 @@
-# Section 3 Project: rustchat — Multi-Client TCP Chat Server
+# Section 3 Project: rustchat - Multi-Client TCP Chat Server
 
-This is the hardest project in the course. Not because the concepts are abstract — you've just read about all of them. It's hard because you have to use them all at once, under concurrency, where the borrow checker is at its most demanding. Real Rust engineers find this section challenging. That's normal. Push through.
+This is the hardest project in the course. Not because the concepts are abstract - you've just read about all of them. It's hard because you have to use them all at once, under concurrency, where the borrow checker is at its most demanding. Real Rust engineers find this section challenging. That's normal. Push through.
 
 When it works, it's genuinely cool: multiple people connecting with `nc`, messages flying between them in real time. You built a networked server from scratch with a language that made you think hard about memory and ownership at every step.
 
@@ -172,7 +172,7 @@ let write_stream = stream.try_clone()?;
 // write_stream: give to the write thread
 ```
 
-Both handles point to the same OS socket. Reading from `stream` and writing to `write_stream` works correctly — TCP sockets are full-duplex.
+Both handles point to the same OS socket. Reading from `stream` and writing to `write_stream` works correctly - TCP sockets are full-duplex.
 
 ### 2. Sharing the Client Map Across Threads
 
@@ -190,7 +190,7 @@ type ClientMap = Arc<Mutex<HashMap<String, Sender<String>>>>;
 // Create once in main:
 let clients: ClientMap = Arc::new(Mutex::new(HashMap::new()));
 
-// Clone before moving into each thread — cheap, just increments a counter:
+// Clone before moving into each thread - cheap, just increments a counter:
 let clients_for_thread = Arc::clone(&clients);
 thread::spawn(move || {
     // use clients_for_thread here
@@ -234,14 +234,14 @@ for (_, tx) in map.iter() {
 // map dropped here, lock released
 
 // The actual socket write happens in each client's write thread
-// AFTER the lock is released — that's the whole point of the channel design
+// AFTER the lock is released - that's the whole point of the channel design
 ```
 
 ---
 
 ## Message Types
 
-Define the internal message type early — it'll clarify your thinking:
+Define the internal message type early - it'll clarify your thinking:
 
 ```rust
 #[derive(Debug, Clone)]
@@ -274,7 +274,7 @@ The answers tell you exactly which concurrency primitives to use:
 - Shared mutable state accessed by many threads → `Arc<Mutex<T>>`
 - One-way message passing → `mpsc` channel (sender cloned per client, one receiver for the broadcaster)
 
-The design for this server: each client gets two threads — one that reads from the socket, one that writes to it. The reader threads send messages to a single broadcaster channel. The broadcaster fans out each message to every client's dedicated write channel.
+The design for this server: each client gets two threads - one that reads from the socket, one that writes to it. The reader threads send messages to a single broadcaster channel. The broadcaster fans out each message to every client's dedicated write channel.
 
 Draw this on paper before writing code. It should look like boxes for threads, arrows showing data flow, and labels on each arrow indicating what data crosses it. If you can't draw it clearly, you don't understand it clearly enough to implement it.
 
@@ -285,23 +285,23 @@ Draw this on paper before writing code. It should look like boxes for threads, a
 This is the first project where you're building something genuinely concurrent. But none of the tools are new:
 
 - **Threads (new in S3):** `thread::spawn` is introduced here for the first time. Each connected client gets its own thread. The clone-before-move pattern (`Arc::clone` before `move` into the closure) is a rule you'll apply in every concurrent project going forward.
-- **S1 Result and error handling:** `TcpStream` operations return `Result`. The chat server error handling follows the exact same `?` propagation pattern you used for `File::open` in the hex viewer — just applied to socket I/O instead of file I/O.
+- **S1 Result and error handling:** `TcpStream` operations return `Result`. The chat server error handling follows the exact same `?` propagation pattern you used for `File::open` in the hex viewer - just applied to socket I/O instead of file I/O.
 - **Arc<Mutex> (new in S3):** The chat server uses `Arc<Mutex<HashMap<String, Sender<String>>>>` for the client list. This is the canonical pattern for shared mutable state across threads. You will use it in every concurrent project from here.
 - **S2 structs:** `ChatMessage` is a struct. `Client` is a struct. You're doing the same data modeling you practiced in Section 2, now for a networking domain.
 - **S2 enums:** `MessageKind` is an enum. The same exhaustive pattern matching with `match` applies here.
-- **S2 `HashMap`:** The client registry is a `HashMap<username, Sender>`. Same HashMap you've used before — different key and value types.
+- **S2 `HashMap`:** The client registry is a `HashMap<username, Sender>`. Same HashMap you've used before - different key and value types.
 
 The difficulty is not any individual concept. The difficulty is combining all of them under concurrency, where the borrow checker enforces rules you could previously ignore.
 
 ---
 
-## How This Project Works in Rust — The Full Picture
+## How This Project Works in Rust - The Full Picture
 
 The chat server operates through three Rust concepts working together simultaneously:
 
-**TCP sockets.** `TcpListener` binds to a port and produces `TcpStream` values as clients connect. Each `TcpStream` is a full-duplex connection — you can read from it and write to it independently. `try_clone()` creates a second handle to the same underlying socket, which lets you give one handle to a read thread and one to a write thread without violating ownership.
+**TCP sockets.** `TcpListener` binds to a port and produces `TcpStream` values as clients connect. Each `TcpStream` is a full-duplex connection - you can read from it and write to it independently. `try_clone()` creates a second handle to the same underlying socket, which lets you give one handle to a read thread and one to a write thread without violating ownership.
 
-**Shared state.** Multiple threads need access to the client registry — to add clients when they connect, remove them when they disconnect, and get write channels when broadcasting. `Arc` makes the `HashMap` accessible from any number of threads without copying it. `Mutex` ensures only one thread can modify the map at a time, preventing data races.
+**Shared state.** Multiple threads need access to the client registry - to add clients when they connect, remove them when they disconnect, and get write channels when broadcasting. `Arc` makes the `HashMap` accessible from any number of threads without copying it. `Mutex` ensures only one thread can modify the map at a time, preventing data races.
 
 **Channels.** The broadcaster does not write to each client's socket directly. Instead, each client has a dedicated `mpsc` channel. Broadcasting means: lock the client map briefly, clone all the `Sender` handles, release the lock, then send a message to each `Sender`. The actual socket write happens in each client's write thread, after the lock is released. This pattern keeps lock-hold time short and avoids doing I/O under a lock.
 
@@ -467,7 +467,7 @@ Handle Ctrl+C. When the server receives SIGINT:
 
 Simple approach: use an `Arc<AtomicBool>` as a running flag. Set it to `false` in a Ctrl+C handler. Check it in the accept loop.
 
-For the netcat-based test, you can also just kill the process — netcat clients will disconnect cleanly when the server closes.
+For the netcat-based test, you can also just kill the process - netcat clients will disconnect cleanly when the server closes.
 
 ---
 
@@ -481,7 +481,7 @@ type ClientMap = Arc<Mutex<HashMap<String, Sender<String>>>>;
 
 This is what gets cloned into every thread. The `String` key is the username. The `Sender<String>` is how you get messages to that client's write thread.
 
-**Cloning before moving — the required pattern:**
+**Cloning before moving - the required pattern:**
 ```rust
 let clients_for_thread = Arc::clone(&clients);
 thread::spawn(move || {
@@ -492,7 +492,7 @@ thread::spawn(move || {
 
 **Splitting read and write** (inside a function returning `Result<(), io::Error>`):
 ```rust
-// try_clone() returns Result — propagate the error with ? instead of panicking
+// try_clone() returns Result - propagate the error with ? instead of panicking
 let write_stream = stream.try_clone()?;
 let read_stream = stream;  // moved into BufReader
 // ...
@@ -502,12 +502,12 @@ let read_stream = stream;  // moved into BufReader
 ```rust
 let (client_tx, client_rx) = mpsc::channel::<String>();
 {
-    // .unwrap() on Mutex::lock() is correct here — the only way it returns Err
+    // .unwrap() on Mutex::lock() is correct here - the only way it returns Err
     // is if the Mutex is "poisoned" (another thread panicked while holding it).
     // That's a programming error, so panicking is the right response.
     let mut map = clients.lock().unwrap();
     map.insert(username.clone(), client_tx);
-}  // lock released here — important
+}  // lock released here - important
 // ...
 ```
 
@@ -525,9 +525,9 @@ thread::spawn(move || {
 **When a client disconnects (read side returns):**
 ```rust
 // Remove from map so no one tries to send to them
-// .unwrap() is intentional — see "Registering a client" note above
+// .unwrap() is intentional - see "Registering a client" note above
 clients.lock().unwrap().remove(&username);
-// The Sender is dropped from the map — this closes the write thread's Receiver
+// The Sender is dropped from the map - this closes the write thread's Receiver
 // The write thread's for loop ends, thread terminates
 // ...
 ```
@@ -536,7 +536,7 @@ clients.lock().unwrap().remove(&username);
 ```rust
 // Collect senders first (brief lock), then send (no lock)
 let senders: Vec<Sender<String>> = {
-    let map = clients.lock().unwrap();  // .unwrap() intentional — see above
+    let map = clients.lock().unwrap();  // .unwrap() intentional - see above
     map.iter()
         .filter(|(name, _)| *name != skip)
         .map(|(_, tx)| tx.clone())
@@ -550,7 +550,7 @@ for tx in senders {
 **Detecting EOF vs error on reads:**
 ```rust
 match reader.read_line(&mut line) {
-    Ok(0) => break,          // EOF — clean disconnect
+    Ok(0) => break,          // EOF - clean disconnect
     Ok(_) => { /* process */ }
     Err(e) => {
         eprintln!("Read error: {e}");
@@ -573,7 +573,7 @@ You held a `MutexGuard` across a `.await` boundary (or tried to send it to anoth
 The closure passed to `thread::spawn` references data that might not live long enough. Fix: use `move` keyword on the closure, and `Arc::clone` anything you need inside. The `move` keyword transfers ownership of the captured variables into the closure.
 
 **"`broadcast_rx` moved into closure"**
-You tried to clone `broadcast_rx`. You can't — `Receiver` is not `Clone`. Only `Sender` is `Clone`. This is intentional: the broadcaster owns the one `Receiver`, and clients each own a cloned `Sender`.
+You tried to clone `broadcast_rx`. You can't - `Receiver` is not `Clone`. Only `Sender` is `Clone`. This is intentional: the broadcaster owns the one `Receiver`, and clients each own a cloned `Sender`.
 
 ---
 
@@ -581,7 +581,7 @@ You tried to clone `broadcast_rx`. You can't — `Receiver` is not `Clone`. Only
 
 **Private messages.** Detect messages starting with `/pm username ` and route them only to that user. Look up their `Sender` in the client map and send directly.
 
-**Rooms.** Add `/join #roomname` and `/leave #roomname` commands. The client map becomes a `HashMap<String, HashMap<String, Sender<String>>>` — room name → (username → sender). Only broadcast within the current room.
+**Rooms.** Add `/join #roomname` and `/leave #roomname` commands. The client map becomes a `HashMap<String, HashMap<String, Sender<String>>>` - room name → (username → sender). Only broadcast within the current room.
 
 **Message history.** Store the last 50 messages in an `Arc<Mutex<VecDeque<String>>>`. When a new client connects, send them the history before entering the main loop.
 
@@ -611,7 +611,7 @@ nc localhost 8080  # Carol
 ```
 Type in one, verify the message appears in the others (not in the sender's terminal).
 
-**Stress test — 50 simultaneous connections:**
+**Stress test - 50 simultaneous connections:**
 ```bash
 # On Linux/macOS, open many connections at once
 for i in $(seq 1 50); do
@@ -632,7 +632,7 @@ nc localhost 8080
 # Connect with username "alice"
 # Disconnect
 # Connect again with username "alice"
-# Should work — alice's name is no longer in the registry
+# Should work - alice's name is no longer in the registry
 ```
 
 ---
@@ -668,7 +668,7 @@ fn timestamp() -> String {
 
 When you finish this project you'll have practiced:
 
-- `Arc<Mutex<T>>` under real concurrent load — not a toy example
+- `Arc<Mutex<T>>` under real concurrent load - not a toy example
 - mpsc channels for message delivery between threads
 - `thread::spawn` with captured state
 - `TcpListener` / `TcpStream` for real network I/O
@@ -680,4 +680,4 @@ When you finish this project you'll have practiced:
 
 More importantly: you'll understand *why* Rust's ownership rules are the way they are. Sharing mutable state across threads is genuinely hard. Rust forces you to be explicit about it, catches mistakes at compile time, and gives you tools (`Arc`, `Mutex`, channels) that make the correct patterns clear.
 
-The next time you read C code that shares a socket descriptor between threads with a global array protected by a mutex, you'll see the exact same pattern — but now you'll understand the guarantees and the failure modes.
+The next time you read C code that shares a socket descriptor between threads with a global array protected by a mutex, you'll see the exact same pattern - but now you'll understand the guarantees and the failure modes.

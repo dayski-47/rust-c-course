@@ -1,9 +1,9 @@
-# Doc 08 — Allocator-Aware Programming
+# Doc 08 - Allocator-Aware Programming
 
 🟡 Every message nexus routes allocates memory. A tiny message going to 1,000
 subscribers might trigger 1,000 `Vec<u8>` allocations, one per subscriber. Or it
 might trigger one allocation, shared by all 1,000 subscribers. The difference is
-`Bytes` — an Arc-backed reference-counted byte buffer that clones in O(1). This
+`Bytes` - an Arc-backed reference-counted byte buffer that clones in O(1). This
 doc covers memory-aware programming for nexus: when to allocate, how to share, and
 how to measure.
 
@@ -11,7 +11,7 @@ how to measure.
 
 ## How Rust Allocates
 
-Every `Vec`, `Box`, `String`, and `Arc` eventually calls the global allocator —
+Every `Vec`, `Box`, `String`, and `Arc` eventually calls the global allocator -
 usually jemalloc or the system malloc. An allocation costs:
 - A call into the allocator (~10–100 ns depending on contention)
 - A cache miss when accessing newly allocated memory
@@ -47,7 +47,7 @@ This is not achievable on any system.
 
 ## `bytes::Bytes`: O(1) Clone
 
-The `bytes` crate provides `Bytes` — an Arc-backed reference-counted byte buffer:
+The `bytes` crate provides `Bytes` - an Arc-backed reference-counted byte buffer:
 
 ```toml
 [dependencies]
@@ -57,7 +57,7 @@ bytes = "1"
 ```rust
 use bytes::Bytes;
 
-// Bytes is like Arc<[u8]> — cloning increments a reference count
+// Bytes is like Arc<[u8]> - cloning increments a reference count
 let payload = Bytes::from(vec![0u8; 1024]);  // One allocation: 1024 bytes + Arc overhead
 
 let clone1 = payload.clone();  // No allocation: just increments a counter
@@ -78,7 +78,7 @@ pub async fn route(&self, topic: &str, seq: u64, payload: Bytes) {
     let subs = self.subscriptions.read().await;
     if let Some(subs_for_topic) = subs.get(topic) {
         for sub in subs_for_topic.values() {
-            // .clone() on Bytes is O(1) — atomic reference count increment
+            // .clone() on Bytes is O(1) - atomic reference count increment
             sub.try_send((seq, payload.clone())).ok();
         }
     }
@@ -86,7 +86,7 @@ pub async fn route(&self, topic: &str, seq: u64, payload: Bytes) {
 ```
 
 The message payload is allocated once when received from the client, then shared by
-reference among all subscribers. Each `Bytes::clone()` is a single atomic increment —
+reference among all subscribers. Each `Bytes::clone()` is a single atomic increment -
 about 5 ns on x86-64.
 
 ---
@@ -225,7 +225,7 @@ pub fn process_frame_with_arena(frame: Bytes) {
     // The arena allocates everything in one contiguous block
     let arena = Bump::new();
 
-    // All allocations here come from the arena — no syscalls
+    // All allocations here come from the arena - no syscalls
     let parsed_topic = arena.alloc_str(&parse_topic(&frame));
     let headers: &[u8] = arena.alloc_slice_copy(&frame[..16]);
 
@@ -237,7 +237,7 @@ pub fn process_frame_with_arena(frame: Bytes) {
 ```
 
 A bump allocator works by keeping a pointer into a pre-allocated block and bumping
-it forward for each allocation. Freeing is O(1) — just reset the pointer to zero.
+it forward for each allocation. Freeing is O(1) - just reset the pointer to zero.
 There's no per-object bookkeeping, no fragmentation, no free list.
 
 **When to use bumpalo:**
@@ -320,10 +320,10 @@ Here's the complete allocation story for one nexus message:
 ```
 Client sends: PUBLISH "alerts" 47-byte payload
 
-1. TcpStream → BufReader: bytes in reader buffer (no allocation — buffer pre-allocated)
+1. TcpStream → BufReader: bytes in reader buffer (no allocation - buffer pre-allocated)
 
 2. NexusCodec::decode: 
-   - Reads header from buffer (no allocation — reads into existing BytesMut)
+   - Reads header from buffer (no allocation - reads into existing BytesMut)
    - frame.payload = Bytes::from(src.split_to(16 + payload_len).freeze())
      → One allocation: 63 bytes (16 header + 47 payload)
    
@@ -345,7 +345,7 @@ Total allocations per message regardless of subscriber count: 1 (for the receive
 ```
 
 Without `Bytes`, step 4 would be 1000 allocations. With `Bytes`, it's 1000 atomic
-increments and 1000 allocations in step 5 (which is irreducible — you need one frame
+increments and 1000 allocations in step 5 (which is irreducible - you need one frame
 per subscriber).
 
 ---
@@ -378,7 +378,7 @@ the bottleneck. It adds a dependency and a larger binary.
 
 ## Exercises
 
-**Exercise 1 — Bytes in the Routing Path**
+**Exercise 1 - Bytes in the Routing Path**
 
 In `TopicMap::route()`, change the function signature from `payload: Vec<u8>` to
 `payload: Bytes`. Update all callers. Run the test suite.
@@ -387,7 +387,7 @@ Write a benchmark comparing the old `Vec<u8>` clone approach vs the new `Bytes` 
 approach with 100 subscribers. Use `criterion::black_box()` to prevent the compiler
 from optimizing away the clones. The `Bytes` version should be roughly 100× faster.
 
-**Exercise 2 — Pre-Allocate Subscriber Lists**
+**Exercise 2 - Pre-Allocate Subscriber Lists**
 
 Add `HashMap::with_capacity(16)` to `TopicState::new()`. Use `dhat` (or count
 allocations manually) to verify that inserting the first 16 subscribers triggers zero
@@ -396,7 +396,7 @@ rehashes. Then insert 17 subscribers and observe the single rehash.
 For a topic with 1000 subscribers, measure the total allocation count with
 `with_capacity(0)` vs `with_capacity(1024)`. Report the reduction in rehash operations.
 
-**Exercise 3 — Build Frame without Extra Copy**
+**Exercise 3 - Build Frame without Extra Copy**
 
 Implement `encode_deliver_frame(seq: u64, payload: &Bytes) -> Bytes` using
 `BytesMut::with_capacity(16 + payload.len())` and a series of `buf.put_*` calls.
@@ -409,7 +409,7 @@ Verify with a unit test that:
 
 ## Checklist
 
-- [ ] Message payloads use `bytes::Bytes` — not `Vec<u8>` — for sharing across subscribers
+- [ ] Message payloads use `bytes::Bytes` - not `Vec<u8>` - for sharing across subscribers
 - [ ] `Bytes::clone()` used in routing loop (O(1), not O(n))
 - [ ] Frame encoding uses `BytesMut::with_capacity(exact_size)` before `freeze()`
 - [ ] Long-lived subscriber data uses `Arc<T>` for shared structures

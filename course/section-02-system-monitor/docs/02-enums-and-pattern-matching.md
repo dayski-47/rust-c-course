@@ -35,11 +35,11 @@ enum CollectorResult {
 }
 ```
 
-This is an algebraic data type. The size of `CollectorResult` in memory is the size of its largest variant, plus a tag byte to identify which variant is active. The compiler tracks that tag for you — you can never read the wrong variant's data. In C you'd do this with a tagged union, manually, with all the bugs that implies.
+This is an algebraic data type. The size of `CollectorResult` in memory is the size of its largest variant, plus a tag byte to identify which variant is active. The compiler tracks that tag for you - you can never read the wrong variant's data. In C you'd do this with a tagged union, manually, with all the bugs that implies.
 
 ---
 
-## match — The Most Important Control Flow in Rust
+## match - The Most Important Control Flow in Rust
 
 `match` is exhaustive. The compiler checks that you've handled every possible variant. If you add a new enum variant later and forget to handle it in a `match`, the build fails. This is enormously valuable for correctness.
 
@@ -95,7 +95,7 @@ match error_code {
 
 `_` matches everything and discards the value. Use it when you have a small number of interesting cases and want to handle the rest in bulk.
 
-### Match guards — conditional arms
+### Match guards - conditional arms
 
 You can add an `if` condition to a match arm:
 
@@ -126,7 +126,7 @@ match error_code {
 
 ---
 
-## if let — The Single-Variant Shorthand
+## if let - The Single-Variant Shorthand
 
 Sometimes you only care about one variant. Writing a full `match` with `_` for everything else feels heavy. `if let` is the shortcut:
 
@@ -157,7 +157,7 @@ if let CollectorResult::Cpu(pct) = collector_result {
 
 ---
 
-## while let — Keep Going Until It Doesn't Match
+## while let - Keep Going Until It Doesn't Match
 
 Useful for draining iterators or channels:
 
@@ -310,7 +310,7 @@ enum MetricValue {
     RawBytes(u64),  // new variant added here
 }
 ```
-Every `match` in your codebase that pattern-matches `MetricValue` without a `_` catch-all will now fail to compile. The compiler tells you exactly which files and lines need updating. This is intentional — it forces you to handle the new case everywhere. The alternative (silently ignoring new variants) causes bugs. If you're a library author adding a variant to a public enum, use `#[non_exhaustive]` to warn users that new variants may appear.
+Every `match` in your codebase that pattern-matches `MetricValue` without a `_` catch-all will now fail to compile. The compiler tells you exactly which files and lines need updating. This is intentional - it forces you to handle the new case everywhere. The alternative (silently ignoring new variants) causes bugs. If you're a library author adding a variant to a public enum, use `#[non_exhaustive]` to warn users that new variants may appear.
 
 **`#[non_exhaustive]` on external library enums.**
 When you depend on a crate that marks an enum `#[non_exhaustive]`, you must include a `_` arm in your match even if you handle every current variant:

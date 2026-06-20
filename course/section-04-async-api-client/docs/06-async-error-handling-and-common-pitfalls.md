@@ -1,6 +1,6 @@
-# 06 — Async Error Handling and Common Pitfalls 🔴
+# 06 - Async Error Handling and Common Pitfalls 🔴
 
-Error handling in async Rust is mostly the same as synchronous Rust — `Result<T, E>`, the `?` operator, `thiserror` for defining error types. But there are a handful of async-specific mistakes that are hard to debug because the compiler doesn't always catch them. This doc covers those, plus some tools to help when things go wrong.
+Error handling in async Rust is mostly the same as synchronous Rust - `Result<T, E>`, the `?` operator, `thiserror` for defining error types. But there are a handful of async-specific mistakes that are hard to debug because the compiler doesn't always catch them. This doc covers those, plus some tools to help when things go wrong.
 
 ---
 
@@ -8,15 +8,15 @@ Error handling in async Rust is mostly the same as synchronous Rust — `Result<
 
 Not all mistakes are equally dangerous. Here is how to rank them by how hard they are to diagnose:
 
-1. **Compiler error** — caught immediately. Missing `Send` bound, non-`'static` reference into a spawned task. You can't ship broken code. The cost is zero because you fix it before it runs.
+1. **Compiler error** - caught immediately. Missing `Send` bound, non-`'static` reference into a spawned task. You can't ship broken code. The cost is zero because you fix it before it runs.
 
-2. **Runtime panic** — visible in logs. `unwrap()` on `None` inside a spawned task, `RefCell` borrow conflict, index out of bounds. The program crashes. Loud, easy to find in a stack trace.
+2. **Runtime panic** - visible in logs. `unwrap()` on `None` inside a spawned task, `RefCell` borrow conflict, index out of bounds. The program crashes. Loud, easy to find in a stack trace.
 
-3. **Silent hang** — the task runs but never completes. Awaiting a future that never resolves, deadlock, holding a lock that no one releases. The program appears to work but specific operations freeze. No error, no panic. Hard to reproduce under testing if the trigger is a race condition.
+3. **Silent hang** - the task runs but never completes. Awaiting a future that never resolves, deadlock, holding a lock that no one releases. The program appears to work but specific operations freeze. No error, no panic. Hard to reproduce under testing if the trigger is a race condition.
 
-4. **Silent data loss** — the task completes but data is wrong or missing. A dropped future cancelled a write mid-operation. A broadcast channel lagged and dropped messages. A `select!` branch was cancelled unexpectedly. The program finishes successfully but produces incorrect output. The hardest to catch because automated tests often only check the happy path.
+4. **Silent data loss** - the task completes but data is wrong or missing. A dropped future cancelled a write mid-operation. A broadcast channel lagged and dropped messages. A `select!` branch was cancelled unexpectedly. The program finishes successfully but produces incorrect output. The hardest to catch because automated tests often only check the happy path.
 
-5. **Memory growth** — no crash yet, but approaching OOM. An unbounded channel filling up because the consumer is slow. Tasks accumulating in a JoinSet because no one calls `join_next`. Arc references not being released because of a cycle. The program is "working" but memory climbs steadily until the OS kills it.
+5. **Memory growth** - no crash yet, but approaching OOM. An unbounded channel filling up because the consumer is slow. Tasks accumulating in a JoinSet because no one calls `join_next`. Arc references not being released because of a cycle. The program is "working" but memory climbs steadily until the OS kills it.
 
 The silent failures (3, 4, 5) are the dangerous ones. The compiler catches category 1. `#[should_panic]` tests and careful error handling catch category 2. Categories 3–5 require deliberately testing failure conditions, not just the happy path.
 
@@ -58,7 +58,7 @@ async fn fetch_user_repos(
         ))
         .header("User-Agent", "ghanalyze/1.0")
         .send()
-        .await?;  // ? works fine here — converts reqwest::Error via #[from]
+        .await?;  // ? works fine here - converts reqwest::Error via #[from]
 
     if response.status() == reqwest::StatusCode::FORBIDDEN {
         let reset = response
@@ -103,7 +103,7 @@ async fn rate_limit_correct() {
 }
 ```
 
-The compiler does not warn you about this. The program will "work" — it just performs terribly because your async concurrency is completely undermined. A program that should handle 100 concurrent requests becomes effectively sequential.
+The compiler does not warn you about this. The program will "work" - it just performs terribly because your async concurrency is completely undermined. A program that should handle 100 concurrent requests becomes effectively sequential.
 
 **How to spot it:** If your async program is inexplicably slow and you see `std::thread::sleep` anywhere in async code, that's your problem.
 
@@ -126,7 +126,7 @@ async fn dangerous(shared: &Mutex<Vec<String>>, item: String) {
 }
 ```
 
-What actually happens: while `slow_network_call()` runs, the executor might try to run another task that also needs this mutex. On a single-threaded runtime, that task tries to acquire the mutex from the same thread — instant deadlock. On multi-threaded, the thread that holds the mutex is blocked, and the worker thread count effectively shrinks.
+What actually happens: while `slow_network_call()` runs, the executor might try to run another task that also needs this mutex. On a single-threaded runtime, that task tries to acquire the mutex from the same thread - instant deadlock. On multi-threaded, the thread that holds the mutex is blocked, and the worker thread count effectively shrinks.
 
 ```rust
 use tokio::sync::Mutex;  // Use this when holding across .await
@@ -143,12 +143,12 @@ async fn safe_version(shared: &Mutex<Vec<String>>, item: String) {
 
 ## Pitfall 3: Forgetting to .await a Future 🟡
 
-Calling an async function without `.await` does nothing. The future is created and immediately dropped. This is the async equivalent of calling a function and ignoring its return value, but worse — in sync code, you'd at least see the side effects. With futures, nothing happens at all.
+Calling an async function without `.await` does nothing. The future is created and immediately dropped. This is the async equivalent of calling a function and ignoring its return value, but worse - in sync code, you'd at least see the side effects. With futures, nothing happens at all.
 
 ```rust
 async fn fetch_and_save(url: &str) {
     let data = download(url);        // BUG: Future created but never run!
-    save_to_disk(data);              // This also does nothing — data has the wrong type
+    save_to_disk(data);              // This also does nothing - data has the wrong type
 }
 
 async fn fetch_and_save_correct(url: &str) {
@@ -250,7 +250,7 @@ If you're not seeing the concurrency speedup you expect, check if your awaits ar
 
 ---
 
-## tokio::task::JoinSet — Handling Dynamic Task Collections
+## tokio::task::JoinSet - Handling Dynamic Task Collections
 
 When you have a dynamic number of tasks (not known at compile time), `JoinSet` handles them cleanly, especially around error handling:
 

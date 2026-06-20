@@ -1,8 +1,8 @@
-# Doc 04 — Protocol State Machines in Types
+# Doc 04 - Protocol State Machines in Types
 
 🔴 nexus connections have strict states: a client that hasn't authenticated cannot
 publish or subscribe. In C, this is a runtime enum checked on every operation. In
-Rust, it's a compile-time constraint — calling `publish()` on an unauthenticated
+Rust, it's a compile-time constraint - calling `publish()` on an unauthenticated
 connection is a type error, not a runtime error. This doc shows how to encode the
 nexus connection lifecycle in the type system.
 
@@ -39,7 +39,7 @@ int nexus_publish(nexus_conn_t *conn, const char *topic,
 **Problems with this approach:**
 
 1. Every function that needs authentication must check state manually
-2. If you forget the check, the code compiles — the bug ships
+2. If you forget the check, the code compiles - the bug ships
 3. The caller has no idea from the type signature which states are valid
 4. Tests for "wrong state" behavior require runtime setup, not compile-time verification
 
@@ -54,12 +54,12 @@ the types that can call them:
 // nexus-core/src/session.rs
 use std::marker::PhantomData;
 
-// State marker types — zero-sized, compile-time only
+// State marker types - zero-sized, compile-time only
 pub struct Unauthenticated;
 pub struct Active;
 pub struct Closed;
 
-// The connection — generic over its current state
+// The connection - generic over its current state
 pub struct Connection<S> {
     pub id: u64,
     peer_addr: std::net::SocketAddr,
@@ -70,7 +70,7 @@ pub struct Connection<S> {
 
 `PhantomData<S>` has zero size at runtime. It carries the state type `S` through
 the type system without any runtime cost. `Connection<Unauthenticated>` and
-`Connection<Active>` are different types — the compiler distinguishes them even
+`Connection<Active>` are different types - the compiler distinguishes them even
 though their runtime layout is identical.
 
 ---
@@ -92,7 +92,7 @@ impl Connection<Unauthenticated> {
 
     /// Validate auth token; if valid, transition to Active.
     ///
-    /// Consumes `self` — the unauthenticated connection cannot be used after this call.
+    /// Consumes `self` - the unauthenticated connection cannot be used after this call.
     pub fn authenticate(
         self,
         token: &str,
@@ -132,7 +132,7 @@ impl Connection<Active> {
         engine.subscribe(topic, self.id)
     }
 
-    /// Close the connection. Consumes self — can't be used after this.
+    /// Close the connection. Consumes self - can't be used after this.
     pub fn close(self) -> Connection<Closed> {
         Connection {
             id: self.id,
@@ -143,7 +143,7 @@ impl Connection<Active> {
 }
 
 impl Connection<Closed> {
-    /// No operations available — only cleanup is possible.
+    /// No operations available - only cleanup is possible.
     pub fn id(&self) -> u64 {
         self.id  // Still readable for logging
     }
@@ -153,7 +153,7 @@ impl Connection<Closed> {
 Now the compiler prevents misuse:
 
 ```rust
-// ❌ Compile error — publish() doesn't exist on Connection<Unauthenticated>
+// ❌ Compile error - publish() doesn't exist on Connection<Unauthenticated>
 let conn = Connection::new(1, peer_addr);
 conn.publish(&engine, "topic", payload).await?;
 // error[E0599]: no method named `publish` found for struct `Connection<Unauthenticated>`
@@ -163,14 +163,14 @@ let conn = Connection::new(1, peer_addr);
 let active = conn.authenticate(token, &expected_token)?;  // Transition
 active.publish(&engine, "topic", payload).await?;         // Now allowed
 
-// ❌ Using after close — doesn't compile
+// ❌ Using after close - doesn't compile
 let closed = active.close();
 closed.publish(&engine, "topic", payload).await?;
 // error[E0599]: no method named `publish` found for struct `Connection<Closed>`
 ```
 
 The error messages point to the wrong usage site. No runtime check, no `assert!`, no
-`if state != ACTIVE` — the compiler enforces the protocol.
+`if state != ACTIVE` - the compiler enforces the protocol.
 
 ---
 
@@ -211,7 +211,7 @@ impl Connection<Unauthenticated> {
 }
 ```
 
-The error variant carries a `Connection<Closed>` — the caller knows the connection
+The error variant carries a `Connection<Closed>` - the caller knows the connection
 is done and should clean up resources, without checking a separate "is closed" field.
 
 ---
@@ -248,7 +248,7 @@ pub async fn handle_connection(stream: TcpStream, engine: Arc<NexusEngine>) {
 
     engine.connection_opened();
 
-    // Now in Active state — run the main loop
+    // Now in Active state - run the main loop
     run_active(&mut framed, active, engine.clone()).await;
 
     engine.connection_closed();
@@ -313,7 +313,7 @@ async fn run_active(
         }
     }
 
-    let _closed = conn.close();  // Transition to Closed — ensures cleanup
+    let _closed = conn.close();  // Transition to Closed - ensures cleanup
 }
 ```
 
@@ -325,18 +325,18 @@ The type signature enforces the protocol.
 ## When the State Can't Be Encoded
 
 Not all protocols fit cleanly into type-state. nexus has a complication: a client
-can subscribe to multiple topics. The "subscribed to topics" state is dynamic — it's
+can subscribe to multiple topics. The "subscribed to topics" state is dynamic - it's
 a `HashSet<String>`, not a fixed type.
 
 The rule: encode the **phase** (unauthenticated, active, closed) in types. Encode
 **dynamic data** (subscribed topics list, sequence counters) in the struct fields.
 
 ```rust
-// Active connection — subscriptions are data, not type-state
+// Active connection - subscriptions are data, not type-state
 pub struct Connection<S> {
     pub id: u64,
     peer_addr: std::net::SocketAddr,
-    subscriptions: std::collections::HashSet<String>,  // Dynamic — not in type
+    subscriptions: std::collections::HashSet<String>,  // Dynamic - not in type
     _state: PhantomData<S>,
 }
 
@@ -393,7 +393,7 @@ impl tokio_util::codec::Decoder for NexusCodec<Configured> {
 ```
 
 The default type parameter `<S = Configured>` means `NexusCodec` (without a type
-parameter) is `NexusCodec<Configured>`. This is the public API — most users never
+parameter) is `NexusCodec<Configured>`. This is the public API - most users never
 see the `<S>`. The type-state is an internal implementation detail.
 
 ---
@@ -401,7 +401,7 @@ see the `<S>`. The type-state is an internal implementation detail.
 ## When to Use Type-State vs Runtime Enum
 
 **Use type-state when:**
-- An operation is *always wrong* in a given phase — calling it should never compile
+- An operation is *always wrong* in a given phase - calling it should never compile
 - The state set is small and fixed at compile time (2–5 phases)
 - Incorrect ordering of operations would be a protocol violation or security hole
 - You want compile-fail tests to document and verify the invariant
@@ -486,7 +486,7 @@ Type-level invariants have tests.
 
 ## Exercises
 
-**Exercise 1 — Implement the State Transitions**
+**Exercise 1 - Implement the State Transitions**
 
 Implement the three state types (`Unauthenticated`, `Active`, `Closed`) and the
 `Connection<S>` struct. Add:
@@ -498,12 +498,12 @@ Write a test that demonstrates the happy path (new → authenticate → close) a
 failure path (authenticate with wrong token returns `Err`, the connection is consumed
 and can't be used again).
 
-**Exercise 2 — Add Subscriptions**
+**Exercise 2 - Add Subscriptions**
 
 Add a `subscriptions: HashSet<String>` field to `Connection<S>` (accessible in all states).
 Implement on `Connection<Active>`:
-- `subscribe(&mut self, topic: String)` — insert into the HashSet
-- `unsubscribe(&mut self, topic: &str)` — remove from the HashSet
+- `subscribe(&mut self, topic: String)` - insert into the HashSet
+- `unsubscribe(&mut self, topic: &str)` - remove from the HashSet
 - `is_subscribed(&self, topic: &str) -> bool`
 
 Write a test that:
@@ -512,11 +512,11 @@ Write a test that:
 3. Unsubscribes from "alerts"
 4. Asserts `is_subscribed("alerts") == false` and `is_subscribed("metrics") == true`
 
-**Exercise 3 — trybuild Compile-Fail Tests**
+**Exercise 3 - trybuild Compile-Fail Tests**
 
 Add `trybuild` as a dev-dependency. Create the test file
 `tests/ui/publish_before_auth.rs` that attempts to call `publish()` on a
-`Connection<Unauthenticated>`. Run `cargo test` — it should pass because the file
+`Connection<Unauthenticated>`. Run `cargo test` - it should pass because the file
 fails to compile (that's the expected behavior). Create the matching `.stderr` file
 with the expected compiler error message.
 
@@ -538,7 +538,7 @@ with the expected compiler error message.
 
 The nexus connection is one state machine on the server side. The real world has
 protocols where **both sides track state independently**, and the question is how
-to prove — at compile time — that they are in sync.
+to prove - at compile time - that they are in sync.
 
 Consider a TLS handshake. The client transitions:
 `Idle → HelloSent → KeyExchanged → Established`.
@@ -547,7 +547,7 @@ The server transitions:
 
 They arrive at `Established` through different paths. If the server calls
 `send_application_data()` before receiving the finished message, it's a protocol
-error — but the server's type-state machine says it's in `Established`, so the
+error - but the server's type-state machine says it's in `Established`, so the
 compiler won't catch it.
 
 The solution is **session types**: each side's state is parameterized on what the
@@ -556,7 +556,7 @@ approach is correct: the server's state machine transitions in lockstep with the
 wire protocol messages it receives. If the client sends a message that's only
 valid in `Active` state and the server receives it while still in
 `Unauthenticated`, the server's state-checking logic (which does the `Err(Closed)`
-transition) handles it — the type system enforces state on the server side.
+transition) handles it - the type system enforces state on the server side.
 
 The practical takeaway: **let the protocol messages drive your state transitions**.
 Your server's type-state machine advances when a valid message arrives; invalid
@@ -573,7 +573,7 @@ runtime**, not just that certain steps were taken in order.
 The canonical example in nexus is subscription authorization. A client subscribes
 to a topic, and you want to ensure that only subscribed clients can publish to that
 topic. The type-state `Connection<Active>` tells you the connection is authenticated
-— it doesn't tell you *which topics* the client subscribed to.
+- it doesn't tell you *which topics* the client subscribed to.
 
 A **capability token** is a zero-sized type that proves a specific capability was
 granted. It costs zero bytes at runtime (the compiler eliminates it), but its
@@ -581,7 +581,7 @@ presence as a function parameter makes it impossible to call the function withou
 having been through the granting code path.
 
 ```rust
-// Zero-sized — compiles to nothing at runtime.
+// Zero-sized - compiles to nothing at runtime.
 // Only our module can construct this (private _private field).
 pub struct SubscriptionToken<'conn> {
     topic: String,
@@ -615,7 +615,7 @@ impl Connection<Active> {
         token: &SubscriptionToken<'_>,
         payload: &[u8],
     ) -> Result<(), NexusError> {
-        // No runtime auth check needed — the token IS the proof
+        // No runtime auth check needed - the token IS the proof
         // Token lifetime is tied to the connection, so we know
         // the connection is still alive and the subscription is valid
         self.send_publish(token.topic(), payload)
@@ -625,7 +625,7 @@ impl Connection<Active> {
 
 The `'conn` lifetime on `SubscriptionToken<'conn>` ties the token's lifetime to
 the connection. When the connection is dropped, all tokens it handed out become
-invalid — the borrow checker enforces this at compile time. There is no runtime
+invalid - the borrow checker enforces this at compile time. There is no runtime
 expiry check needed.
 
 The pattern in production systems:
@@ -638,7 +638,7 @@ The pattern in production systems:
 | Role-based access | Trait hierarchy: `CanRead: CanWrite: CanAdmin` |
 
 Private constructors are the key. If `SubscriptionToken::new()` is private, there
-is no way to fabricate a token — the caller must go through `subscribe()`.
+is no way to fabricate a token - the caller must go through `subscribe()`.
 
 ---
 
@@ -675,7 +675,7 @@ pub struct ConnectionRouter {
 
 The cost: each async method call allocates a `Box`. For a connection handler that
 processes thousands of messages per second, this is measurable but usually
-acceptable — the TCP I/O cost dominates.
+acceptable - the TCP I/O cost dominates.
 
 **Option 2: Manual `BoxFuture`**
 
@@ -685,7 +685,7 @@ Without `async_trait`, write the return type explicitly:
 use std::future::Future;
 use std::pin::Pin;
 
-// A type alias for clarity — this is the common pattern in tokio internals
+// A type alias for clarity - this is the common pattern in tokio internals
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 pub trait ProtocolHandler: Send + Sync {

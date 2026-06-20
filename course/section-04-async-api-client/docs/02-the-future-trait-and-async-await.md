@@ -1,4 +1,4 @@
-# 02 — The Future Trait and async/await 🟡
+# 02 - The Future Trait and async/await 🟡
 
 In the last doc, we talked about *why* async is useful. Now we need to understand *how* it works. The good news: the entire async system in Rust is built on one trait. Once you understand that trait, everything else makes sense.
 
@@ -23,7 +23,7 @@ pub enum Poll<T> {
 
 A `Future` is anything that can be asked "are you done yet?" and answers either "yes, here's the result" (`Ready`) or "not yet" (`Pending`).
 
-That's the whole thing. The complexity in async Rust doesn't come from the trait itself — it comes from *what the compiler does with it* and *how executors drive it*.
+That's the whole thing. The complexity in async Rust doesn't come from the trait itself - it comes from *what the compiler does with it* and *how executors drive it*.
 
 ---
 
@@ -39,7 +39,7 @@ async fn load_user(id: u64) -> String {
 }
 ```
 
-The compiler does NOT write a function that runs top to bottom. Instead, it generates a **state machine** — a struct with an enum inside it that tracks where the function currently is:
+The compiler does NOT write a function that runs top to bottom. Instead, it generates a **state machine** - a struct with an enum inside it that tracks where the function currently is:
 
 ```
 State 0: Just started. About to call fetch_from_db().
@@ -125,7 +125,7 @@ Async blocks are useful when you want to pass a future to `tokio::spawn` or `tok
 
 One of the most common operations in async code: start several futures at the same time and wait for all of them.
 
-### tokio::join! — Wait for All
+### tokio::join! - Wait for All
 
 ```rust
 use tokio::time::{sleep, Duration};
@@ -158,7 +158,7 @@ async fn main() {
 
 `tokio::join!` polls all given futures concurrently and returns when *all* of them have completed. The results come back as a tuple in the same order as the arguments.
 
-### tokio::select! — Use the First
+### tokio::select! - Use the First
 
 `select!` is different: it races multiple futures against each other and returns as soon as *any one* of them completes, cancelling the rest.
 
@@ -198,7 +198,7 @@ Poll::Ready("hello".to_string())
 Poll::Pending
 ```
 
-The **waker** is a callback. When a future returns `Pending`, it promises to call the waker when it's ready to make progress. The executor uses this to know when to poll again — rather than spinning in a busy loop checking every microsecond.
+The **waker** is a callback. When a future returns `Pending`, it promises to call the waker when it's ready to make progress. The executor uses this to know when to poll again - rather than spinning in a busy loop checking every microsecond.
 
 ---
 
@@ -206,7 +206,7 @@ The **waker** is a callback. When a future returns `Pending`, it promises to cal
 
 You may encounter `Pin<&mut T>` in Future-related code and compiler errors. Here's the minimum you need to know:
 
-When an async function has local variables that hold references to other local variables, the generated state machine becomes **self-referential** — a field in the struct might contain a pointer to another field in the same struct. If you move that struct in memory, the pointer breaks.
+When an async function has local variables that hold references to other local variables, the generated state machine becomes **self-referential** - a field in the struct might contain a pointer to another field in the same struct. If you move that struct in memory, the pointer breaks.
 
 `Pin<T>` is a wrapper that tells the compiler: "this value will not be moved after it's pinned." This ensures those self-referential pointers stay valid.
 
@@ -270,7 +270,7 @@ fetch_data("https://api.github.com");
 fetch_data("https://api.github.com").await;
 ```
 
-**Using sequential awaits when you want concurrency.** As shown above, `let a = foo().await; let b = bar().await;` is sequential — `bar` doesn't start until `foo` finishes. Use `tokio::join!` when you want both running at the same time.
+**Using sequential awaits when you want concurrency.** As shown above, `let a = foo().await; let b = bar().await;` is sequential - `bar` doesn't start until `foo` finishes. Use `tokio::join!` when you want both running at the same time.
 
 **Trying to return a Future from a non-async function without boxing it.** If a non-async function needs to return a future, the return type gets complicated because async functions generate anonymous types. The usual fix is `-> impl Future<Output = T>` or `-> Pin<Box<dyn Future<Output = T>>>` (the boxed version works across trait objects).
 
@@ -280,13 +280,13 @@ fetch_data("https://api.github.com").await;
 
 ## How It Breaks
 
-**A Future that never returns `Poll::Ready` hangs forever.** If your async code awaits something that never resolves — a channel that no one ever sends to, a network call to a server that never responds and has no timeout, a `Mutex` that no one ever releases — the task hangs silently. No error, no panic, no log message. The task is just stuck in `Pending` indefinitely. Use timeouts (`tokio::time::timeout`) around all operations that could hang, and ensure every channel has a path to being closed.
+**A Future that never returns `Poll::Ready` hangs forever.** If your async code awaits something that never resolves - a channel that no one ever sends to, a network call to a server that never responds and has no timeout, a `Mutex` that no one ever releases - the task hangs silently. No error, no panic, no log message. The task is just stuck in `Pending` indefinitely. Use timeouts (`tokio::time::timeout`) around all operations that could hang, and ensure every channel has a path to being closed.
 
 **Forgetting to `.await` a future.** You write `tokio::time::sleep(Duration::from_secs(1))` without `.await`. The future is created as a value but never polled. No sleep happens. No error is raised. The future is silently dropped and the function proceeds immediately. This is the single most common async mistake. The compiler sometimes warns about "unused `impl Future`" but not always, especially when the future is returned from a function that ignores the return value. Always `.await` async calls.
 
-**Dropping a future cancels it.** If you drop a `JoinHandle` without awaiting it, the underlying task keeps running (it's detached). But if you drop a future that's not inside a spawn — for example, you're using `select!` or you manually drop it — whatever work it was doing is cancelled at the current yield point. If the future was in the middle of writing data to a database or a socket, that write is abandoned. The partial write may or may not be visible on the other end, depending on the protocol. Design for cancellation: do work that must not be interrupted in a `spawn_blocking` call, or accept that cancelled futures may leave partial state.
+**Dropping a future cancels it.** If you drop a `JoinHandle` without awaiting it, the underlying task keeps running (it's detached). But if you drop a future that's not inside a spawn - for example, you're using `select!` or you manually drop it - whatever work it was doing is cancelled at the current yield point. If the future was in the middle of writing data to a database or a socket, that write is abandoned. The partial write may or may not be visible on the other end, depending on the protocol. Design for cancellation: do work that must not be interrupted in a `spawn_blocking` call, or accept that cancelled futures may leave partial state.
 
-**`select!` cancels the losing branch.** When using `tokio::select!`, as soon as one branch completes, all the other branches are dropped. If a losing branch was in the middle of an operation — writing to a database, sending a network request, holding a lock — it is cancelled at its current `.await` point. This is a common source of data loss and corruption when developers use `select!` without understanding cancellation. If a branch must complete even if it loses the race, run it with `tokio::spawn` instead of inside `select!`.
+**`select!` cancels the losing branch.** When using `tokio::select!`, as soon as one branch completes, all the other branches are dropped. If a losing branch was in the middle of an operation - writing to a database, sending a network request, holding a lock - it is cancelled at its current `.await` point. This is a common source of data loss and corruption when developers use `select!` without understanding cancellation. If a branch must complete even if it loses the race, run it with `tokio::spawn` instead of inside `select!`.
 
 ---
 
@@ -303,7 +303,7 @@ The runtime loop is simpler than it looks. Here's what Tokio does at its core:
 
 The future itself is responsible for calling `wake()` when it's ready to make progress. That's what I/O drivers do: they register with the OS (via epoll on Linux, kqueue on macOS, IOCP on Windows), and when the OS says "this socket is readable now," the driver calls `wake()` on the waker the future provided. The executor then re-polls the future.
 
-Here's the simplest possible executor (for understanding — don't use in production):
+Here's the simplest possible executor (for understanding - don't use in production):
 
 ```rust
 use std::future::Future;
@@ -332,7 +332,7 @@ fn block_on<F: Future>(mut future: F) -> F::Output {
 }
 ```
 
-The real Tokio executor does the same thing but instead of spin-looping on `Pending`, it parks the thread in an epoll wait — zero CPU usage until the OS says something is ready.
+The real Tokio executor does the same thing but instead of spin-looping on `Pending`, it parks the thread in an epoll wait - zero CPU usage until the OS says something is ready.
 
 ## What `.await` Actually Does
 
@@ -354,11 +354,11 @@ let data = loop {
 };
 ```
 
-The `async fn` becomes an enum (a state machine) where each `.await` point is a variant. The state machine stores all the local variables that are live across the `.await`. When the future is polled again after returning `Pending`, it jumps back to the exact `.await` point where it suspended — it picks up exactly where it left off.
+The `async fn` becomes an enum (a state machine) where each `.await` point is a variant. The state machine stores all the local variables that are live across the `.await`. When the future is polled again after returning `Pending`, it jumps back to the exact `.await` point where it suspended - it picks up exactly where it left off.
 
 ## Why Pin Exists (and What the Error Means)
 
-Every `async fn` that holds a reference across an `.await` point creates a **self-referential struct** — a state machine that contains both data and a reference to that data. If that struct were moved in memory (by something like a `Vec` resize), the internal reference would become dangling.
+Every `async fn` that holds a reference across an `.await` point creates a **self-referential struct** - a state machine that contains both data and a reference to that data. If that struct were moved in memory (by something like a `Vec` resize), the internal reference would become dangling.
 
 ```rust
 async fn example() {
@@ -374,10 +374,10 @@ async fn example() {
 `Pin<P>` is the type that prevents the thing behind a pointer from being moved. Once a future is pinned, it stays at that memory address until it completes.
 
 In practice:
-- `Box::pin(future)` — heap-allocates the future and pins it there
-- `tokio::pin!(future)` — macro that pins a future to the stack
-- `Pin::new(&mut future)` — for futures that implement `Unpin` (can be safely moved)
+- `Box::pin(future)` - heap-allocates the future and pins it there
+- `tokio::pin!(future)` - macro that pins a future to the stack
+- `Pin::new(&mut future)` - for futures that implement `Unpin` (can be safely moved)
 
 **When you'll see `Unpin` errors:** If you write a function that takes `impl Future` and tries to call `.await` on it, you might need `impl Future + Unpin` or to box it. The error `the trait 'Unpin' is not implemented` means you're trying to use a future that might be self-referential in a context where it could be moved. The fix is almost always `Box::pin(your_future)`.
 
-**`Unpin` is an auto-trait:** Types that are safe to move even after pinning implement `Unpin`. All primitives, most standard library types, and most futures you write implement `Unpin` automatically. Only `async fn` bodies that hold references across `.await` points do NOT implement `Unpin` — and the compiler handles that for you.
+**`Unpin` is an auto-trait:** Types that are safe to move even after pinning implement `Unpin`. All primitives, most standard library types, and most futures you write implement `Unpin` automatically. Only `async fn` bodies that hold references across `.await` points do NOT implement `Unpin` - and the compiler handles that for you.

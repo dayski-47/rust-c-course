@@ -1,6 +1,6 @@
-# Doc 03 — Database with SQLx and SQLite 🟡
+# Doc 03 - Database with SQLx and SQLite 🟡
 
-Every API needs persistent storage. You could write SQL queries as raw strings and hope they work — that's what most languages do. SQLx does something better: it checks your SQL queries at **compile time**. If you typo a column name, reference a table that doesn't exist, or pass the wrong type, the compiler tells you. Not a runtime crash, not a test failure — the compiler.
+Every API needs persistent storage. You could write SQL queries as raw strings and hope they work - that's what most languages do. SQLx does something better: it checks your SQL queries at **compile time**. If you typo a column name, reference a table that doesn't exist, or pass the wrong type, the compiler tells you. Not a runtime crash, not a test failure - the compiler.
 
 This is a big deal. Let's see how it works.
 
@@ -16,7 +16,7 @@ The `sqlite` feature enables SQLite support. `runtime-tokio` makes SQLx work wit
 
 ## Setting Up a Connection Pool
 
-You never hold a single database connection. You hold a **pool** — a collection of connections that handlers borrow when they need to run a query and return when they're done. This is how you serve many concurrent requests without opening a new database connection for each one.
+You never hold a single database connection. You hold a **pool** - a collection of connections that handlers borrow when they need to run a query and return when they're done. This is how you serve many concurrent requests without opening a new database connection for each one.
 
 ```rust
 use sqlx::SqlitePool;
@@ -94,9 +94,9 @@ sqlx::migrate!("./migrations")
     .expect("Failed to run migrations");
 ```
 
-The `migrate!` macro embeds the migration files into your binary at compile time and runs any that haven't been applied yet. Safe to call on every startup — already-applied migrations are skipped.
+The `migrate!` macro embeds the migration files into your binary at compile time and runs any that haven't been applied yet. Safe to call on every startup - already-applied migrations are skipped.
 
-## The query! Macro — Compile-Time SQL Checking 🔴
+## The query! Macro - Compile-Time SQL Checking 🔴
 
 Here's the magic. The `sqlx::query!` macro sends your SQL to the database at **compile time** and verifies:
 - The table exists
@@ -120,7 +120,7 @@ async fn list_songs(pool: &SqlitePool) -> Vec<SongRow> {
 }
 ```
 
-The return type of `query!` is an anonymous struct with typed fields matching your SELECT columns. Try selecting a column that doesn't exist — it won't compile.
+The return type of `query!` is an anonymous struct with typed fields matching your SELECT columns. Try selecting a column that doesn't exist - it won't compile.
 
 Parameters use `?` placeholders:
 
@@ -135,7 +135,7 @@ async fn get_song_by_id(pool: &SqlitePool, id: i64) -> Option<SongRow> {
 
 Use `?` for each parameter, in order. SQLx checks that the types match at compile time.
 
-## query_as! — Mapping to Your Own Structs
+## query_as! - Mapping to Your Own Structs
 
 The `query!` macro returns an anonymous type. More often you want to map directly to your own struct:
 
@@ -241,7 +241,7 @@ async fn delete_song(pool: &SqlitePool, id: i64) -> bool {
 Note the return values:
 - `execute()` returns `SqliteQueryResult` with `rows_affected()` and `last_insert_rowid()`
 - `fetch_all()` returns `Vec<Row>`
-- `fetch_optional()` returns `Option<Row>` — use this for single-item lookups, not `fetch_one()`, which panics if nothing is found
+- `fetch_optional()` returns `Option<Row>` - use this for single-item lookups, not `fetch_one()`, which panics if nothing is found
 - `fetch_one()` returns `Row` or an error if zero or multiple rows
 
 ## Transactions 🔴
@@ -284,7 +284,7 @@ async fn create_album_with_songs(
 
 If any step returns an error and you don't call `tx.commit()`, the transaction rolls back automatically when `tx` is dropped. The `?` operator propagates errors up, so if the album insert fails, the song inserts never run and everything is left clean.
 
-Note the `&mut *tx` — transactions implement the same executor trait as pools, but you pass a mutable reference to them.
+Note the `&mut *tx` - transactions implement the same executor trait as pools, but you pass a mutable reference to them.
 
 ## Connection Pool Configuration
 
@@ -330,7 +330,7 @@ mod tests {
 }
 ```
 
-In-memory databases are fast and isolated. No need to clean up between tests — each test creates a fresh pool and a fresh schema.
+In-memory databases are fast and isolated. No need to clean up between tests - each test creates a fresh pool and a fresh schema.
 
 ## How It Breaks
 
@@ -346,11 +346,11 @@ In-memory databases are fast and isolated. No need to clean up between tests —
 
 **Using `fetch_one()` for nullable lookups**: `fetch_one()` returns an error if no row is found. For "get by id" endpoints, use `fetch_optional()` instead, which returns `Option<Row>`. Then you can return 404 when `None`.
 
-**Forgetting `?` in queries with parameters**: `sqlx::query!("SELECT ... WHERE id = ?", id)` — the `?` is the placeholder. Mixing this up with named placeholders (like `$1` in Postgres) or forgetting it entirely causes a compile or runtime error.
+**Forgetting `?` in queries with parameters**: `sqlx::query!("SELECT ... WHERE id = ?", id)` - the `?` is the placeholder. Mixing this up with named placeholders (like `$1` in Postgres) or forgetting it entirely causes a compile or runtime error.
 
-**Using `rows_affected()` to check existence**: When you update a row, check `rows_affected() > 0`. If it returns 0, the row didn't exist — return 404. Don't skip this check.
+**Using `rows_affected()` to check existence**: When you update a row, check `rows_affected() > 0`. If it returns 0, the row didn't exist - return 404. Don't skip this check.
 
-**Running migrations every startup without `sqlx::migrate!`**: Calling the migration function manually (instead of using the macro) means the files aren't embedded in the binary. The macro is the right way — it includes and checksums the migration files at compile time.
+**Running migrations every startup without `sqlx::migrate!`**: Calling the migration function manually (instead of using the macro) means the files aren't embedded in the binary. The macro is the right way - it includes and checksums the migration files at compile time.
 
 ---
 
@@ -361,7 +361,7 @@ In-memory databases are fast and isolated. No need to clean up between tests —
 
 **The solution: offline mode.**
 
-**Step 1 — generate the query metadata cache** (run locally, with a live database):
+**Step 1 - generate the query metadata cache** (run locally, with a live database):
 
 ```bash
 export DATABASE_URL="sqlite:./melody.db"
@@ -369,17 +369,17 @@ cargo sqlx prepare --workspace
 ```
 
 This creates a `.sqlx/` directory with a JSON file for every macro-checked query.
-These files capture what the compiler needs — column types, parameter types — without
+These files capture what the compiler needs - column types, parameter types - without
 needing a live database.
 
-**Step 2 — commit the `.sqlx/` directory:**
+**Step 2 - commit the `.sqlx/` directory:**
 
 ```bash
 git add .sqlx
 git commit -m "chore: add sqlx offline query metadata"
 ```
 
-**Step 3 — set `SQLX_OFFLINE=true` in CI:**
+**Step 3 - set `SQLX_OFFLINE=true` in CI:**
 
 ```yaml
 # .github/workflows/ci.yml
@@ -405,5 +405,5 @@ If you forget, CI will reject the build with "query in `.sqlx` is outdated."
   run: cargo sqlx prepare --workspace --check
 ```
 
-`--check` fails if any query in the code doesn't match the cached metadata — it's
+`--check` fails if any query in the code doesn't match the cached metadata - it's
 a gate that forces you to run `cargo sqlx prepare` before committing.

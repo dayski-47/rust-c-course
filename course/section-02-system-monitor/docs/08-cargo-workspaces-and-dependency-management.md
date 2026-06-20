@@ -1,6 +1,6 @@
-# Doc 08 — Cargo Workspaces and Dependency Management
+# Doc 08 - Cargo Workspaces and Dependency Management
 
-🟢 Structural — these are habits you build once and use in every project forever.
+🟢 Structural - these are habits you build once and use in every project forever.
 
 The system monitor is large enough to split into two crates: a library (`monitor-core`) containing the data types and logic, and a binary (`monitor-cli`) containing the command-line interface. This is the standard pattern for any non-trivial Rust project. It makes the core logic independently testable, reusable, and eventually publishable. This doc explains workspaces, how to manage dependencies across them, and how to make sure nothing dangerous is hiding in your dependency tree.
 
@@ -36,10 +36,10 @@ project/
 ```
 
 Benefits:
-- **Single lock file** — all crates use the same dependency versions. No version drift between your library and binary.
-- **Shared build cache** — compile `serde` once, reuse it everywhere.
-- **Single `cargo test`** — tests all crates in one command.
-- **Dependency deduplication** — `serde 1.0.193` is compiled once, not once per crate.
+- **Single lock file** - all crates use the same dependency versions. No version drift between your library and binary.
+- **Shared build cache** - compile `serde` once, reuse it everywhere.
+- **Single `cargo test`** - tests all crates in one command.
+- **Dependency deduplication** - `serde 1.0.193` is compiled once, not once per crate.
 
 ---
 
@@ -48,7 +48,7 @@ Benefits:
 The root `Cargo.toml` declares the workspace:
 
 ```toml
-# Cargo.toml (workspace root — no [package] section)
+# Cargo.toml (workspace root - no [package] section)
 [workspace]
 members = [
     "monitor-core",
@@ -110,7 +110,7 @@ cargo build -p monitor-core          # Build just the library
 
 ## Workspace Dependency Management
 
-### `[workspace.dependencies]` — single source of truth for versions
+### `[workspace.dependencies]` - single source of truth for versions
 
 Without workspace dependencies, each crate declares its own version of `serde`. If `monitor-core` uses `serde = "1.0.193"` and `monitor-cli` uses `serde = "1.0.150"`, Cargo has to figure out which to use (it picks the highest compatible). This creates confusion and potential for subtle version mismatch bugs.
 
@@ -129,7 +129,7 @@ tokio = { workspace = true, features = ["rt", "sync"] }  # Only these features
 
 ### Feature flags
 
-Dependencies can have optional features. Features are additive — once any crate enables a feature, all crates in the workspace get it (because they share the same compiled artifact).
+Dependencies can have optional features. Features are additive - once any crate enables a feature, all crates in the workspace get it (because they share the same compiled artifact).
 
 ```toml
 # monitor-core/Cargo.toml
@@ -214,7 +214,7 @@ Run this on every push. Add it to CI:
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Also schedule it daily — new advisories appear continuously, even for versions you haven't touched:
+Also schedule it daily - new advisories appear continuously, even for versions you haven't touched:
 
 ```yaml
 on:
@@ -228,7 +228,7 @@ on:
 
 ## Policy Enforcement: `cargo deny`
 
-`cargo-deny` is more powerful than `cargo-audit` — it enforces four categories of policy simultaneously:
+`cargo-deny` is more powerful than `cargo-audit` - it enforces four categories of policy simultaneously:
 
 ```bash
 cargo install cargo-deny
@@ -295,8 +295,8 @@ Use both in CI. `cargo audit` for speed, `cargo deny` for policy.
 **For libraries (published to crates.io):** Do not commit `Cargo.lock`. Library consumers have their own lock files, and committing yours adds noise without benefit. The exception: if your library is also used as a binary (has `[[bin]]` in Cargo.toml), commit the lock file.
 
 For the system monitor workspace:
-- `monitor-core` (library) — don't commit lock file if you plan to publish
-- `monitor-cli` (binary) — always commit lock file
+- `monitor-core` (library) - don't commit lock file if you plan to publish
+- `monitor-cli` (binary) - always commit lock file
 - Since they share a workspace, commit the workspace `Cargo.lock`
 
 ---
@@ -355,14 +355,14 @@ section-02-system-monitor/
 - All unit tests
 
 **What goes in `monitor-cli` (binary):**
-- `main.rs` — parse CLI args with `clap`, call `monitor-core`, print results
-- No business logic — just wiring
+- `main.rs` - parse CLI args with `clap`, call `monitor-core`, print results
+- No business logic - just wiring
 
 This split means you can write integration tests for `monitor-core` without the CLI, and later reuse the library in a TUI, a daemon, or a web endpoint.
 
 ---
 
-## Reading Crate Documentation — A Meta-Skill You Need Today
+## Reading Crate Documentation - A Meta-Skill You Need Today
 
 Adding a dependency is one thing. Figuring out what it actually provides is another. Every time you add a new crate, you need to know where its documentation lives and how to navigate it.
 
@@ -385,7 +385,7 @@ When you add `sysinfo = "0.30"` to your `Cargo.toml`, go to `https://docs.rs/sys
 
 1. Go to `https://docs.rs/sysinfo`
 2. Look at the **Structs** section. You'll see `System`, `Cpu`, `Disk`, `Networks`
-3. Click on `System` — this is the entry point
+3. Click on `System` - this is the entry point
 4. Look at the **Methods** section. You'll see `new()`, `refresh_cpu()`, `global_cpu_info()`, `total_memory()`, etc.
 5. Each method shows its signature and a brief description. Click through to see examples
 
@@ -416,7 +416,7 @@ for disk in &disks {
 }
 ```
 
-You didn't have to guess these — they're all in the docs. The pattern: find the main entry-point type (usually named `System` or `Client` or similar), read its constructor, then its refresh methods, then its getters.
+You didn't have to guess these - they're all in the docs. The pattern: find the main entry-point type (usually named `System` or `Client` or similar), read its constructor, then its refresh methods, then its getters.
 
 ### Local Documentation with `cargo doc`
 
@@ -453,7 +453,7 @@ When a crate's documentation is thin or missing examples, that's a signal to loo
 
 ### The `#[doc(hidden)]` Pattern
 
-Some types appear in the docs but are marked with `#[doc(hidden)]` — they're implementation details that are technically public (so they compile) but not intended for direct use. You'll see this in macros and proc-macro support types. If you see a type with a mysterious name like `__Implicit` or `HiddenHelper`, it's not for you. Stick to the clearly documented public API.
+Some types appear in the docs but are marked with `#[doc(hidden)]` - they're implementation details that are technically public (so they compile) but not intended for direct use. You'll see this in macros and proc-macro support types. If you see a type with a mysterious name like `__Implicit` or `HiddenHelper`, it's not for you. Stick to the clearly documented public API.
 
 ---
 
@@ -469,7 +469,7 @@ If you publish `monitor-core` to crates.io, all its dependencies must also be on
 `cargo test` from the workspace root runs tests in all workspace members. But `cargo test` from inside a member's directory only runs that member's tests. When in doubt, run from the workspace root with `cargo test --workspace`.
 
 **Multiple versions of the same crate causing subtle type mismatches.**
-If two crates in your workspace expose a type from the same dependency but at different versions, those types are incompatible — `serde::Serialize` from `serde 1.0.100` is not the same trait as from `serde 1.0.193` in the compiler's view. This causes confusing errors like "expected `serde::Serialize`, found `serde::Serialize`". Fix with `cargo update` to unify versions.
+If two crates in your workspace expose a type from the same dependency but at different versions, those types are incompatible - `serde::Serialize` from `serde 1.0.100` is not the same trait as from `serde 1.0.193` in the compiler's view. This causes confusing errors like "expected `serde::Serialize`, found `serde::Serialize`". Fix with `cargo update` to unify versions.
 
 **Ignoring `cargo audit` output.**
-`cargo audit` sometimes produces warnings for unmaintained crates with no known CVE. It's tempting to ignore them. Don't — unmaintained crates don't get security patches. Find an alternative or pin to a known-good version and monitor it.
+`cargo audit` sometimes produces warnings for unmaintained crates with no known CVE. It's tempting to ignore them. Don't - unmaintained crates don't get security patches. Find an alternative or pin to a known-good version and monitor it.

@@ -1,4 +1,4 @@
-# 01 — Redis and Caching Fundamentals 🟡
+# 01 - Redis and Caching Fundamentals 🟡
 
 ## Engineering Methodology: Event-Driven Architecture + State Machine Design
 
@@ -97,7 +97,7 @@ The type annotation on `get` is required. Redis returns raw bytes; the `redis` c
 
 Redis is not just a key-value store for strings. It has several specialized structures that you will use in this project.
 
-**Lists** — ordered sequences with O(1) push/pop at either end. The music queue is a List.
+**Lists** - ordered sequences with O(1) push/pop at either end. The music queue is a List.
 
 ```rust
 // RPUSH appends to the right (tail). LPUSH prepends to the left (head).
@@ -116,7 +116,7 @@ let next: Option<u64> = conn.lpop("queue:room1", None).await?;
 let length: usize = conn.llen("queue:room1").await?;
 ```
 
-**Hashes** — a map stored under one key. Good for structured objects like "current song."
+**Hashes** - a map stored under one key. Good for structured objects like "current song."
 
 ```rust
 // HSET stores field-value pairs
@@ -135,7 +135,7 @@ let song: std::collections::HashMap<String, String> =
     conn.hgetall("now_playing:room1").await?;
 ```
 
-**Sorted Sets** — like a set, but each member has a numeric score. Perfect for play history sorted by timestamp.
+**Sorted Sets** - like a set, but each member has a numeric score. Perfect for play history sorted by timestamp.
 
 ```rust
 // ZADD with score (unix timestamp) and member (song id as string)
@@ -188,7 +188,7 @@ The TTL is important. Without it, stale data lives in Redis forever. The right T
 
 Redis pub/sub is how `queuemaster` broadcasts queue changes to all server instances. When a client adds a song, the server publishes a message to a channel. Every server instance (and every tab of `tokio-console`) that is subscribed to that channel receives the message.
 
-Publishing is simple. Subscribing requires a dedicated connection that you put into a loop — you cannot use a pooled connection for subscriptions because the connection changes mode.
+Publishing is simple. Subscribing requires a dedicated connection that you put into a loop - you cannot use a pooled connection for subscriptions because the connection changes mode.
 
 ```rust
 use redis::aio::PubSub;
@@ -272,14 +272,14 @@ async fn update_song_metadata(
 }
 ```
 
-For compound data — like a user's profile that shows up under multiple keys — you need to be systematic about what to invalidate. One approach is to store all related keys in a Redis Set and delete them all at once. Another is to use a version number in the key and increment it on writes, making old keys instantly stale.
+For compound data - like a user's profile that shows up under multiple keys - you need to be systematic about what to invalidate. One approach is to store all related keys in a Redis Set and delete them all at once. Another is to use a version number in the key and increment it on writes, making old keys instantly stale.
 
 ## How It Breaks
 
 - Cache invalidation: you cache data in Redis, then the source data changes in the database, but Redis still has the old value. Your reads return stale data. Solution: always set a TTL, and explicitly delete cache keys when the source data changes.
 - Redis as single point of failure: if Redis goes down, your whole queue service goes down if you haven't coded a fallback.
 - Redis connection pool exhaustion: same as database pool exhaustion. Set timeouts and max pool size.
-- Pub/sub and dedicated connections: Redis pub/sub requires a connection to be in SUBSCRIBE mode — it can't be used for other commands. Mixing pub/sub with regular commands on the same connection fails.
+- Pub/sub and dedicated connections: Redis pub/sub requires a connection to be in SUBSCRIBE mode - it can't be used for other commands. Mixing pub/sub with regular commands on the same connection fails.
 
 ## Common Mistakes
 
@@ -287,6 +287,6 @@ For compound data — like a user's profile that shows up under multiple keys �
 
 **No TTL on cached data.** Without expiry, deleted database rows and renamed songs will show stale data forever. Always set a TTL. When in doubt, shorter is safer.
 
-**Serializing large objects.** Redis excels at small, frequently-accessed data. Caching a paginated list of 10,000 songs as one JSON blob is counterproductive — you'll evict more useful data from Redis memory. Cache individual entities, not collections.
+**Serializing large objects.** Redis excels at small, frequently-accessed data. Caching a paginated list of 10,000 songs as one JSON blob is counterproductive - you'll evict more useful data from Redis memory. Cache individual entities, not collections.
 
-**Forgetting that INCR is atomic but INCR + EXPIRE is not.** Between those two calls, another process could set the key and leave a counter without an expiry. The pattern above handles this by only calling EXPIRE when `count == 1`, which means only the first increment in a window triggers the expiry — and if two processes race on the very first increment, both will call EXPIRE with the same value, which is harmless.
+**Forgetting that INCR is atomic but INCR + EXPIRE is not.** Between those two calls, another process could set the key and leave a counter without an expiry. The pattern above handles this by only calling EXPIRE when `count == 1`, which means only the first increment in a window triggers the expiry - and if two processes race on the very first increment, both will call EXPIRE with the same value, which is harmless.

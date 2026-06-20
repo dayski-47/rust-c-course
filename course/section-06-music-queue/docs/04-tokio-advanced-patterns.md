@@ -1,8 +1,8 @@
-# 04 — Tokio Advanced Patterns 🔴
+# 04 - Tokio Advanced Patterns 🔴
 
 You know `tokio::spawn` and `.await`. This chapter covers the patterns that separate a working prototype from a production service: coordinated shutdown, concurrent futures, dynamic task sets, cooperative cancellation, and the actor model. `queuemaster` uses all of these.
 
-## tokio::select! — Take the First Result
+## tokio::select! - Take the First Result
 
 `select!` runs multiple futures concurrently and returns as soon as one of them completes. The others are cancelled (dropped). This is the foundational pattern for timeouts, shutdown signals, and any situation where you're waiting for "whichever happens first."
 
@@ -49,11 +49,11 @@ async fn queue_processor(
 }
 ```
 
-One subtlety: by default, `select!` randomly picks which branch to check when multiple are ready. This prevents starvation. If you need a specific priority order, add `biased;` at the top of the macro — it will always check branches in order from top to bottom.
+One subtlety: by default, `select!` randomly picks which branch to check when multiple are ready. This prevents starvation. If you need a specific priority order, add `biased;` at the top of the macro - it will always check branches in order from top to bottom.
 
-## tokio::join! — Wait for All
+## tokio::join! - Wait for All
 
-`join!` runs multiple futures concurrently and waits for all of them. Unlike spawning tasks, these futures run on the same task — but they interleave at `.await` points.
+`join!` runs multiple futures concurrently and waits for all of them. Unlike spawning tasks, these futures run on the same task - but they interleave at `.await` points.
 
 ```rust
 async fn initialize_services(state: &AppState) {
@@ -97,11 +97,11 @@ async fn broadcast_to_all_rooms(rooms: Vec<String>, message: String) {
 }
 ```
 
-When you drop a `JoinSet`, all its tasks are cancelled. This is useful for scoping a batch of work — when the `JoinSet` goes out of scope, cleanup happens automatically.
+When you drop a `JoinSet`, all its tasks are cancelled. This is useful for scoping a batch of work - when the `JoinSet` goes out of scope, cleanup happens automatically.
 
-## CancellationToken — Cooperative Shutdown 🔴
+## CancellationToken - Cooperative Shutdown 🔴
 
-`tokio::task::JoinHandle::abort()` cancels a task immediately, dropping it at the next `.await` point. This is brutal — the task has no chance to clean up. For graceful shutdown, you want cooperative cancellation: you signal the task to stop, and the task cleans up and exits on its own.
+`tokio::task::JoinHandle::abort()` cancels a task immediately, dropping it at the next `.await` point. This is brutal - the task has no chance to clean up. For graceful shutdown, you want cooperative cancellation: you signal the task to stop, and the task cleans up and exits on its own.
 
 `CancellationToken` from `tokio-util` is the standard way to do this.
 
@@ -112,7 +112,7 @@ tokio-util = "0.7"
 ```rust
 use tokio_util::sync::CancellationToken;
 
-// Create a token — when cancelled, all clones see it
+// Create a token - when cancelled, all clones see it
 let token = CancellationToken::new();
 
 // Clone before moving into tasks
@@ -190,7 +190,7 @@ async fn main() {
             println!("All tasks shut down cleanly");
         }
         _ = shutdown_deadline => {
-            eprintln!("Shutdown timed out — forcing exit");
+            eprintln!("Shutdown timed out - forcing exit");
             tasks.abort_all();
         }
     }
@@ -228,7 +228,7 @@ enum RoomCommand {
     },
 }
 
-// The actor task — owns all room state
+// The actor task - owns all room state
 async fn room_actor(
     room_id: String,
     mut commands: mpsc::Receiver<RoomCommand>,
@@ -302,7 +302,7 @@ impl RoomHandle {
 
 The `oneshot` channel is how the actor sends replies back to callers. The caller creates the channel, sends one end with the request, and `.await`s the other end. The actor sends the response and the caller wakes up.
 
-## spawn_blocking — Calling Blocking Code
+## spawn_blocking - Calling Blocking Code
 
 Some APIs are unavoidably synchronous: CPU-intensive computation, C libraries, file I/O from system calls that don't have async wrappers, password hashing. If you call these directly in an async task, you block the Tokio worker thread and starve other tasks.
 
@@ -381,4 +381,4 @@ where
 
 **Sending to an actor and ignoring the error.** If the actor task has panicked or exited, the channel is closed. `tx.send(cmd).await` returns `Err`. Always check it. In a web handler, return 500 if the room actor is gone.
 
-**Calling blocking functions without `spawn_blocking`.** This is the most common performance problem. `std::fs::read`, `std::net::TcpStream::connect` (synchronous), CPU-heavy parsing — all will block Tokio worker threads. The symptom is high latency under load even when CPU is not maxed out. Reach for `spawn_blocking` whenever you call anything that doesn't have `async` in its signature.
+**Calling blocking functions without `spawn_blocking`.** This is the most common performance problem. `std::fs::read`, `std::net::TcpStream::connect` (synchronous), CPU-heavy parsing - all will block Tokio worker threads. The symptom is high latency under load even when CPU is not maxed out. Reach for `spawn_blocking` whenever you call anything that doesn't have `async` in its signature.

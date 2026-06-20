@@ -1,6 +1,6 @@
-# Doc 04 — Concurrency: Threads and Channels
+# Doc 04 - Concurrency: Threads and Channels
 
-You've seen `thread::spawn` in passing. Now we're going to use it for real — with shared state, with channels, and with enough concurrent connections to run a chat server.
+You've seen `thread::spawn` in passing. Now we're going to use it for real - with shared state, with channels, and with enough concurrent connections to run a chat server.
 
 One honest warning: concurrency is where the borrow checker bites hardest. The error messages get longer. The solutions feel indirect at first. But by the end of this chapter you'll have two solid mental models for sharing work between threads: shared state (protected by `Arc<Mutex<T>>`) and message passing (channels). They're complementary, not competing. Good concurrent systems use both.
 
@@ -115,14 +115,14 @@ fn main() {
 Key behaviors:
 - `tx.send(msg)` returns `Err` only if the receiver has been dropped
 - `rx.recv()` blocks until a message arrives or all senders are dropped
-- `rx.try_recv()` returns immediately — `Ok(msg)` if available, `Err(TryRecvError::Empty)` if not
+- `rx.try_recv()` returns immediately - `Ok(msg)` if available, `Err(TryRecvError::Empty)` if not
 - `for msg in rx { }` is equivalent to looping on `rx.recv()` until the channel closes
 
 ---
 
 ## Bounded vs Unbounded Channels 🟡
 
-`mpsc::channel()` creates an **unbounded** channel — the producer can send as fast as it wants, messages pile up in a queue in memory. If the consumer can't keep up, you run out of RAM.
+`mpsc::channel()` creates an **unbounded** channel - the producer can send as fast as it wants, messages pile up in a queue in memory. If the consumer can't keep up, you run out of RAM.
 
 `mpsc::sync_channel(n)` creates a **bounded** channel with capacity `n`. When the buffer is full, `send()` blocks until the consumer takes a message. This applies **backpressure**: the producer slows down when the consumer is slow.
 
@@ -132,7 +132,7 @@ let (tx, rx) = mpsc::sync_channel::<String>(10);
 
 thread::spawn(move || {
     for i in 0..1000 {
-        // BLOCKS if the buffer is full — natural throttling
+        // BLOCKS if the buffer is full - natural throttling
         tx.send(format!("message {i}")).unwrap();
     }
 });
@@ -170,11 +170,11 @@ fn main() {
         }));
     }
 
-    // Drop the original sender — otherwise rx.iter() never ends
+    // Drop the original sender - otherwise rx.iter() never ends
     // (the original tx still counts as a sender)
     drop(tx);
 
-    // Collect all results — finishes when all threads are done
+    // Collect all results - finishes when all threads are done
     let results: Vec<u64> = rx.into_iter().collect();
     println!("Got {} results", results.len());  // 40
 
@@ -233,9 +233,9 @@ The broadcaster is a dedicated thread that receives from the main channel and fa
 
 Anything you send through a channel must implement `Send`. Most types do. Types that don't:
 
-- `Rc<T>` — not Send (use `Arc<T>`)
-- `RefCell<T>` — not Send (use `Mutex<T>`)
-- Raw pointers — not Send
+- `Rc<T>` - not Send (use `Arc<T>`)
+- `RefCell<T>` - not Send (use `Mutex<T>`)
+- Raw pointers - not Send
 
 If you try to send a non-Send type the compiler will catch it at the `thread::spawn` call or at the `tx.send()` call with an error mentioning the `Send` trait.
 
@@ -292,7 +292,7 @@ If the thread panicked, `handle.join()` returns `Err`. Call `.unwrap()` to propa
 
 **Sending on a channel whose receiver has been dropped.** `tx.send()` returns `Err(SendError)`. If you're using `.unwrap()` in a worker thread and the receiver panics, your workers will start panicking too. Decide consciously whether a dead receiver should kill workers or be silently ignored (use `.ok()` to swallow).
 
-**Cloning data into messages when you should be cloning the channel.** If you're doing `tx.clone()` to add another producer, that's correct and cheap. If you're trying to share a receiver across threads, that won't work — mpsc has one consumer. Use `Arc<Mutex<Receiver>>` if you need multiple consumers pulling from the same queue.
+**Cloning data into messages when you should be cloning the channel.** If you're doing `tx.clone()` to add another producer, that's correct and cheap. If you're trying to share a receiver across threads, that won't work - mpsc has one consumer. Use `Arc<Mutex<Receiver>>` if you need multiple consumers pulling from the same queue.
 
 **Thread panic without joining.** If a thread panics and you never call `.join()`, you won't notice the panic. In the chat server, spawn threads in a way that you can detect and log panics from client handlers.
 
@@ -300,10 +300,10 @@ If the thread panicked, `handle.join()` returns `Err`. Call `.unwrap()` to propa
 
 ## How It Breaks
 
-**`mpsc` channel buffer exhaustion with bounded channels.** When you use `mpsc::sync_channel(n)` with a fixed buffer size, `send()` blocks when the buffer is full. If your receiver is slow and your sender is fast, senders back up waiting for space. With unbounded `mpsc::channel()`, senders never block — but messages accumulate in memory. If a slow receiver can't keep up, the queue grows until you run out of memory. Choose bounded for backpressure, unbounded when memory growth is acceptable.
+**`mpsc` channel buffer exhaustion with bounded channels.** When you use `mpsc::sync_channel(n)` with a fixed buffer size, `send()` blocks when the buffer is full. If your receiver is slow and your sender is fast, senders back up waiting for space. With unbounded `mpsc::channel()`, senders never block - but messages accumulate in memory. If a slow receiver can't keep up, the queue grows until you run out of memory. Choose bounded for backpressure, unbounded when memory growth is acceptable.
 
-**Dropping the last sender while the receiver is blocking on `recv()`.** When all senders are dropped, the channel closes. A receiver blocked on `recv()` immediately gets back `Err(RecvError)`. This is the designed way to signal "work is done" — it's not an error condition, it's a clean shutdown signal. The `for msg in rx {}` iterator loop uses exactly this: it ends when all senders have been dropped.
+**Dropping the last sender while the receiver is blocking on `recv()`.** When all senders are dropped, the channel closes. A receiver blocked on `recv()` immediately gets back `Err(RecvError)`. This is the designed way to signal "work is done" - it's not an error condition, it's a clean shutdown signal. The `for msg in rx {}` iterator loop uses exactly this: it ends when all senders have been dropped.
 
-**Forgetting to drop the original sender before iterating.** You clone the sender into N worker threads, then do `for msg in rx {}` to collect results. But you still hold the original `tx` in the calling scope. The channel never closes because the original sender still exists. The `for` loop blocks forever. The fix is `drop(tx)` before entering the receive loop — or use a scope that naturally drops `tx` before the loop.
+**Forgetting to drop the original sender before iterating.** You clone the sender into N worker threads, then do `for msg in rx {}` to collect results. But you still hold the original `tx` in the calling scope. The channel never closes because the original sender still exists. The `for` loop blocks forever. The fix is `drop(tx)` before entering the receive loop - or use a scope that naturally drops `tx` before the loop.
 
-**Thread panics are silent.** A thread spawned with `thread::spawn` that panics does not propagate the panic to the thread that spawned it. The panic is caught by the thread runtime, the thread terminates, and execution continues elsewhere. In a chat server, a client handler thread that panics simply disappears — no log message, no error, the client just disconnects silently. You only learn about it by calling `handle.join()` and checking if it returned `Err`. Always join handles, or log panics explicitly in the thread before they propagate.
+**Thread panics are silent.** A thread spawned with `thread::spawn` that panics does not propagate the panic to the thread that spawned it. The panic is caught by the thread runtime, the thread terminates, and execution continues elsewhere. In a chat server, a client handler thread that panics simply disappears - no log message, no error, the client just disconnects silently. You only learn about it by calling `handle.join()` and checking if it returned `Err`. Always join handles, or log panics explicitly in the thread before they propagate.

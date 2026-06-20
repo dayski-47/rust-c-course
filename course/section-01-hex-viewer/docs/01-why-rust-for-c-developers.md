@@ -1,6 +1,6 @@
 # Why Rust for C Developers
 
-🟢 Easy reading — no code exercises here, just context-setting.
+🟢 Easy reading - no code exercises here, just context-setting.
 
 ---
 
@@ -8,18 +8,18 @@
 
 Before you write a single line of code for any project in this course, answer these four questions on paper (or a text file):
 
-1. **What are the inputs?** What enters the program — user-provided values, environment data, network data?
-2. **What are the outputs?** What does the user see — on success, on partial success, on failure?
+1. **What are the inputs?** What enters the program - user-provided values, environment data, network data?
+2. **What are the outputs?** What does the user see - on success, on partial success, on failure?
 3. **What are the failure cases?** What can go wrong? Network unreachable, invalid host, port out of range, OS-level permission errors?
 4. **What does "correct" look like?** How do you know it worked? What would a correct run look like from the outside?
 
-This is requirements-first thinking. Software engineers who skip this step write code twice — once to figure out what they're building, and again to fix it. The compounding effect is real: a bug that takes 2 minutes to catch in requirements takes 2 hours to catch in code and 2 days to catch in production.
+This is requirements-first thinking. Software engineers who skip this step write code twice - once to figure out what they're building, and again to fix it. The compounding effect is real: a bug that takes 2 minutes to catch in requirements takes 2 hours to catch in code and 2 days to catch in production.
 
-The hex viewer has very clear answers to all four questions. Write them down before you start. The PROJECT.md file has worked examples of those answers — read it alongside this doc.
+The hex viewer has very clear answers to all four questions. Write them down before you start. The PROJECT.md file has worked examples of those answers - read it alongside this doc.
 
 ---
 
-You've been writing C. You know `malloc`, `free`, `socket`, `connect`. You've debugged segfaults at 2am. You know what undefined behavior means — not just the textbook definition, but the lived experience of your compiler doing something completely insane because you triggered it.
+You've been writing C. You know `malloc`, `free`, `socket`, `connect`. You've debugged segfaults at 2am. You know what undefined behavior means - not just the textbook definition, but the lived experience of your compiler doing something completely insane because you triggered it.
 
 So why Rust?
 
@@ -37,20 +37,20 @@ The numbers are well-documented: over 70% of security vulnerabilities in major c
 
 Here's the catalog you probably know from painful experience:
 
-**Buffer overflow** — C arrays don't know their own size. Once you pass a pointer to a function, the size information is gone.
+**Buffer overflow** - C arrays don't know their own size. Once you pass a pointer to a function, the size information is gone.
 ```c
 char buf[10];
 strcpy(buf, "this string is too long");  // Works. Corrupts memory. May crash later.
 ```
 
-**Use-after-free** — you freed it, then used it. Behavior is undefined, meaning the compiler is allowed to do anything at all.
+**Use-after-free** - you freed it, then used it. Behavior is undefined, meaning the compiler is allowed to do anything at all.
 ```c
 char *p = malloc(20);
 free(p);
 p[0] = 'a';  // Undefined behavior. May work. May crash. May silently corrupt.
 ```
 
-**Dangling pointer** — returning the address of a stack variable. Classic.
+**Dangling pointer** - returning the address of a stack variable. Classic.
 ```c
 int *get_value() {
     int x = 42;
@@ -58,13 +58,13 @@ int *get_value() {
 }
 ```
 
-**Uninitialized variable** — C lets you declare a variable and immediately read garbage from it.
+**Uninitialized variable** - C lets you declare a variable and immediately read garbage from it.
 ```c
 int x;
 if (x > 0) { ... }  // x is whatever was on the stack. Undefined behavior.
 ```
 
-**NULL dereference** — nothing checks for you.
+**NULL dereference** - nothing checks for you.
 ```c
 int *p = NULL;
 *p = 5;  // SEGV. Compiler didn't warn you.
@@ -91,7 +91,7 @@ Here's what that looks like for each C problem above:
 | NULL dereference | There are no null pointers in safe Rust. Nullable values use `Option<T>`, which forces you to handle the "missing" case explicitly. |
 | Data races | Sharing mutable data across threads is a compile error unless you use the right synchronization primitives. |
 
-These aren't runtime checks bolted on (well, bounds checking is at runtime, but it panics with defined behavior rather than silently corrupting). The structural bugs — dangling references, use-after-free, use-after-move, data races — are **compile-time errors**.
+These aren't runtime checks bolted on (well, bounds checking is at runtime, but it panics with defined behavior rather than silently corrupting). The structural bugs - dangling references, use-after-free, use-after-move, data races - are **compile-time errors**.
 
 If your Rust code compiles, it doesn't have those bugs.
 
@@ -115,7 +115,7 @@ If your Rust code compiles, it doesn't have those bugs.
 
 Let's be honest about the tradeoffs.
 
-**The borrow checker will fight you at first.** When you're learning Rust, you'll spend time arguing with the compiler about ownership. Code that "obviously should work" won't compile, and the error messages — while increasingly good — will sometimes feel cryptic. This is temporary. Most developers say it clicks within a few weeks, and then the borrow checker feels like a helpful teammate rather than an obstacle.
+**The borrow checker will fight you at first.** When you're learning Rust, you'll spend time arguing with the compiler about ownership. Code that "obviously should work" won't compile, and the error messages - while increasingly good - will sometimes feel cryptic. This is temporary. Most developers say it clicks within a few weeks, and then the borrow checker feels like a helpful teammate rather than an obstacle.
 
 **The learning curve is steeper than C's.** C is a small language. You can hold the whole thing in your head. Rust has more concepts: ownership, borrowing, lifetimes, traits, generics. You don't need to master all of them to be productive, but there's more to learn upfront.
 
@@ -127,7 +127,7 @@ Let's be honest about the tradeoffs.
 
 ## The Pitch for This Course
 
-We're building a hex dump viewer — a tool that reads any binary file and displays its bytes in hexadecimal alongside the ASCII representation, just like `xxd -C`. You already know what raw bytes look like at the C level — `fread`, `uint8_t`, byte offsets, endianness. That knowledge transfers directly.
+We're building a hex dump viewer - a tool that reads any binary file and displays its bytes in hexadecimal alongside the ASCII representation, just like `xxd -C`. You already know what raw bytes look like at the C level - `fread`, `uint8_t`, byte offsets, endianness. That knowledge transfers directly.
 
 What you'll learn is how Rust expresses those same concepts, and what the language gives you for free when you do it in Rust instead of C.
 

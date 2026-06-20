@@ -1,7 +1,7 @@
-# 06 — Correctness Tools: Miri, Sanitizers, and Fuzzing
+# 06 - Correctness Tools: Miri, Sanitizers, and Fuzzing
 
 > **Difficulty:** 🔴 challenging  
-> **You'll learn:** Why UB in unsafe code is catastrophic (not just wrong — arbitrary),
+> **You'll learn:** Why UB in unsafe code is catastrophic (not just wrong - arbitrary),
 > Miri as a Rust-specific UB interpreter, AddressSanitizer and ThreadSanitizer for
 > runtime checking, cargo-fuzz for automated crash discovery, and the verification
 > stack you run before shipping unsafe code.
@@ -11,7 +11,7 @@
 ## Why Correctness Tools Are Non-Negotiable for Unsafe Code
 
 Safe Rust gives you strong guarantees by construction. When you write `unsafe`, you
-take those guarantees onto yourself — and the consequences of getting it wrong are
+take those guarantees onto yourself - and the consequences of getting it wrong are
 not what you might expect.
 
 In C, a bug causes wrong output or a crash. In Rust with UB, the compiler's optimizer
@@ -59,7 +59,7 @@ What Miri catches that regular tests miss:
 | Data races | With `cfg(miri)`, finds races between spawned threads |
 | Invalid enum values | Catches `transmute::<u8, bool>(2)` at runtime |
 
-A concrete example — this code compiles and usually runs without incident:
+A concrete example - this code compiles and usually runs without incident:
 
 ```rust
 #[test]
@@ -79,7 +79,7 @@ Running under Miri: immediate, precise error at the exact line.
 
 ## Running Miri on ironkv
 
-Miri is slow — 10-100x slower than native execution. You do not run it on the
+Miri is slow - 10-100x slower than native execution. You do not run it on the
 entire test suite. You run it on the tests that exercise `unsafe` code.
 
 ```bash
@@ -115,7 +115,7 @@ fn test_100k_roundtrip() {
 
 #[test]
 fn test_header_parse() {
-    // Fast unit test — runs under Miri
+    // Fast unit test - runs under Miri
     let header = FileHeader {
         magic: *b"IKVF",
         version: 1,
@@ -135,7 +135,7 @@ ASan instruments your compiled binary to track every memory allocation and acces
 It is 2-5x slower than native (much faster than Miri) and catches a different class
 of bugs: out-of-bounds reads/writes and use-after-free in code that crosses FFI.
 
-Miri cannot look inside C library calls. ASan can — it watches the actual machine
+Miri cannot look inside C library calls. ASan can - it watches the actual machine
 instructions.
 
 ```bash
@@ -171,7 +171,7 @@ you gave it, ASan will catch that.
 
 ## ThreadSanitizer: Data Race Detection
 
-TSan instruments your binary to detect data races — when two threads access the
+TSan instruments your binary to detect data races - when two threads access the
 same memory concurrently with at least one write and no synchronization.
 
 ```bash
@@ -208,7 +208,7 @@ fn concurrent_reads() {
 
 Fuzzing generates random inputs automatically and runs your code against them,
 searching for crashes (panics, out-of-bounds accesses, stack overflows). It is
-particularly effective for parsers — exactly what your file format parser is.
+particularly effective for parsers - exactly what your file format parser is.
 
 ```bash
 # Install
@@ -384,7 +384,7 @@ sent through the fuzzer can trigger a panic in code like `key.split_last().unwra
 
 **CRC matches garbage.** A fuzzer will eventually generate bytes where the CRC32
 of the key+value happens to match the stored CRC field, even though the record is
-garbage. This is not a bug — it means your CRC check passed — but then subsequent
+garbage. This is not a bug - it means your CRC check passed - but then subsequent
 logic fails because the key or value has garbage content. Handle downstream
 validation as a separate layer from checksum verification.
 
@@ -394,19 +394,19 @@ validation as a separate layer from checksum verification.
 
 ### What Each Tool Catches That the Others Miss
 
-**Miri catches:** reading uninitialized memory, dangling pointer dereference, incorrect pointer arithmetic, violation of aliasing rules — all before you run the program on real hardware.
+**Miri catches:** reading uninitialized memory, dangling pointer dereference, incorrect pointer arithmetic, violation of aliasing rules - all before you run the program on real hardware.
 
 **Miri misses:** races (it's single-threaded by default), performance issues, platform-specific bugs.
 
-**AddressSanitizer catches:** heap buffer overflows, stack buffer overflows, use-after-free — at runtime with real data.
+**AddressSanitizer catches:** heap buffer overflows, stack buffer overflows, use-after-free - at runtime with real data.
 
 **ASan misses:** logical errors (reading valid but wrong memory), races in carefully lock-protected code.
 
-**ThreadSanitizer catches:** data races — two threads accessing the same memory without synchronization.
+**ThreadSanitizer catches:** data races - two threads accessing the same memory without synchronization.
 
 **TSan misses:** memory errors that don't involve races.
 
-**Fuzzing catches:** crashes and panics from unexpected inputs — invaluable for parsers.
+**Fuzzing catches:** crashes and panics from unexpected inputs - invaluable for parsers.
 
 **Fuzzing misses:** logical errors that don't crash (returning wrong data without panicking).
 

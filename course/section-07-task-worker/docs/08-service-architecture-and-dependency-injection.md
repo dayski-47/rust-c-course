@@ -1,4 +1,4 @@
-# Doc 04 — Service Architecture and Dependency Injection
+# Doc 04 - Service Architecture and Dependency Injection
 
 In Section 6 you built an API where handlers talked directly to the database.
 That works for simple projects. But once you need to test a handler without
@@ -283,7 +283,7 @@ pub async fn get_job_status(
 
 ## Building the Dependency Graph in main() 🟡
 
-The key moment is `main()` — this is where everything gets assembled.
+The key moment is `main()` - this is where everything gets assembled.
 
 ```rust
 #[tokio::main]
@@ -393,7 +393,7 @@ taskforge-core/src/storage/ # concrete implementations
 ```
 
 The trait is public. The service is public. Concrete implementations are in
-`storage/` — their visibility depends on what you want to expose.
+`storage/` - their visibility depends on what you want to expose.
 
 ---
 
@@ -424,7 +424,7 @@ pub struct JobService<R: JobRepository> {
     repository: R,
 }
 
-// Prefer this — cleaner API, acceptable performance for I/O-bound work
+// Prefer this - cleaner API, acceptable performance for I/O-bound work
 pub struct JobService {
     repository: Arc<dyn JobRepository>,
 }

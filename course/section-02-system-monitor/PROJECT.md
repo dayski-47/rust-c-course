@@ -1,8 +1,8 @@
-# Section 02 Project: sysmon — CLI System Resource Monitor
+# Section 02 Project: sysmon - CLI System Resource Monitor
 
 ## What You're Building
 
-A command-line tool called `sysmon` that monitors the current machine's resources and displays them in a clean, readable format. Think of it as a simplified version of `top` or `htop` — but one you built yourself, in Rust.
+A command-line tool called `sysmon` that monitors the current machine's resources and displays them in a clean, readable format. Think of it as a simplified version of `top` or `htop` - but one you built yourself, in Rust.
 
 The tool has two modes:
 
@@ -50,7 +50,7 @@ Stop. Don't open your editor yet. Answer these questions on paper or in a text f
 4. **What can go wrong?**
    - What if sysinfo fails to read a sensor?
    - What if the output file can't be created?
-   - How does the program handle these failures — panic, or return an error?
+   - How does the program handle these failures - panic, or return an error?
 
 If you can answer these clearly before writing a line of code, the implementation will go much faster. If you can't answer them, you'll discover the confusion through compile errors.
 
@@ -163,21 +163,21 @@ chrono = "0.4"
 - **serde** + **serde_json**: Serialization. The "derive" feature auto-generates JSON serialization for your structs.
 - **chrono**: Timestamp formatting for the snapshot header and JSON output.
 
-> **Version note:** The `sysinfo` API changed significantly between major versions. Use `0.31` — the method names and struct layout in `0.30` differ from what's shown in examples below.
+> **Version note:** The `sysinfo` API changed significantly between major versions. Use `0.31` - the method names and struct layout in `0.30` differ from what's shown in examples below.
 
 ---
 
 ## Engineering Approach: Data-Driven Design
 
-Before you open your editor, define the data model. This is not optional — it is the first engineering task.
+Before you open your editor, define the data model. This is not optional - it is the first engineering task.
 
-The question to answer: what does a `SystemSnapshot` look like? Not in code — in words. What information does it hold? What are the types?
+The question to answer: what does a `SystemSnapshot` look like? Not in code - in words. What information does it hold? What are the types?
 
 Here is the data model for this project, described in prose. Before you write any Rust, you should be able to draw this yourself:
 
 **CpuMetrics** holds everything about the CPU in a single moment: usage as a percentage (floating point, 0.0 to 100.0), core count (whole number), and current frequency in MHz (whole number). Usage is `f64` because it comes from the OS as a float and you display it with a decimal. Core count is `u32` because negative cores don't exist. Frequency is `u64` because it's always non-negative and can be large.
 
-**MemoryMetrics** holds RAM and swap state: total memory in MB, used memory in MB, available memory in MB, and swap used in MB. Everything in MB — not bytes (too large), not GB (not precise enough for small systems). All `u64` because memory sizes are always non-negative.
+**MemoryMetrics** holds RAM and swap state: total memory in MB, used memory in MB, available memory in MB, and swap used in MB. Everything in MB - not bytes (too large), not GB (not precise enough for small systems). All `u64` because memory sizes are always non-negative.
 
 **DiskMetrics** holds the state of one filesystem: the mount path as a `String`, total space in GB, used space in GB, and usage as a whole-number percentage. One `DiskMetrics` per mounted filesystem.
 
@@ -197,15 +197,15 @@ If you find yourself struggling to write a function, go back and check the data 
 
 Section 2 is not starting over. Every concept from Section 1 reappears here, applied in a new context.
 
-**Error handling with `Result` and `?`** — In Section 1, you used it for network connections. In Section 2, you'll use it when reading sysinfo data (which can fail if a sensor is unavailable) and when writing to files for `--output`. The pattern is identical: return `Result`, propagate with `?`, handle at the call site.
+**Error handling with `Result` and `?`** - In Section 1, you used it for network connections. In Section 2, you'll use it when reading sysinfo data (which can fail if a sensor is unavailable) and when writing to files for `--output`. The pattern is identical: return `Result`, propagate with `?`, handle at the call site.
 
-**Structs and impl blocks** — In Section 1, you may have defined a simple struct to hold scan results. In Section 2, you define a complete data model with multiple related structs (`CpuMetrics`, `MemoryMetrics`, `DiskMetrics`, `SystemSnapshot`) and impl blocks for each. The mechanics are the same; the scale is larger.
+**Structs and impl blocks** - In Section 1, you may have defined a simple struct to hold scan results. In Section 2, you define a complete data model with multiple related structs (`CpuMetrics`, `MemoryMetrics`, `DiskMetrics`, `SystemSnapshot`) and impl blocks for each. The mechanics are the same; the scale is larger.
 
-**Threads** — Section 1 used `thread::spawn` for parallelism: scan many ports simultaneously. Section 2 uses `thread::sleep` in the `--watch` loop: pause between refreshes. Same module, different purpose. Notice how the concept of "threads" covers both concurrency and simple timing.
+**Threads** - Section 1 used `thread::spawn` for parallelism: scan many ports simultaneously. Section 2 uses `thread::sleep` in the `--watch` loop: pause between refreshes. Same module, different purpose. Notice how the concept of "threads" covers both concurrency and simple timing.
 
-**The `?` operator** — You'll use it extensively when writing JSON to files (`serde_json::to_string_pretty(&metrics)?` and `std::fs::write(path, json)?`). If either fails, the error propagates up without a match arm. Same operator, same behavior, new context.
+**The `?` operator** - You'll use it extensively when writing JSON to files (`serde_json::to_string_pretty(&metrics)?` and `std::fs::write(path, json)?`). If either fails, the error propagates up without a match arm. Same operator, same behavior, new context.
 
-**Command-line argument parsing** — Section 1 used `std::env::args()` directly. Section 2 uses `clap`. Compare the two approaches after you've implemented both. Notice how much boilerplate `clap` eliminates: help text, defaults, type parsing, and validation are all handled automatically. This is a common progression in Rust projects — start with the standard library, add a crate when the standard library becomes limiting.
+**Command-line argument parsing** - Section 1 used `std::env::args()` directly. Section 2 uses `clap`. Compare the two approaches after you've implemented both. Notice how much boilerplate `clap` eliminates: help text, defaults, type parsing, and validation are all handled automatically. This is a common progression in Rust projects - start with the standard library, add a crate when the standard library becomes limiting.
 
 ---
 
@@ -213,11 +213,11 @@ Section 2 is not starting over. Every concept from Section 1 reappears here, app
 
 Understanding why Rust's features matter for this specific project, not just in general.
 
-**The sysinfo crate gives you OS data in its type system; your job is to translate it into yours.** `sysinfo` exposes a `System` object with methods like `.global_cpu_info().cpu_usage()` (returns `f32`) and `.total_memory()` (returns `u64` bytes). Your `CpuMetrics` and `MemoryMetrics` structs use different types and units. The work of creating a `SystemSnapshot` is mostly translation: convert `f32` to `f64`, divide bytes by `1024 * 1024` to get MB, format a timestamp. This pattern — take external data, convert it to your types — appears everywhere in real Rust programs.
+**The sysinfo crate gives you OS data in its type system; your job is to translate it into yours.** `sysinfo` exposes a `System` object with methods like `.global_cpu_info().cpu_usage()` (returns `f32`) and `.total_memory()` (returns `u64` bytes). Your `CpuMetrics` and `MemoryMetrics` structs use different types and units. The work of creating a `SystemSnapshot` is mostly translation: convert `f32` to `f64`, divide bytes by `1024 * 1024` to get MB, format a timestamp. This pattern - take external data, convert it to your types - appears everywhere in real Rust programs.
 
-**The `Display` trait is how you make `println!("{}", snapshot)` produce a formatted table.** Without it, `println!("{}", snapshot)` won't compile. You must implement `fmt::Display` for `SystemSnapshot`. The compiler enforces this. Once you've implemented it, the display logic is encapsulated in one place — not scattered across `main.rs`. This is the trait system doing what it's supposed to do: defining contracts that the type system enforces.
+**The `Display` trait is how you make `println!("{}", snapshot)` produce a formatted table.** Without it, `println!("{}", snapshot)` won't compile. You must implement `fmt::Display` for `SystemSnapshot`. The compiler enforces this. Once you've implemented it, the display logic is encapsulated in one place - not scattered across `main.rs`. This is the trait system doing what it's supposed to do: defining contracts that the type system enforces.
 
-**The `Collector` trait you define is your first real taste of abstraction via traits.** You can write a function `fn collect_all(collectors: &[Box<dyn Collector>])` that works on CPU, memory, and disk collectors without knowing which one is which. If you add a network collector later, you don't change that function — you add a new type that implements the trait. This is the open/closed principle in Rust form: open for extension, closed for modification.
+**The `Collector` trait you define is your first real taste of abstraction via traits.** You can write a function `fn collect_all(collectors: &[Box<dyn Collector>])` that works on CPU, memory, and disk collectors without knowing which one is which. If you add a network collector later, you don't change that function - you add a new type that implements the trait. This is the open/closed principle in Rust form: open for extension, closed for modification.
 
 **`HashMap` for disk data gives O(1) lookup by mount point; `Vec` would require a linear scan.** If you use `Vec<DiskMetrics>` and want to look up the disk at `/home`, you have to iterate through all disks until you find it. With `HashMap<String, DiskMetrics>`, you call `.get("/home")` and get the answer immediately regardless of how many disks exist. For display (which iterates all disks anyway), Vec and HashMap perform the same. For any lookup-by-key operation, HashMap wins clearly.
 
@@ -227,7 +227,7 @@ Understanding why Rust's features matter for this specific project, not just in 
 
 ### Default mode (one snapshot):
 ```
-System Monitor — 2024-01-15 14:23:01
+System Monitor - 2024-01-15 14:23:01
 ══════════════════════════════════════
 
 CPU Usage
@@ -261,7 +261,7 @@ Screen clears every N seconds and the above updates in place.
 
 Work through these in order. Each milestone builds on the last. Don't skip ahead.
 
-### Milestone 1 — Print Raw Stats to Console
+### Milestone 1 - Print Raw Stats to Console
 
 Get something printing. Don't worry about structs, traits, or modules yet. Just get the numbers out.
 
@@ -281,7 +281,7 @@ fn main() {
 }
 ```
 
-Verify it runs and shows sensible numbers. If it panics or shows zeros, check the `sysinfo` docs — you might need to call a specific `refresh_*` method before reading certain values.
+Verify it runs and shows sensible numbers. If it panics or shows zeros, check the `sysinfo` docs - you might need to call a specific `refresh_*` method before reading certain values.
 
 **Stuck? sysinfo API shape (v0.31):**
 
@@ -302,9 +302,9 @@ let used = sys.used_memory();
 println!("Memory: {}/{} bytes", used, total);
 ```
 
-`sys.refresh_all()` is the call that actually polls the OS. Call it once before reading any values. If you call it again, the values update. If you're seeing zero CPU usage, try calling `refresh_all()` twice with a brief `thread::sleep` between them — CPU usage is calculated as a delta between two samples.
+`sys.refresh_all()` is the call that actually polls the OS. Call it once before reading any values. If you call it again, the values update. If you're seeing zero CPU usage, try calling `refresh_all()` twice with a brief `thread::sleep` between them - CPU usage is calculated as a delta between two samples.
 
-### Milestone 2 — Define a Metrics Struct
+### Milestone 2 - Define a Metrics Struct
 
 Create the `Metrics` struct and `DiskInfo` struct. Populate them from sysinfo. Print with `{:#?}` (pretty Debug):
 
@@ -347,11 +347,11 @@ for disk in &disks {
 
 Note: `available_space()` is free space, not used space. Used space = total - available.
 
-### Milestone 3 — Implement Display for Metrics
+### Milestone 3 - Implement Display for Metrics
 
-Implement `std::fmt::Display` so you can `println!("{}", metrics)` and get the human-readable format with the visual bars. Read **Doc 05 — Traits** before this milestone: it shows exactly how `impl fmt::Display for YourStruct` works, including the `write!(f, ...)` syntax.
+Implement `std::fmt::Display` so you can `println!("{}", metrics)` and get the human-readable format with the visual bars. Read **Doc 05 - Traits** before this milestone: it shows exactly how `impl fmt::Display for YourStruct` works, including the `write!(f, ...)` syntax.
 
-For the ASCII bar: you need a function that takes a percentage (0–100) and a width, and returns a `String` with `filled` `#` characters and `empty` `.` characters inside brackets. The math is: filled = `(percent * width) / 100`, empty = `width - filled`. The `String::repeat()` method will be useful. Figure out the implementation — it's a handful of lines and the logic is straightforward from the description.
+For the ASCII bar: you need a function that takes a percentage (0–100) and a width, and returns a `String` with `filled` `#` characters and `empty` `.` characters inside brackets. The math is: filled = `(percent * width) / 100`, empty = `width - filled`. The `String::repeat()` method will be useful. Figure out the implementation - it's a handful of lines and the logic is straightforward from the description.
 
 Then use it inside your `fmt` method for each disk entry.
 
@@ -362,12 +362,12 @@ CPU: 42.7%  |  Memory: 6144 / 16384 MB
   /home   [#########################.] 95%
 ```
 
-### Milestone 4 — Split Into Modules
+### Milestone 4 - Split Into Modules
 
 Move the collection logic into separate files:
-- `cpu.rs` — reads CPU usage
-- `memory.rs` — reads memory usage
-- `disk.rs` — reads disk usage
+- `cpu.rs` - reads CPU usage
+- `memory.rs` - reads memory usage
+- `disk.rs` - reads disk usage
 
 Define the `Collector` trait. Have each module's struct implement it.
 
@@ -386,7 +386,7 @@ let collectors: Vec<Box<dyn Collector>> = vec![
 
 Milestone complete when `cargo build` succeeds with the split structure.
 
-### Milestone 5 — Add CLI Argument Parsing with clap
+### Milestone 5 - Add CLI Argument Parsing with clap
 
 Create a `struct Args` with clap's derive macro:
 
@@ -414,11 +414,11 @@ fn main() {
 
 Run `cargo run -- --help` and verify the help text looks right. Run `cargo run -- --watch --interval 5` and verify the args are parsed correctly.
 
-### Milestone 6 — Add Watch Mode
+### Milestone 6 - Add Watch Mode
 
 When `--watch` is set, the program should loop: refresh metrics, clear the terminal, print, sleep. When not set, collect once and exit. Use `thread::sleep(Duration::from_secs(args.interval))` for the delay.
 
-The ANSI escape to clear the terminal is `\x1B[2J\x1B[1;1H` (clear screen + cursor to top-left). Print this before each refresh print — not after — so the screen isn't blank during the sleep.
+The ANSI escape to clear the terminal is `\x1B[2J\x1B[1;1H` (clear screen + cursor to top-left). Print this before each refresh print - not after - so the screen isn't blank during the sleep.
 
 Ctrl+C kills the process cleanly without any extra code. That's the expected behavior.
 
@@ -427,7 +427,7 @@ Ctrl+C kills the process cleanly without any extra code. That's the expected beh
 ```rust
 use std::{thread, time::Duration};
 
-// Clear terminal — call this before printing each refresh
+// Clear terminal - call this before printing each refresh
 fn clear_terminal() {
     print!("\x1B[2J\x1B[1;1H");
     // flush stdout so the clear takes effect immediately
@@ -445,9 +445,9 @@ if args.watch {
 }
 ```
 
-Figure out the loop body yourself — you have all the pieces: `system.refresh_all()`, `collect_metrics()`, `clear_terminal()`, `println!()`, `thread::sleep()`.
+Figure out the loop body yourself - you have all the pieces: `system.refresh_all()`, `collect_metrics()`, `clear_terminal()`, `println!()`, `thread::sleep()`.
 
-### Milestone 7 — Add JSON Output
+### Milestone 7 - Add JSON Output
 
 Add `#[derive(Serialize)]` to your structs and implement JSON output:
 
@@ -462,7 +462,7 @@ pub struct Metrics {
 }
 ```
 
-Then write to file when `--output` is provided. Your `run()` function returns `Result`, so use `?` to propagate errors — never `.expect()` in production code paths:
+Then write to file when `--output` is provided. Your `run()` function returns `Result`, so use `?` to propagate errors - never `.expect()` in production code paths:
 
 ```rust
 if let Some(path) = &args.output {
@@ -471,7 +471,7 @@ if let Some(path) = &args.output {
 }
 ```
 
-If serialization fails or the file can't be created, `?` propagates the error to the caller, which prints it and exits with code 1. That's the correct behavior — not a panic.
+If serialization fails or the file can't be created, `?` propagates the error to the caller, which prints it and exits with code 1. That's the correct behavior - not a panic.
 
 Verify with `cargo run -- --output metrics.json && cat metrics.json`.
 
@@ -500,7 +500,7 @@ let writer = BufWriter::new(file);
 serde_json::to_writer_pretty(writer, &snapshot)?;
 ```
 
-If you already have `#[derive(Debug)]` on a struct, just add `Serialize` alongside it: `#[derive(Debug, Serialize)]`. Each field's type also needs to implement `Serialize` — all the primitive types (`String`, `u64`, `f32`, `Vec<T>`) already do.
+If you already have `#[derive(Debug)]` on a struct, just add `Serialize` alongside it: `#[derive(Debug, Serialize)]`. Each field's type also needs to implement `Serialize` - all the primitive types (`String`, `u64`, `f32`, `Vec<T>`) already do.
 
 ---
 
@@ -509,11 +509,11 @@ If you already have `#[derive(Debug)]` on a struct, just add `Serialize` alongsi
 These are nudges, not code. Try to figure it out first.
 
 **sysinfo API:**
-- `System::new_all()` creates a system object. Call `system.refresh_all()` before reading any values — otherwise you get zeros.
+- `System::new_all()` creates a system object. Call `system.refresh_all()` before reading any values - otherwise you get zeros.
 - `system.global_cpu_info().cpu_usage()` returns a `f32`. You'll need `as f64`.
 - `system.total_memory()` and `system.used_memory()` return bytes (u64).
 - `system.disks()` returns an iterator over `Disk` objects. Each `Disk` has `.mount_point()`, `.total_space()`, `.available_space()`.
-- For CPU usage to be non-zero, you may need to call `refresh_cpu()` twice with a small sleep between them, or call `refresh_all()` — check the sysinfo docs for your version.
+- For CPU usage to be non-zero, you may need to call `refresh_cpu()` twice with a small sleep between them, or call `refresh_all()` - check the sysinfo docs for your version.
 
 **For the Collector trait:**
 - Think about what every collector has in common. They all take a snapshot and return a number. What's the minimum interface for that?
@@ -549,7 +549,7 @@ Once all 7 milestones are working, try extending the project:
 
 **Network stats:** `system.networks()` gives you per-interface network stats. Show bytes received/sent since the last refresh.
 
-**Historical logging:** In watch mode, append each snapshot as a JSON line to a log file (`--log-file history.jsonl`). Use newline-delimited JSON format — one JSON object per line. A tool like `jq` can then query the history.
+**Historical logging:** In watch mode, append each snapshot as a JSON line to a log file (`--log-file history.jsonl`). Use newline-delimited JSON format - one JSON object per line. A tool like `jq` can then query the history.
 
 **Graceful shutdown:** The `ctrlc` crate lets you register a handler for Ctrl+C. On shutdown, print "Goodbye" or flush a final metrics snapshot before exiting.
 

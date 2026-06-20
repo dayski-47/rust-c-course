@@ -1,6 +1,6 @@
-# 03 — Tokio Runtime and Tasks 🟡
+# 03 - Tokio Runtime and Tasks 🟡
 
-Now that you understand futures conceptually, let's look at the machinery that actually runs them. Tokio is the runtime — the engine that powers everything in this section. It's the most widely used async runtime in the Rust ecosystem and the foundation for most production Rust services.
+Now that you understand futures conceptually, let's look at the machinery that actually runs them. Tokio is the runtime - the engine that powers everything in this section. It's the most widely used async runtime in the Rust ecosystem and the foundation for most production Rust services.
 
 ---
 
@@ -8,8 +8,8 @@ Now that you understand futures conceptually, let's look at the machinery that a
 
 A Tokio runtime does two things:
 
-1. **Polls futures** — it calls `poll()` on tasks that are ready to make progress, advancing their state machines.
-2. **Manages I/O events** — it registers interest in OS-level events (network data arriving, file reads completing) and wakes the right tasks when those events fire.
+1. **Polls futures** - it calls `poll()` on tasks that are ready to make progress, advancing their state machines.
+2. **Manages I/O events** - it registers interest in OS-level events (network data arriving, file reads completing) and wakes the right tasks when those events fire.
 
 Under the hood, Tokio uses the OS's native async I/O notification systems: `epoll` on Linux, `kqueue` on macOS, and IOCP on Windows. You don't interact with these directly; Tokio wraps them.
 
@@ -68,7 +68,7 @@ For `ghanalyze`, the default multi-threaded runtime is correct. We want concurre
 
 ---
 
-## tokio::spawn — Creating Async Tasks
+## tokio::spawn - Creating Async Tasks
 
 `tokio::spawn` is to async Rust what `thread::spawn` is to threaded Rust: it creates a new independent unit of work.
 
@@ -185,7 +185,7 @@ match handle.await {
 
 ## Time: sleep, timeout
 
-### tokio::time::sleep — The Async Version
+### tokio::time::sleep - The Async Version
 
 Never use `std::thread::sleep` inside async code. Here's why it's catastrophic:
 
@@ -204,18 +204,18 @@ Thread 1: [T1 yields]...[T2]...[T3]...[T4]...[T1 resumes after 1s]
 ```
 
 ```rust
-// WRONG — blocks the OS thread:
+// WRONG - blocks the OS thread:
 async fn bad_rate_limiter() {
     std::thread::sleep(std::time::Duration::from_secs(1));  // Freezes the thread!
 }
 
-// CORRECT — yields to the executor:
+// CORRECT - yields to the executor:
 async fn good_rate_limiter() {
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 ```
 
-### tokio::time::timeout — Deadline for a Future
+### tokio::time::timeout - Deadline for a Future
 
 Wrap any future with a deadline. If it doesn't complete in time, you get an error:
 
@@ -234,17 +234,17 @@ async fn fetch_with_deadline(url: &str) -> Result<String, String> {
 
 ---
 
-## tokio::fs — Async File I/O
+## tokio::fs - Async File I/O
 
 Like with sleep, using `std::fs` in async code is a problem because file operations can block:
 
 ```rust
-// WRONG — blocking file I/O on the async thread:
+// WRONG - blocking file I/O on the async thread:
 async fn read_config() -> String {
     std::fs::read_to_string("config.json").unwrap()  // Can block!
 }
 
-// CORRECT — tokio's async filesystem:
+// CORRECT - tokio's async filesystem:
 async fn read_config() -> String {
     tokio::fs::read_to_string("config.json").await.unwrap()
 }
@@ -254,7 +254,7 @@ async fn read_config() -> String {
 
 ---
 
-## spawn_blocking — Bridging Sync and Async
+## spawn_blocking - Bridging Sync and Async
 
 Sometimes you have blocking code you can't avoid: a CPU-intensive computation, a database driver that's synchronous, or a third-party library that blocks. `spawn_blocking` runs that code on a separate thread pool dedicated to blocking work, so it doesn't starve your async tasks:
 
@@ -297,7 +297,7 @@ When NOT to use spawn_blocking:
 
 ---
 
-## tokio::task::JoinSet — Managing Many Tasks
+## tokio::task::JoinSet - Managing Many Tasks
 
 When you're spawning a dynamic number of tasks (like fetching details for each of N repos), `JoinSet` is cleaner than managing a `Vec<JoinHandle>`:
 
@@ -339,7 +339,7 @@ async fn fetch_all_repos(repos: Vec<String>) -> Vec<String> {
 
 **Not handling the JoinError.** `handle.await` returns `Result<T, JoinError>`. If you just `.unwrap()` it and the task panics, your program panics too. In production, match on the error.
 
-**Spawning too many tasks at once.** While tasks are cheap, spawning 100,000 tasks all at once before any can run can cause memory issues. For bounded concurrency (fetch N repos but only 10 at a time), use `tokio::sync::Semaphore` — covered in the next doc.
+**Spawning too many tasks at once.** While tasks are cheap, spawning 100,000 tasks all at once before any can run can cause memory issues. For bounded concurrency (fetch N repos but only 10 at a time), use `tokio::sync::Semaphore` - covered in the next doc.
 
 **Thinking that detached tasks clean themselves up.** If you drop a `JoinHandle` without awaiting it, the task runs to completion (or panic) in the background with no way to collect its result or check for errors. This is sometimes what you want, but often it's a resource leak waiting to happen.
 
@@ -347,10 +347,10 @@ async fn fetch_all_repos(repos: Vec<String>) -> Vec<String> {
 
 ## How It Breaks
 
-**Spawning a task and never awaiting the `JoinHandle`.** The task runs in the background but its result is lost. If the task returns an important value or error, you'll never see it. More critically: if the task panics, the panic doesn't propagate anywhere — the task simply disappears. The `JoinHandle` would have given you `Err(JoinError)` containing the panic info, but you dropped it. In production, dropped `JoinHandle`s that panic appear as silent failures.
+**Spawning a task and never awaiting the `JoinHandle`.** The task runs in the background but its result is lost. If the task returns an important value or error, you'll never see it. More critically: if the task panics, the panic doesn't propagate anywhere - the task simply disappears. The `JoinHandle` would have given you `Err(JoinError)` containing the panic info, but you dropped it. In production, dropped `JoinHandle`s that panic appear as silent failures.
 
 **Running CPU-heavy work on Tokio worker threads.** Tokio's worker threads are shared among all async tasks. If one task runs a tight CPU loop without ever hitting `.await`, it monopolizes its worker thread for the duration of that loop. Other tasks that are ready to make progress can't run because the thread is busy. On a 4-thread runtime, if 4 tasks all do CPU work simultaneously, all async I/O in the entire program stalls. Move CPU-heavy work to `spawn_blocking`, which uses a separate thread pool that doesn't affect the async workers.
 
-**Panicking inside a spawned task.** Panics inside `tokio::spawn` don't propagate to the spawning task. The runtime catches the panic, terminates the task, and records it in the `JoinError`. If you call `handle.await.unwrap()` and the task panicked, the `unwrap()` will re-panic in your code — but only if you actually `await` the handle. If you dropped the handle, the panic is silently swallowed. Always check `JoinHandle` results, especially in long-running servers.
+**Panicking inside a spawned task.** Panics inside `tokio::spawn` don't propagate to the spawning task. The runtime catches the panic, terminates the task, and records it in the `JoinError`. If you call `handle.await.unwrap()` and the task panicked, the `unwrap()` will re-panic in your code - but only if you actually `await` the handle. If you dropped the handle, the panic is silently swallowed. Always check `JoinHandle` results, especially in long-running servers.
 
 **`'static` requirement biting you.** `tokio::spawn` requires the future to be `'static` because the task may outlive the calling function. This means you cannot borrow local variables into a spawned task. The error message ("does not live long enough" or "borrowed value must be valid for `'static`") can be confusing. The solutions are always one of: `Arc::clone` to share ownership, `move` to transfer ownership, or channel messages to send data into the task. You cannot pass references across `spawn` boundaries.

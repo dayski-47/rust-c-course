@@ -1,14 +1,14 @@
-# 07 — Rust Idioms and Best Practices
+# 07 - Rust Idioms and Best Practices
 
-> **Project:** Async API Client — querying HTTP APIs with `reqwest`, deserializing JSON with `serde`, and orchestrating concurrent requests with Tokio tasks.
+> **Project:** Async API Client - querying HTTP APIs with `reqwest`, deserializing JSON with `serde`, and orchestrating concurrent requests with Tokio tasks.
 
 ## In This Section
 
 You are building an async API client. You will hit three Rust idioms immediately that do not appear in synchronous code:
 
-- **`async fn` in traits** — required when you want a trait with async methods (a `ApiClient` trait, for example). This is now stable in Rust 1.75+. For older toolchains the `async-trait` crate was needed; you will still encounter it in the ecosystem.
-- **`#[tokio::test]`** — the async equivalent of `#[test]`. Without it, your test function is `async fn` but nothing runs the future.
-- **`#[instrument]`** — a single attribute from the `tracing` crate that wraps every `async fn` with a span. Structured logs are non-negotiable in production async code because standard `println!` logs lose their context across `.await` points.
+- **`async fn` in traits** - required when you want a trait with async methods (a `ApiClient` trait, for example). This is now stable in Rust 1.75+. For older toolchains the `async-trait` crate was needed; you will still encounter it in the ecosystem.
+- **`#[tokio::test]`** - the async equivalent of `#[test]`. Without it, your test function is `async fn` but nothing runs the future.
+- **`#[instrument]`** - a single attribute from the `tracing` crate that wraps every `async fn` with a span. Structured logs are non-negotiable in production async code because standard `println!` logs lose their context across `.await` points.
 
 ---
 
@@ -44,7 +44,7 @@ In the API client, response models own their fields, and query functions borrow 
 #[derive(Debug, serde::Deserialize)]
 struct UserResponse {
     id: u64,
-    name: String,      // owned — the struct is the source of truth
+    name: String,      // owned - the struct is the source of truth
     email: String,     // owned
 }
 
@@ -68,7 +68,7 @@ async fn search_users(client: &reqwest::Client, query: &str) -> anyhow::Result<V
 `reqwest::Client` is itself built with a builder. You will use this pattern constantly in async code:
 
 ```rust
-// Bad: positional constructor — what does `true` mean here?
+// Bad: positional constructor - what does `true` mean here?
 let client = ApiClient::new("https://api.example.com", "my-key", true, 30, None);
 
 // Good: self-documenting
@@ -80,13 +80,13 @@ let client = ApiClient::builder()
     .build()?;
 ```
 
-Under the hood, your `ApiClient::builder()` will call `reqwest::Client::builder()` — you are composing builders. This is idiomatic for any struct that wraps an HTTP client or database pool.
+Under the hood, your `ApiClient::builder()` will call `reqwest::Client::builder()` - you are composing builders. This is idiomatic for any struct that wraps an HTTP client or database pool.
 
 ---
 
 ## 4. Error Handling Hierarchy
 
-**Do not use:** `unwrap()` or `expect()` in production paths — network calls, JSON parsing, and environment variable reads all fail in ways outside your control.
+**Do not use:** `unwrap()` or `expect()` in production paths - network calls, JSON parsing, and environment variable reads all fail in ways outside your control.
 
 **Early development:** `Box<dyn std::error::Error>` as the error type. Gets you started without designing an error type first.
 
@@ -127,7 +127,7 @@ async fn main() {
 
 ---
 
-## 5. Don't Match on Bool — Use the Right Abstraction
+## 5. Don't Match on Bool - Use the Right Abstraction
 
 ```rust
 // Bad: checking is_some() then calling unwrap()
@@ -152,7 +152,7 @@ let body = response.json::<UserResponse>().await?;
 
 ---
 
-## 6. Closures as First-Class Values — and `async` Closures
+## 6. Closures as First-Class Values - and `async` Closures
 
 In synchronous Rust, you use closures with iterators and higher-order functions. In async code, the equivalent is async closures or `async` blocks:
 
@@ -161,7 +161,7 @@ In synchronous Rust, you use closures with iterators and higher-order functions.
 let handles: Vec<_> = user_ids
     .into_iter()
     .map(|id| {
-        let client = client.clone();  // Arc clone — cheap
+        let client = client.clone();  // Arc clone - cheap
         tokio::spawn(async move {
             client.fetch_user(id).await
         })
@@ -172,13 +172,13 @@ let handles: Vec<_> = user_ids
 let results: Vec<_> = futures::future::join_all(handles).await;
 ```
 
-The `move` keyword is required because the `async` block must own `client` and `id` — it may be polled on a different thread than the one that created it (`Send + 'static`). Clone your `Arc`-wrapped values before the `move`, exactly as you would with `thread::spawn`.
+The `move` keyword is required because the `async` block must own `client` and `id` - it may be polled on a different thread than the one that created it (`Send + 'static`). Clone your `Arc`-wrapped values before the `move`, exactly as you would with `thread::spawn`.
 
 Know the three closure traits:
 
-- `Fn` — can be called multiple times, borrows captured variables
-- `FnMut` — can be called multiple times, mutably borrows captured variables
-- `FnOnce` — can only be called once, takes ownership of captured variables
+- `Fn` - can be called multiple times, borrows captured variables
+- `FnMut` - can be called multiple times, mutably borrows captured variables
+- `FnOnce` - can only be called once, takes ownership of captured variables
 
 ---
 
@@ -273,7 +273,7 @@ mod tests {
 }
 ```
 
-Run with `cargo test`. The `#[tokio::test]` macro spins up a Tokio runtime for each test function, runs the future to completion, and tears down the runtime — exactly like `#[tokio::main]` does for `main`.
+Run with `cargo test`. The `#[tokio::test]` macro spins up a Tokio runtime for each test function, runs the future to completion, and tears down the runtime - exactly like `#[tokio::main]` does for `main`.
 
 ---
 
@@ -305,7 +305,7 @@ Initialize tracing in `main`:
 tracing_subscriber::fmt::init();
 ```
 
-Every `tracing::debug!`, `tracing::info!`, and `tracing::error!` inside any `#[instrument]`-annotated function will automatically include the span's fields — including which task, which request ID, and which user ID. This is what separates debuggable async services from ones that are impossible to reason about in production.
+Every `tracing::debug!`, `tracing::info!`, and `tracing::error!` inside any `#[instrument]`-annotated function will automatically include the span's fields - including which task, which request ID, and which user ID. This is what separates debuggable async services from ones that are impossible to reason about in production.
 
 ---
 

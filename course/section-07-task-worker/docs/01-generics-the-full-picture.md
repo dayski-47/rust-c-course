@@ -1,4 +1,4 @@
-# Doc 01 — Generics: The Full Picture
+# Doc 01 - Generics: The Full Picture
 
 ---
 
@@ -6,7 +6,7 @@
 
 Type-driven design means using the type system to make invalid states impossible to represent in code. Not just to represent data, but to enforce correctness at compile time.
 
-The core question: "If this type compiles, is it necessarily correct?" For most code, the answer is "not really — you can pass the wrong ID, call methods in the wrong order, put a job in the wrong state." Type-driven design works to make the answer "yes."
+The core question: "If this type compiles, is it necessarily correct?" For most code, the answer is "not really - you can pass the wrong ID, call methods in the wrong order, put a job in the wrong state." Type-driven design works to make the answer "yes."
 
 Invariant thinking means asking: "What must ALWAYS be true? What must NEVER happen?"
 
@@ -14,12 +14,12 @@ For the task worker:
 - MUST always be true: a Running job always has a worker assigned to it. A Completed job always has a result. A Failed job always has an error message and a retry count.
 - MUST NEVER happen: a job transitions from Pending directly to Completed (skipping Running). A job has retry count > max retries but isn't in the Dead state.
 
-When you encode these invariants in types — using type-state for job lifecycle, newtypes for IDs — the compiler enforces them. You don't write runtime checks. You don't write unit tests for "can this job skip states." The code that could cause it literally doesn't compile.
+When you encode these invariants in types - using type-state for job lifecycle, newtypes for IDs - the compiler enforces them. You don't write runtime checks. You don't write unit tests for "can this job skip states." The code that could cause it literally doesn't compile.
 
 ---
 
 You have used generics. You have written `fn foo<T: Display>(val: T)` and moved on.
-But there is a lot happening under the hood that changes how you design systems —
+But there is a lot happening under the hood that changes how you design systems -
 especially once your job queue needs a `Worker<J: Job>` that is fast, correct, and
 does not bloat your binary. This document explains what generics actually are in Rust,
 when they hurt you, and several patterns you will use constantly in taskforge.
@@ -59,7 +59,7 @@ C# generics (JIT specialization). In Rust, the specialization happens at
 compile time, and you pay nothing at runtime.
 
 **Comparison with C++ templates**: Rust generics work like templates but with one
-critical difference. In C++, template errors appear at instantiation — often inside
+critical difference. In C++, template errors appear at instantiation - often inside
 library code, giving you walls of incomprehensible error text. In Rust, the bound
 `T: PartialOrd` is checked when you write the function. If T does not satisfy the
 bound, you get a clear error pointing at your code, not at the standard library
@@ -78,7 +78,7 @@ The mitigation is called the "outline" pattern: extract the non-generic core int
 a non-generic function and keep the generic wrapper thin.
 
 ```rust
-// The generic wrapper is small — just converts T to Value
+// The generic wrapper is small - just converts T to Value
 pub fn serialize<T: Serialize>(val: &T) -> Result<Vec<u8>, serde_json::Error> {
     let json_value = serde_json::to_value(val)?;
     // Delegate to non-generic function that exists once in the binary
@@ -94,7 +94,7 @@ fn serialize_value(val: serde_json::Value) -> Result<Vec<u8>, serde_json::Error>
 The rule of thumb: use generics (monomorphized, static dispatch) for hot paths where
 inlining matters. Use `dyn Trait` (dynamic dispatch, vtable) for cold paths where
 the flexibility is worth the one-pointer-indirection cost. Logging, configuration,
-error handling — all fine as `dyn Trait`. Job processing loops — probably worth
+error handling - all fine as `dyn Trait`. Job processing loops - probably worth
 keeping generic.
 
 ---
@@ -285,7 +285,7 @@ let job = serde_json::from_value::<SendEmailJob>(payload)?;
 
 **Turbofish ambiguity.** `parse::<i32>()` is fine, but complex nested turbofish like `collect::<HashMap<String, Vec<i32>>>()` is hard to read and easy to get wrong.
 
-**Generic bounds that are too tight.** `fn process<T: Clone + Debug + PartialEq + Hash>(x: T)` — you've restricted the callers to types that implement all four. Often you only actually need one of them.
+**Generic bounds that are too tight.** `fn process<T: Clone + Debug + PartialEq + Hash>(x: T)` - you've restricted the callers to types that implement all four. Often you only actually need one of them.
 
 **Const generics limitations.** You can use const generics for sizes, but you can't compute them (no arithmetic) in current stable Rust.
 
@@ -296,10 +296,10 @@ let job = serde_json::from_value::<SendEmailJob>(payload)?;
 **1. Adding bounds to the struct when the bounds belong on the impl.**
 
 ```rust
-// Wrong — forces EVERY use of the struct to satisfy all bounds
+// Wrong - forces EVERY use of the struct to satisfy all bounds
 struct Cache<K: Eq + Hash + Clone, V: Clone> { ... }
 
-// Right — struct is simple, bounds live where they're needed
+// Right - struct is simple, bounds live where they're needed
 struct Cache<K, V> { ... }
 
 impl<K: Eq + Hash + Clone, V: Clone> Cache<K, V> { ... }
@@ -312,7 +312,7 @@ help. Use `type Output;` instead.
 
 **3. Forgetting PhantomData variance.** `PhantomData<T>` is covariant over T.
 If you need invariance (common for mutable state), use `PhantomData<fn(T) -> T>`.
-This is an advanced concern — just be aware it exists.
+This is an advanced concern - just be aware it exists.
 
 **4. Benchmarking generic code and seeing surprising performance.** Remember that
 each instantiation is compiled separately, which means LLVM can make different
@@ -323,13 +323,13 @@ nothing about `Worker<ResizeImageJob>`.
 
 ## Where-Clause vs Inline Bounds
 
-Both syntaxes do the same thing — use whichever is more readable:
+Both syntaxes do the same thing - use whichever is more readable:
 
 ```rust
-// Inline bounds — fine for 1-2 constraints
+// Inline bounds - fine for 1-2 constraints
 fn process<J: Job + Send + 'static>(job: J) { ... }
 
-// Where-clause — better when constraints get complex
+// Where-clause - better when constraints get complex
 fn process<J>(job: J)
 where
     J: Job + Send + 'static,
@@ -351,7 +351,7 @@ fn apply<F: Fn(&str) -> usize>(f: F, s: &str) -> usize {
     f(s)
 }
 
-// This works — HRTB: "F must implement Fn for any lifetime 'a"
+// This works - HRTB: "F must implement Fn for any lifetime 'a"
 fn apply<F>(f: F, s: &str) -> usize
 where
     F: for<'a> Fn(&'a str) -> usize,
@@ -360,7 +360,7 @@ where
 }
 ```
 
-The `for<'a>` syntax means "for all lifetimes `'a`." In practice you rarely write this manually — the compiler infers it for closures. You'll see it in compiler errors when a closure doesn't satisfy a bound on a trait object. When that happens, the fix is usually to make the closure own its data instead of borrowing.
+The `for<'a>` syntax means "for all lifetimes `'a`." In practice you rarely write this manually - the compiler infers it for closures. You'll see it in compiler errors when a closure doesn't satisfy a bound on a trait object. When that happens, the fix is usually to make the closure own its data instead of borrowing.
 
 ## Sealed Traits: Preventing External Implementors
 
@@ -406,10 +406,10 @@ impl<T: Display> ToString for T {
 // Now ANY type that implements Display automatically gets to_string()
 ```
 
-The orphan rule prevents conflicts: you can only implement a trait for a type if either the trait OR the type is defined in your crate. You cannot implement `Display` for `Vec<T>` in your crate — both `Display` and `Vec` are foreign. The newtype pattern solves this:
+The orphan rule prevents conflicts: you can only implement a trait for a type if either the trait OR the type is defined in your crate. You cannot implement `Display` for `Vec<T>` in your crate - both `Display` and `Vec` are foreign. The newtype pattern solves this:
 
 ```rust
-// You own this type — you can implement any trait for it
+// You own this type - you can implement any trait for it
 struct JobList(Vec<Job>);
 
 impl Display for JobList {

@@ -1,6 +1,6 @@
-# Doc 03 — Interior Mutability: RefCell and Mutex
+# Doc 03 - Interior Mutability: RefCell and Mutex
 
-Here is a problem you'll run into almost immediately when building anything real in Rust. You have a data structure — let's say a cache, or a list of connections — that you've wrapped in an `Arc` so multiple parts of your program can share it. But `Arc<T>` only lets you get a shared `&T` reference to the inner value, and shared references are immutable in Rust.
+Here is a problem you'll run into almost immediately when building anything real in Rust. You have a data structure - let's say a cache, or a list of connections - that you've wrapped in an `Arc` so multiple parts of your program can share it. But `Arc<T>` only lets you get a shared `&T` reference to the inner value, and shared references are immutable in Rust.
 
 You need to mutate. But you can't. The borrow rules say you'd need a `&mut T`, but you only have `&T`. What now?
 
@@ -12,7 +12,7 @@ This is the **interior mutability** problem, and it has two solutions depending 
 
 Rust normally enforces borrow rules at compile time: either one mutable reference, or any number of immutable references. These rules exist to prevent data races and ensure memory safety.
 
-But sometimes your code structure makes it impossible for the compiler to prove correctness at compile time — even when you know your logic is sound. Interior mutability moves the borrow checking to **runtime**, and if you violate the rules at runtime, the program panics rather than producing undefined behavior.
+But sometimes your code structure makes it impossible for the compiler to prove correctness at compile time - even when you know your logic is sound. Interior mutability moves the borrow checking to **runtime**, and if you violate the rules at runtime, the program panics rather than producing undefined behavior.
 
 Think of it this way: instead of the compiler checking "is there a mutable borrow right now?", the data structure itself checks at runtime. If the check fails, you get a clean panic rather than memory corruption. That's a much better failure mode than C.
 
@@ -20,7 +20,7 @@ Think of it this way: instead of the compiler checking "is there a mutable borro
 
 ## Cell\<T\>: Simple Interior Mutability for Copy Types 🟢
 
-`Cell<T>` is the simplest interior mutability tool. It works by copying values in and out — you `get()` a copy of the value and `set()` a new value. No references involved, no borrow checking needed, zero runtime overhead.
+`Cell<T>` is the simplest interior mutability tool. It works by copying values in and out - you `get()` a copy of the value and `set()` a new value. No references involved, no borrow checking needed, zero runtime overhead.
 
 The catch: `T` must be a `Copy` type (integers, bools, floats, etc.).
 
@@ -37,7 +37,7 @@ impl Config {
         Config { max_connections: max, active_count: Cell::new(0) }
     }
 
-    // Note: &self not &mut self — this is the whole point
+    // Note: &self not &mut self - this is the whole point
     fn connect(&self) {
         let current = self.active_count.get();
         self.active_count.set(current + 1);
@@ -62,10 +62,10 @@ fn main() {
 
 ## RefCell\<T\>: Runtime Borrow Checking 🟡
 
-`RefCell<T>` is the more powerful version. It works with any type (not just `Copy`) by lending references — but it enforces the borrow rules at **runtime**.
+`RefCell<T>` is the more powerful version. It works with any type (not just `Copy`) by lending references - but it enforces the borrow rules at **runtime**.
 
-- `borrow()` returns a `Ref<T>` — an immutable borrow. Multiple can coexist.
-- `borrow_mut()` returns a `RefMut<T>` — a mutable borrow. This one is exclusive.
+- `borrow()` returns a `Ref<T>` - an immutable borrow. Multiple can coexist.
+- `borrow_mut()` returns a `RefMut<T>` - a mutable borrow. This one is exclusive.
 
 If you call `borrow_mut()` while a `Ref` or `RefMut` is still alive, the program **panics**.
 
@@ -104,13 +104,13 @@ Use `RefCell` when:
 - You're confident your logic guarantees the borrow rules won't be violated at runtime
 - The borrow checker can't prove it statically (graph traversal, callback patterns, caches)
 
-The classic pattern is `Rc<RefCell<T>>` — shared ownership plus interior mutability, all in one thread.
+The classic pattern is `Rc<RefCell<T>>` - shared ownership plus interior mutability, all in one thread.
 
 ---
 
 ## Mutex\<T\>: Thread-Safe Interior Mutability 🟡
 
-For multi-threaded code, `RefCell` doesn't work — it's not `Sync` (can't be shared between threads). The thread-safe equivalent is `Mutex<T>`.
+For multi-threaded code, `RefCell` doesn't work - it's not `Sync` (can't be shared between threads). The thread-safe equivalent is `Mutex<T>`.
 
 `Mutex` works like a lock. When a thread wants to access the inner data, it calls `.lock()`. If another thread already holds the lock, `.lock()` blocks until that thread releases it. When you get the lock, you get a `MutexGuard<T>` that derefs to the inner data. When the guard drops, the lock is released.
 
@@ -131,7 +131,7 @@ fn main() {
 }
 ```
 
-This is RAII, exactly like `std::lock_guard<std::mutex>` in C++. The lock is released when the guard goes out of scope. You cannot forget to unlock — it's automatic.
+This is RAII, exactly like `std::lock_guard<std::mutex>` in C++. The lock is released when the guard goes out of scope. You cannot forget to unlock - it's automatic.
 
 ### The MutexGuard
 
@@ -150,7 +150,7 @@ println!("{}", *guard); // dereference to read
 
 In C, if a thread dies while holding a mutex, the mutex is just... stuck. Other threads block forever.
 
-In Rust, `Mutex` detects this. If a thread panics while holding the lock, the mutex becomes **poisoned**. Subsequent calls to `.lock()` return `Err(PoisonError)` instead of `Ok(guard)`. This is why we call `.unwrap()` on the result of `.lock()` — if the mutex is poisoned, `.unwrap()` panics, which is usually the right behavior.
+In Rust, `Mutex` detects this. If a thread panics while holding the lock, the mutex becomes **poisoned**. Subsequent calls to `.lock()` return `Err(PoisonError)` instead of `Ok(guard)`. This is why we call `.unwrap()` on the result of `.lock()` - if the mutex is poisoned, `.unwrap()` panics, which is usually the right behavior.
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -186,8 +186,8 @@ For the chat server, you'll mostly use `.unwrap()` on locks. If a thread panics 
 ## RwLock\<T\>: Many Readers OR One Writer 🟡
 
 `RwLock<T>` is a refinement of `Mutex`. It has two lock modes:
-- `read()` — multiple threads can hold read locks simultaneously
-- `write()` — only one thread can hold a write lock, and no readers can hold locks
+- `read()` - multiple threads can hold read locks simultaneously
+- `write()` - only one thread can hold a write lock, and no readers can hold locks
 
 This is the classic readers-writer lock, equivalent to `std::shared_mutex` in C++.
 
@@ -199,7 +199,7 @@ fn main() {
     let config = Arc::new(RwLock::new(String::from("v1.0")));
     let mut handles = vec![];
 
-    // 5 readers — all run concurrently
+    // 5 readers - all run concurrently
     for i in 0..5 {
         let config = Arc::clone(&config);
         handles.push(thread::spawn(move || {
@@ -208,7 +208,7 @@ fn main() {
         }));
     }
 
-    // 1 writer — waits for all readers, then gets exclusive access
+    // 1 writer - waits for all readers, then gets exclusive access
     let config = Arc::clone(&config);
     handles.push(thread::spawn(move || {
         let mut val = config.write().unwrap();
@@ -219,7 +219,7 @@ fn main() {
 }
 ```
 
-Use `RwLock` when you have a read-heavy workload — lots of threads reading configuration or a shared cache, with infrequent writes. Use `Mutex` when writes are as common as reads or when the critical section is very short (the overhead of tracking read/write state isn't worth it).
+Use `RwLock` when you have a read-heavy workload - lots of threads reading configuration or a shared cache, with infrequent writes. Use `Mutex` when writes are as common as reads or when the critical section is very short (the overhead of tracking read/write state isn't worth it).
 
 ---
 
@@ -277,7 +277,7 @@ Rules to avoid deadlock in the chat server:
 {
     let map = clients.lock().unwrap();
     for (_, sender) in map.iter() {
-        expensive_network_call();  // lock held during I/O — bad
+        expensive_network_call();  // lock held during I/O - bad
     }
 }
 
@@ -318,10 +318,10 @@ for sender in senders {
 
 ## How It Breaks
 
-**`RefCell` runtime panic.** `borrow()` and `borrow_mut()` enforce the borrow rules at runtime rather than compile time. If you call `borrow_mut()` while any `Ref` or `RefMut` is still alive — even if you're sure the logic is correct — the program panics. This is worse than a compile-time error because it crashes in production, not during development. The fix is to ensure all borrows are dropped before taking a new conflicting borrow, using explicit scopes `{}` to force early drops.
+**`RefCell` runtime panic.** `borrow()` and `borrow_mut()` enforce the borrow rules at runtime rather than compile time. If you call `borrow_mut()` while any `Ref` or `RefMut` is still alive - even if you're sure the logic is correct - the program panics. This is worse than a compile-time error because it crashes in production, not during development. The fix is to ensure all borrows are dropped before taking a new conflicting borrow, using explicit scopes `{}` to force early drops.
 
-**`std::sync::Mutex` poisoning.** If a thread panics while holding a `Mutex` lock, the mutex becomes poisoned. Every subsequent call to `.lock()` on that mutex returns `Err(PoisonError)`. If your code uses `.unwrap()` everywhere (reasonable during development), a poisoned mutex causes every thread that accesses it to panic. For the chat server, this is usually the right behavior — a corrupted client list should crash loudly rather than silently continue. For library code or long-running servers, handle `PoisonError` explicitly with `lock().unwrap_or_else(|e| e.into_inner())`.
+**`std::sync::Mutex` poisoning.** If a thread panics while holding a `Mutex` lock, the mutex becomes poisoned. Every subsequent call to `.lock()` on that mutex returns `Err(PoisonError)`. If your code uses `.unwrap()` everywhere (reasonable during development), a poisoned mutex causes every thread that accesses it to panic. For the chat server, this is usually the right behavior - a corrupted client list should crash loudly rather than silently continue. For library code or long-running servers, handle `PoisonError` explicitly with `lock().unwrap_or_else(|e| e.into_inner())`.
 
-**Holding a `MutexGuard` across `.await` in async code.** The guard from `std::sync::Mutex` is not `Send` — it cannot be moved between threads. In a multi-threaded async runtime (like Tokio's default), a task can be moved to a different thread at any `.await` point. If your task holds a `std::sync::MutexGuard` when it yields, the compiler will refuse to compile with a confusing error about `Send`. The fix: either drop the guard before any `.await` (restructure so the lock is held in a `{}` block that ends before the `.await`), or switch to `tokio::sync::Mutex` which is designed to be held across await points.
+**Holding a `MutexGuard` across `.await` in async code.** The guard from `std::sync::Mutex` is not `Send` - it cannot be moved between threads. In a multi-threaded async runtime (like Tokio's default), a task can be moved to a different thread at any `.await` point. If your task holds a `std::sync::MutexGuard` when it yields, the compiler will refuse to compile with a confusing error about `Send`. The fix: either drop the guard before any `.await` (restructure so the lock is held in a `{}` block that ends before the `.await`), or switch to `tokio::sync::Mutex` which is designed to be held across await points.
 
-**`RwLock` writer starvation.** On some platforms and implementations, if reader threads continuously hold the read lock, writers can be blocked indefinitely — every time the last reader releases, a new reader grabs it before the writer can get in. Whether this happens depends on the platform's fairness policy. If you have a write-heavy workload and see that writes are stalling, `Mutex` (which doesn't distinguish readers from writers) avoids this entirely.
+**`RwLock` writer starvation.** On some platforms and implementations, if reader threads continuously hold the read lock, writers can be blocked indefinitely - every time the last reader releases, a new reader grabs it before the writer can get in. Whether this happens depends on the platform's fairness policy. If you have a write-heavy workload and see that writes are stalling, `Mutex` (which doesn't distinguish readers from writers) avoids this entirely.

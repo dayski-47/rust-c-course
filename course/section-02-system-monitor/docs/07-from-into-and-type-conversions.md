@@ -1,8 +1,8 @@
-# Doc 07 — From, Into, and Type Conversions
+# Doc 07 - From, Into, and Type Conversions
 
-🟡 Think about it — Rust has no implicit conversions. That sounds restrictive until you see how it eliminates entire categories of bugs.
+🟡 Think about it - Rust has no implicit conversions. That sounds restrictive until you see how it eliminates entire categories of bugs.
 
-In C, you can assign an `int` to a `long`, a `float` to a `double`, a `char*` to `const char*` — all silently. The compiler promotes and converts without asking. In Rust, every conversion is explicit. That sounds like more work, but it means: narrowing bugs, sign confusion, precision loss — all become compile errors. This doc explains how Rust's conversion traits replace implicit casts, and why that's better.
+In C, you can assign an `int` to a `long`, a `float` to a `double`, a `char*` to `const char*` - all silently. The compiler promotes and converts without asking. In Rust, every conversion is explicit. That sounds like more work, but it means: narrowing bugs, sign confusion, precision loss - all become compile errors. This doc explains how Rust's conversion traits replace implicit casts, and why that's better.
 
 ---
 
@@ -13,7 +13,7 @@ Consider this C code:
 ```c
 int get_count(void) { return -1; }  // -1 means "error"
 
-size_t len = get_count();   // len is SIZE_MAX — silent bug
+size_t len = get_count();   // len is SIZE_MAX - silent bug
 if (len > 1000) {           // This is true when you meant "error"!
     allocate_huge_buffer(len);  // crash
 }
@@ -28,7 +28,7 @@ let len: usize = get_count();  // COMPILE ERROR: mismatched types
                                // expected `usize`, found `i32`
 ```
 
-The compiler forces you to make the conversion explicit — and at that point, you'd use `TryInto` which tells you if the conversion fails:
+The compiler forces you to make the conversion explicit - and at that point, you'd use `TryInto` which tells you if the conversion fails:
 
 ```rust
 use std::convert::TryInto;
@@ -45,10 +45,10 @@ match get_count().try_into() {
 
 | Trait | When it succeeds | Example |
 |-------|------------------|---------|
-| `From<T>` / `Into<T>` | Always — infallible | `u8` → `u32`, `&str` → `String` |
-| `TryFrom<T>` / `TryInto<T>` | Maybe — can fail | `i64` → `u8`, `String` → custom type |
-| `AsRef<T>` | Always — borrows as another reference type | `String` → `&str`, `Vec<u8>` → `&[u8]` |
-| `Deref<Target=T>` | Always — automatic coercion | `Box<T>` → `&T`, `String` → `&str` |
+| `From<T>` / `Into<T>` | Always - infallible | `u8` → `u32`, `&str` → `String` |
+| `TryFrom<T>` / `TryInto<T>` | Maybe - can fail | `i64` → `u8`, `String` → custom type |
+| `AsRef<T>` | Always - borrows as another reference type | `String` → `&str`, `Vec<u8>` → `&[u8]` |
+| `Deref<Target=T>` | Always - automatic coercion | `Box<T>` → `&T`, `String` → `&str` |
 | `Display` / `FromStr` | Print / Parse | `42.to_string()`, `"42".parse::<i32>()` |
 
 ---
@@ -70,7 +70,7 @@ fn main() {
     // Use From explicitly:
     let cpu = CpuPercent::from(72.5);
 
-    // Use Into — works automatically when From is implemented:
+    // Use Into - works automatically when From is implemented:
     let cpu: CpuPercent = 72.5.into();
 }
 ```
@@ -101,7 +101,7 @@ let opt: Option<i32> = Some(42);
 
 ### Implementing From for domain types
 
-This pattern appears constantly in the system monitor — converting raw OS data into typed representations:
+This pattern appears constantly in the system monitor - converting raw OS data into typed representations:
 
 ```rust
 #[derive(Debug)]
@@ -150,14 +150,14 @@ fn main() {
 
 ## `TryFrom<T>` and `TryInto<T>`: Fallible Conversions
 
-Use `TryFrom`/`TryInto` when the conversion might fail — typically when the value is out of range or invalid.
+Use `TryFrom`/`TryInto` when the conversion might fail - typically when the value is out of range or invalid.
 
 ```rust
 use std::convert::TryFrom;
 
 // Built-in: narrowing integer conversions
 let big: i64 = 300;
-let small = u8::try_from(big);  // Err — 300 doesn't fit in u8
+let small = u8::try_from(big);  // Err - 300 doesn't fit in u8
 
 let ok: i64 = 200;
 let small = u8::try_from(ok);   // Ok(200)
@@ -170,7 +170,7 @@ fn narrow(n: i64) -> Result<u8, std::num::TryFromIntError> {
 
 ### Implementing TryFrom for validated types
 
-This is where `TryFrom` really shines — converting raw input into types that enforce invariants:
+This is where `TryFrom` really shines - converting raw input into types that enforce invariants:
 
 ```rust
 use std::convert::TryFrom;
@@ -226,8 +226,8 @@ fn log_event(name: &str) {
 
 fn main() {
     let owned: String = "disk_read".into();
-    log_event(&owned);    // Works — &String coerces to &str via Deref
-    log_event("cpu_high"); // Works — &str is &str
+    log_event(&owned);    // Works - &String coerces to &str via Deref
+    log_event("cpu_high"); // Works - &str is &str
 }
 
 // With AsRef: even more flexible
@@ -266,12 +266,12 @@ fn main() {
 
 ```rust
 let big: u32 = 1000;
-let small = big as u8;   // 232 — wraps around silently (1000 % 256)
+let small = big as u8;   // 232 - wraps around silently (1000 % 256)
 let f: f64 = 3.99;
-let n = f as i64;        // 3 — truncates, no rounding
+let n = f as i64;        // 3 - truncates, no rounding
 
 let signed: i32 = -1;
-let unsigned = signed as u32;  // 4294967295 — same bit pattern
+let unsigned = signed as u32;  // 4294967295 - same bit pattern
 ```
 
 **When `as` is appropriate:**
@@ -280,8 +280,8 @@ let unsigned = signed as u32;  // 4294967295 — same bit pattern
 - Index arithmetic: `index as usize`
 
 **When to use `From`/`TryFrom` instead of `as`:**
-- Widening integers: always use `From` — it's infallible and documents intent
-- Narrowing integers: always use `TryFrom` — it tells you if data is lost
+- Widening integers: always use `From` - it's infallible and documents intent
+- Narrowing integers: always use `TryFrom` - it tells you if data is lost
 - Any struct-to-struct conversion: implement `From`
 
 The issue with `as`: it silently wraps on overflow, silently truncates floats, and silently reinterprets signed/unsigned. `TryFrom` gives you an `Err` instead of silent data corruption.
@@ -325,7 +325,7 @@ fn load_sample_rate(path: &str) -> Result<u32, MonitorError> {
 }
 ```
 
-Without `From`, you'd need `map_err(MonitorError::Io)?` on every I/O operation and `map_err(MonitorError::Parse)?` on every parse. `From` eliminates the repetition. You'll use this pattern in every section from here forward — errors are the thing that makes multi-layer Rust code readable.
+Without `From`, you'd need `map_err(MonitorError::Io)?` on every I/O operation and `map_err(MonitorError::Parse)?` on every parse. `From` eliminates the repetition. You'll use this pattern in every section from here forward - errors are the thing that makes multi-layer Rust code readable.
 
 ---
 
@@ -405,7 +405,7 @@ Each arrow is a `From` or `Display` implementation. When something goes wrong in
 Rust's blanket impl gives you `Into` for free when you implement `From`. If you implement `Into` directly, you won't get `From`, and code that calls `From::from(...)` won't work. Always implement `From`, never implement `Into`.
 
 **Using `as` for narrowing without thinking.**
-`42i64 as u8` compiles. It also produces 42. `300i64 as u8` produces 44. `1000i64 as u8` produces 232. There's no warning. If you're narrowing an integer that might be out of range, use `TryFrom` — it produces an `Err` instead of silent corruption.
+`42i64 as u8` compiles. It also produces 42. `300i64 as u8` produces 44. `1000i64 as u8` produces 232. There's no warning. If you're narrowing an integer that might be out of range, use `TryFrom` - it produces an `Err` instead of silent corruption.
 
 **Forgetting to implement `From` for errors when using `?`.**
 If your function returns `Result<_, MyError>` and you call `?` on something returning `Result<_, io::Error>`, the compiler needs `From<io::Error> for MyError`. Without it, you get a type mismatch error at the `?`. The fix: add `impl From<io::Error> for MyError`. This is so common that the `thiserror` crate (which you'll use from section 3 onward) generates these `From` impls automatically from `#[from]` annotations.
