@@ -31,15 +31,15 @@ You've already seen this if you've used vectors: `vec.get(index)` returns `Optio
 
 ```rust
 fn main() {
-    let ports = vec![22u16, 80, 443];
+    let offsets = vec![0u64, 16, 32];
 
-    // get() returns Option<&u16>
-    match ports.get(1) {
-        Some(port) => println!("Found port: {port}"),
+    // get() returns Option<&u64>
+    match offsets.get(1) {
+        Some(offset) => println!("Found offset: {offset}"),
         None => println!("Index out of bounds"),
     }
 
-    // Compared to: if you used ports[5], it would panic
+    // Compared to: if you used offsets[5], it would panic
     // Compared to C: arr[5] is undefined behavior
 }
 ```
@@ -120,17 +120,17 @@ This is the most important operator for writing clean Rust code.
 In C, propagating errors looks like:
 
 ```c
-int parse_and_connect(const char *host, const char *port_str) {
-    int port = atoi(port_str);
-    if (port <= 0) return -1;
-    
-    int fd = create_socket();
-    if (fd < 0) return -1;
-    
-    int ret = connect_socket(fd, host, port);
-    if (ret < 0) { close(fd); return -1; }
-    
-    return fd;
+int open_and_read(const char *path, size_t offset, unsigned char *out, size_t len) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    if (fseek(f, offset, SEEK_SET) != 0) { fclose(f); return -1; }
+
+    size_t n = fread(out, 1, len, f);
+    if (n == 0) { fclose(f); return -1; }
+
+    fclose(f);
+    return (int)n;
 }
 ```
 
@@ -163,7 +163,7 @@ Sometimes you want to say "if this fails, the program should crash":
 ```rust
 fn main() {
     // unwrap(): panics with a generic message if Err or None
-    let port: u16 = "443".parse().unwrap();
+    let offset: u64 = "256".parse().unwrap();
 
     // expect(): panics with your custom message - better for debugging
     let offset: u64 = "256".parse().expect("offset must be a valid u64");
@@ -236,7 +236,7 @@ Result<T, E>
 ## How It Breaks
 
 **`unwrap()` panicking in production.**
-`unwrap()` panics if the value is `Err` or `None`. In development, a panic with a line number is useful. In production, it's a crash that exposes internals to users and produces no useful error message for them. Never call `unwrap()` on anything that can be caused by user input, network conditions, or file system state. That covers: argument parsing, hostname resolution, port parsing, file reads, and JSON parsing. Reserve `unwrap()` for things you can *prove* at the call site are always `Ok` - and add a comment explaining why.
+`unwrap()` panics if the value is `Err` or `None`. In development, a panic with a line number is useful. In production, it's a crash that exposes internals to users and produces no useful error message for them. Never call `unwrap()` on anything that can be caused by user input, network conditions, or file system state. That covers: argument parsing, file paths, byte offset parsing, file reads, and JSON parsing. Reserve `unwrap()` for things you can *prove* at the call site are always `Ok` - and add a comment explaining why.
 
 **The `?` operator silently converting error types.**
 `?` works by calling `From` to convert the error into the function's return type. If your function returns `Result<T, io::Error>` and you use `?` on something that returns `Result<T, ParseIntError>`, the compiler needs `ParseIntError: From<io::Error>` to exist. It doesn't. You'll get a type mismatch error that points at the `?` but the real problem is that your error types are incompatible. Solutions: use `Box<dyn Error>` as your error type for flexibility, use the `anyhow` crate (common in applications), or define your own error enum with variants for each error type and implement `From` for each.
@@ -244,12 +244,12 @@ Result<T, E>
 **Error messages that hide what went wrong.**
 This produces a useless error:
 ```rust
-hostname.parse::<SocketAddr>().map_err(|_| "parse failed")?;
+offset_str.parse::<u64>().map_err(|_| "parse failed")?;
 ```
 Always chain context. The user needs to know *what* failed and *why*:
 ```rust
-hostname.parse::<SocketAddr>()
-    .map_err(|e| format!("invalid address '{}': {}", hostname, e))?;
+offset_str.parse::<u64>()
+    .map_err(|e| format!("invalid offset '{}': {}", offset_str, e))?;
 ```
 Good error messages include the value that was invalid, the operation that failed, and the underlying cause.
 

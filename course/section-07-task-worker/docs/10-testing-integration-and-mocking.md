@@ -1,4 +1,4 @@
-# Doc 05 - Testing: Integration Tests and Mocking
+# Doc 10 - Testing: Integration Tests and Mocking
 
 You built a layered architecture (Doc 04) specifically to make testing possible.
 This document is about how you actually do it - unit tests for business logic,

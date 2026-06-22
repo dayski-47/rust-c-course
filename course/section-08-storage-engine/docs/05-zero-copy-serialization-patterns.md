@@ -323,7 +323,7 @@ With these tools in hand, ironkv's on-disk format looks like:
 Data File (.ikv):
 ┌─────────────────────────────────────────────┐
 │  File Header (32 bytes, repr(C))            │
-│  - magic: [u8; 4] = b"IRNV"               │
+│  - magic: [u8; 4] = b"IKVF"               │
 │  - version: u32                             │
 │  - created_at: u64                          │
 │  - entry_count: u64                         │

@@ -1,4 +1,4 @@
-# Doc 04 - Service Architecture and Dependency Injection
+# Doc 08 - Service Architecture and Dependency Injection
 
 In Section 6 you built an API where handlers talked directly to the database.
 That works for simple projects. But once you need to test a handler without
