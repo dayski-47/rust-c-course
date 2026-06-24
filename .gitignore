@@ -1,13 +1,13 @@
 # mdbook build output
 **/book/
 
-# xtask output (anchored to repo root — avoids ignoring course/section-*/docs/)
+# xtask output
 /site/
 /docs/
 target/
 
-# Zone.Identifier files (Windows/WSL artifact)
+# Zone.Identifier files
 *:Zone.Identifier
 
-# Handoff notes - local only, never published
+# Handoff notes
 course/handoff/
